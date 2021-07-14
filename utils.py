@@ -8,6 +8,8 @@
 """
 # TODO:
 #   * use super method in classes
+#   * Add WorkDir class
+#       * DO NOT inherit from TmpDir class
 
 import subprocess
 import logging
