@@ -10,6 +10,11 @@
 #   * use super method in classes
 #   * Add WorkDir class
 #       * DO NOT inherit from TmpDir class
+# 
+#   * Replace instance methods with slots
+#       * See links for details: 
+#           * https://stackoverflow.com/questions/41893267/how-to-use-slots-with-initialization-of-attributes
+#           * https://stackoverflow.com/questions/472000/usage-of-slots
 
 import subprocess
 import logging
