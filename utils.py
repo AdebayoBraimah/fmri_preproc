@@ -213,6 +213,47 @@ class File:
         
         return path, filename, ext
 
+class WorkDir:
+    """working class doc-string
+    """
+    work_dir: str = ""
+    parent_dir: str = ""
+
+    def __init__(self, 
+                 work_dir: str,
+                 use_cwd: bool = False
+                ) -> None:
+        """working init doc-string
+        """
+        self.work_dir: str = work_dir
+        self.parent_dir: str = os.path.dirname(self.work_dir)
+
+        if use_cwd:
+            _cwd: str = os.getcwd()
+            self.work_dir = os.path.join(_cwd,self.work_dir)
+            self.parent_dir = os.path.dirname(self.work_dir)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, traceback):
+        return False
+    
+    def __repr__(self):
+        return self.work_dir
+    
+    def mkdir(self):
+        """working doc-string
+        """
+        pass
+    
+    def rmdir(self, 
+              rm_parent: bool = False
+             ) -> None:
+        """working doc-string
+        """
+        pass
+
 class TmpDir:
     """Temporary directory class that creates temporary directories and files given a parent directory.
     
@@ -243,8 +284,9 @@ class TmpDir:
     parent_tmp_dir: str = ""
     
     def __init__(self,
-                tmp_dir: str,
-                use_cwd: bool = False) -> None:
+                 tmp_dir: str,
+                 use_cwd: bool = False
+                ) -> None:
         """Init doc-string for TmpDir class.
         
         Usage example:
