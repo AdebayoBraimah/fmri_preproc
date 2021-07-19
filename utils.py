@@ -7,7 +7,6 @@
     * Wrapper class for command line executables.
 """
 # TODO:
-#   * use super method in classes
 #   * Add WorkDir class
 #       * DO NOT inherit from TmpDir class
 # 
@@ -38,7 +37,7 @@ class DependencyError(Exception):
 class ConversionError(Exception):
     pass
 
-class File(object):
+class File:
     """Creates File object that encapsulates a number of methods and properites for file and filename handling.
     
     Attributes:
@@ -214,7 +213,7 @@ class File(object):
         
         return path, filename, ext
 
-class TmpDir(object):
+class TmpDir:
     """Temporary directory class that creates temporary directories and files given a parent directory.
     
     Attributes:
@@ -375,8 +374,9 @@ class TmpDir(object):
             if ext:
                 self.tmp_file: str = self.tmp_file + f".{ext}"
 
-            self.tmp_file = os.path.join(self.tmp_dir,self.tmp_file)
-            File.__init__(self,self.tmp_file)
+            self.tmp_file: str = os.path.join(self.tmp_dir,self.tmp_file)
+            super().__init__(tmp_file)
+            # File.__init__(self,self.tmp_file)
             # print(self.tmp_dir)
         
 class NiiFile(File):
@@ -392,7 +392,8 @@ class NiiFile(File):
         "file.nii"
     """
     def __init__(self,
-                 file: File) -> None:
+                 file: str
+                ) -> None:
         """Init doc-string for NiiFile class.
         
         Usage example:
@@ -400,8 +401,9 @@ class NiiFile(File):
             >>> nii_file
             "file.nii"
         """
-        self.file = file
-        File.__init__(self,self.file)
+        self.file: str = file
+        super().__init__(file)
+        # File.__init__(self,self.file)
 
 class LogFile(File):
     """Class that creates a log file for logging purposes. Due to how this class is constructed - its 
@@ -454,7 +456,8 @@ class LogFile(File):
             
         # Define logging
         self.logger = logging.getLogger(__name__)
-        File.__init__(self,self.log_file)
+        super().__init__(log_file)
+        # File.__init__(self,self.log_file)
     
     def __repr__(self):
         return self.log_file
@@ -525,7 +528,7 @@ class LogFile(File):
         # Log command/message
         self.info(log_cmd)
 
-class Command(object):
+class Command:
     """Creates a command and an empty command list for UNIX command line programs/applications. Primary use and
     use-cases are intended for the subprocess module and its associated classes (i.e. Popen/call/run).
 
