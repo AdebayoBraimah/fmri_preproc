@@ -37,7 +37,7 @@ class ConversionError(Exception):
     pass
 
 class File:
-    """Creates File object that encapsulates a number of methods and properites for file and filename handling.
+    """File objecte base class. This class creates a ``File`` object that encapsulates a number of methods and properites for file and filename handling.
     
     Attributes:
         file: Class variable that is set once class is instantiated.
@@ -53,16 +53,16 @@ class File:
             >>> file
             "file_name.txt"
 
-    Args:
+    Arguments:
         file: Input file (need not exist at runtime/instantiated).
         ext: File extension of input file. If no extension is provided, it is inferred.
     """
-    
     file: str = ""
     
     def __init__(self,
                  file: str,
-                 ext: str = "") -> None:
+                 ext: str = ""
+                ) -> None:
         """Init doc-string for File object class.
         
         Usage example:
@@ -76,12 +76,13 @@ class File:
             >>> file
             "file_name.txt"
 
-        Args:
+        Arguments:
             file: Input file (need not exist at runtime/instantiated).
             ext: File extension of input file. If no extension is provided, it
                 is inferred.
         """
         self.file: str = file
+
         if ext:
             self.ext: str = ext
         elif '.gz' in self.file:
@@ -126,7 +127,7 @@ class File:
             return file_path
     
     def rm_ext(self,
-              ext: str = "") -> str:
+               ext: str = "") -> str:
         """Removes file extension from the file.
         
         Usage example:
@@ -134,11 +135,11 @@ class File:
             >>> file_obj.rm_ext() 
             "file_name"
         
-        Args:
+        Arguments:
             ext: File extension.
         
         Returns:
-            File name with no extension.
+            Filename as string with no extension.
         """
         if ext:
             ext_num: int = len(ext)
@@ -150,23 +151,25 @@ class File:
             return self.file[:-(4)]
         
     def write_txt(self,
-                 txt: str = "") -> None:
+                  txt: str = ""
+                 ) -> None:
         """Writes/appends text to file.
         
         Usage example:
             >>> file_obj = File("file_name.txt")
             >>> file_obj.write_txt("<Text to be written>")
         
-        Args:
+        Arguments:
             txt: Text to be written to file.
         """
-        with open(self.file,mode="a",encoding='utf-8') as tmp_file:
+        with open(self.file, mode="a", encoding='utf-8') as tmp_file:
             tmp_file.write(txt)
             tmp_file.close()
         return None
 
     def file_parts(self,
-                  ext: str = "") -> Tuple[str,str,str]:
+                   ext: str = ""
+                  ) -> Tuple[str,str,str]:
         """Similar to MATLAB's ``fileparts``, this function splits a file and its path into its constituent parts:
 
             * file path
@@ -178,9 +181,8 @@ class File:
             >>> file_obj.file_parts()
             ("path/to/file", "filename", ".ext")   # .ext = file extension
         
-        Args:
-            ext: File extension, needed if the file extension of file 
-                object is longer than 4 characters.
+        Arguments:
+            ext: File extension, needed if the file extension of file object is longer than 4 characters.
         
         Returns:
             Tuple: 
@@ -188,8 +190,7 @@ class File:
                 * Filename, excluding extension.
                 * File extension.
         """
-        
-        file: str = self.file
+        file: File = self.file
         file: str = self.abs_path()
         
         path, _filename = os.path.split(file)
@@ -209,7 +210,11 @@ class File:
         return path, filename, ext
 
 class WorkDir:
-    """working class doc-string
+    """Working directory class that creates working directories.
+
+    Attributes:
+    Usage example:
+    Arguments:
     """
     work_dir: str = ""
     parent_dir: str = ""
@@ -218,15 +223,20 @@ class WorkDir:
                  work_dir: str,
                  use_cwd: bool = False
                 ) -> None:
-        """working init doc-string
+        """Initialization method for the ``WorkDir`` class.
+
+        Usage example:
+        Arguments:
+            work_dir:
+            use_cwd:
         """
         self.work_dir: str = work_dir
         self.parent_dir: str = os.path.dirname(self.work_dir)
 
         if use_cwd:
             _cwd: str = os.getcwd()
-            self.work_dir = os.path.join(_cwd,self.work_dir)
-            self.parent_dir = os.path.dirname(self.work_dir)
+            self.work_dir: str = os.path.join(_cwd,self.work_dir)
+            self.parent_dir: str = os.path.dirname(self.work_dir)
 
     def __enter__(self):
         return self
@@ -238,7 +248,9 @@ class WorkDir:
         return self.work_dir
     
     def mkdir(self) -> None:
-        """working doc-string
+        """Makes/creates the working directory.
+
+        Usage example:
         """
         if not os.path.exists(self.work_dir):
             return os.makedirs(self.work_dir)
@@ -249,7 +261,11 @@ class WorkDir:
     def rmdir(self, 
               rm_parent: bool = False
              ) -> None:
-        """working doc-string
+        """Removes working directory, and the parent directory if indicated to do so.
+
+        Usage example:
+        Arguments:
+            rm_parent:
         """
         if rm_parent and os.path.exists(self.parent_dir):
             return shutil.rmtree(self.parent_dir,ignore_errors=True)
@@ -259,8 +275,8 @@ class WorkDir:
             print("Working directory does not exist.")
             return None
 
-class TmpDir:
-    """Temporary directory class that creates temporary directories and files given a parent directory.
+class TmpDir(WorkDir):
+    """Temporary directory class that creates (random) temporary directories and files given a parent directory.
     
     Attributes:
         tmp_dir: Temproary directory.
@@ -279,12 +295,10 @@ class TmpDir:
             "/path/to/temporary_directory"
             >>> tmp_dir.rm_tmp_dir(rm_parent=False)
         
-    Args:
+    Arguments:
         tmp_dir: Temporary parent directory name/path.
         use_cwd: Use current working directory as working direcory.
     """
-    
-    # Set parent tmp directory, as tmp_dir is overwritten
     tmp_dir: str = ""
     parent_tmp_dir: str = ""
     
@@ -306,19 +320,23 @@ class TmpDir:
             "/path/to/temporary_directory"
             >>> tmp_dir.rm_tmp_dir(rm_parent=False)
         
-        Args:
+        Arguments:
             tmp_dir: Temporary parent directory name/path.
             use_cwd: Use current working directory as working direcory.
         """
         _n: int = 10000 # maximum N for random number generator
         tmp_dir: str = os.path.join(tmp_dir,'tmp_dir_' + 
-                               str(random.randint(0,_n)))
+                                    str(random.randint(0,_n)))
         self.tmp_dir: str = tmp_dir
         self.parent_tmp_dir: str = os.path.dirname(self.tmp_dir)
+
         if use_cwd:
-            _cwd = os.getcwd()
+            _cwd: str = os.getcwd()
             self.tmp_dir = os.path.join(_cwd,self.tmp_dir)
             self.parent_tmp_dir = os.path.dirname(self.tmp_dir)
+        
+        super(TmpDir, self).__init__(self.tmp_dir,
+                                     use_cwd)
 
     def __enter__(self):
         return self
@@ -349,7 +367,7 @@ class TmpDir:
             >>> tmp_directory = TmpDir("/path/to/temporary_directory")
             >>> tmp_directory.rm_tmp_dir() 
         
-        Args:
+        Arguments:
             rm_parent: Removes parent directory as well.
         """
         if rm_parent and os.path.exists(self.parent_tmp_dir):
@@ -378,13 +396,12 @@ class TmpDir:
             >>> temp_file
             "/path/to/temporary_directory/temporary_file.txt"
         
-        Args:
+        Arguments:
             tmp_dir: Temporary directory name.
             tmp_file: Temporary file name.
             ext: Temporary directory file extension.
         """
-        
-        tmp_file: File = ""
+        tmp_file: str = ""
         tmp_dir: str = ""
 
         def __init__(self,
@@ -405,10 +422,10 @@ class TmpDir:
                 >>> temp_file
                 "/path/to/temporary_directory/temporary_file.txt"
             
-            Args:
+            Arguments:
                 tmp_dir: Temporary directory name.
                 tmp_file: Temporary file name.
-                ext: Temporary directory file extension.
+                ext: File extension.
             """
             self.tmp_dir: str = tmp_dir
             
@@ -416,13 +433,17 @@ class TmpDir:
                 self.tmp_file: str = tmp_file
             else:
                 _n: int = 10000 # maximum N for random number generator
-                self.tmp_file: str = "tmp_file_" + str(random.randint(0,_n)) + ".txt"
+                self.tmp_file: str = "tmp_file_" + str(random.randint(0,_n))
             
             if ext:
                 self.tmp_file: str = self.tmp_file + f".{ext}"
+            else:
+                self.tmp_file: str = self.tmp_file + ".txt"
 
-            self.tmp_file: str = os.path.join(self.tmp_dir,self.tmp_file)
-            super().__init__(self.tmp_file)
+            self.tmp_file: str = os.path.join(self.tmp_dir,
+                                              self.tmp_file)
+            super(TmpDir.TmpFile, self).__init__(self.tmp_file, 
+                                                 ext)
             # File.__init__(self,self.tmp_file)
             # print(self.tmp_dir)
         
@@ -449,7 +470,7 @@ class NiiFile(File):
             "file.nii"
         """
         self.file: str = file
-        super().__init__(self.file)
+        super(NiiFile, self).__init__(self.file)
         # File.__init__(self,self.file)
 
 class LogFile(File):
@@ -466,7 +487,7 @@ class LogFile(File):
         >>> log
         "file.log"
 
-    Args:
+    Arguments:
         file: Log filename (need not exist at runtime).
         print_to_screen: If true, prints output to standard output (stdout) as well.
     """
@@ -482,7 +503,7 @@ class LogFile(File):
             >>> log
             "file.log"
         
-        Args:
+        Arguments:
             file: Log filename (need not exist at runtime).
             print_to_screen: If true, prints output to standard output (stdout) as well.
         """
@@ -503,7 +524,7 @@ class LogFile(File):
             
         # Define logging
         self.logger = logging.getLogger(__name__)
-        super().__init__(self.log_file)
+        super(LogFile, self).__init__(self.log_file)
         # File.__init__(self,self.log_file)
     
     def __repr__(self):
@@ -517,7 +538,7 @@ class LogFile(File):
             >>> log = LogFile("file.log")
             >>> log.info("<str>")
         
-        Args:
+        Arguments:
             msg: String to be printed to log file.
         """
         self.logger.info(msg)
@@ -530,7 +551,7 @@ class LogFile(File):
             >>> log = LogFile("file.log")
             >>> log.debug("<str>")
         
-        Args:
+        Arguments:
             msg: String to be printed to log file.
         """
         self.logger.debug(msg)
@@ -543,7 +564,7 @@ class LogFile(File):
             >>> log = LogFile("file.log")
             >>> log.error("<str>")
         
-        Args:
+        Arguments:
             msg: String to be printed to log file.
         """
         self.logger.error(msg)
@@ -556,7 +577,7 @@ class LogFile(File):
             >>> log = LogFile("file.log")
             >>> log.warning("<str>")
         
-        Args:
+        Arguments:
             msg: String to be printed to log file.
         """
         self.logger.warning(msg)
@@ -569,7 +590,7 @@ class LogFile(File):
             >>> log = LogFile("file.log")
             >>> log.log("<str>")
             
-        Args:
+        Arguments:
             log_cmd: Message to be written to log file
         """
         # Log command/message
@@ -650,7 +671,7 @@ class Command:
             >>> figlet = Command("figlet")
             >>> figlet.check_dependency()   # Raises exception if not in system path
         
-        Args:
+        Arguments:
             err_msg: Error message to print to screen.
             path_envs: List of directory paths to append to the system's 'PATH' variable.
 
@@ -703,7 +724,7 @@ class Command:
             >>> echo.run()
             (0, '', '')
         
-        Args:
+        Arguments:
             log: LogFile object
             debug: Sets logging function verbosity to DEBUG level
             dryrun: Dry run -- does not run task. Command is recorded to log file.
