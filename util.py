@@ -191,22 +191,18 @@ class File:
         """
         
         file: str = self.file
-        file = self.abs_path()
+        file: str = self.abs_path()
         
-        if platform.system().lower() == "windows":
-            # [path, _filename] = os.path.splitdrive(file)
-           [path, _filename] = os.path.split(file) 
-        else:
-            [path, _filename] = os.path.split(file)
+        path, _filename = os.path.split(file)
         
         if ext:
-            ext_num = len(ext)
-            _filename = _filename[:-(ext_num)]
+            ext_num: int = len(ext)
+            _filename: str = _filename[:-(ext_num)]
             [filename, _ext] = os.path.splitext(_filename)
         elif self.ext:
-            ext = self.ext
-            ext_num = len(ext)
-            _filename = _filename[:-(ext_num)]
+            ext: str = self.ext
+            ext_num: int = len(ext)
+            _filename: str = _filename[:-(ext_num)]
             [filename, _ext] = os.path.splitext(_filename)
         else:
             [filename, ext] = os.path.splitext(_filename)
@@ -242,17 +238,27 @@ class WorkDir:
     def __repr__(self):
         return self.work_dir
     
-    def mkdir(self):
+    def mkdir(self) -> None:
         """working doc-string
         """
-        pass
+        if not os.path.exists(self.work_dir):
+            return os.makedirs(self.work_dir)
+        else:
+            print("Working directory already exists.")
+            return None
     
     def rmdir(self, 
               rm_parent: bool = False
              ) -> None:
         """working doc-string
         """
-        pass
+        if rm_parent and os.path.exists(self.parent_dir):
+            return shutil.rmtree(self.parent_dir,ignore_errors=True)
+        elif os.path.exists(self.work_dir):
+            return shutil.rmtree(self.work_dir,ignore_errors=True)
+        else:
+            print("Working directory does not exist.")
+            return None
 
 class TmpDir:
     """Temporary directory class that creates temporary directories and files given a parent directory.
@@ -417,7 +423,7 @@ class TmpDir:
                 self.tmp_file: str = self.tmp_file + f".{ext}"
 
             self.tmp_file: str = os.path.join(self.tmp_dir,self.tmp_file)
-            super().__init__(tmp_file)
+            super().__init__(self.tmp_file)
             # File.__init__(self,self.tmp_file)
             # print(self.tmp_dir)
         
@@ -444,7 +450,7 @@ class NiiFile(File):
             "file.nii"
         """
         self.file: str = file
-        super().__init__(file)
+        super().__init__(self.file)
         # File.__init__(self,self.file)
 
 class LogFile(File):
@@ -498,7 +504,7 @@ class LogFile(File):
             
         # Define logging
         self.logger = logging.getLogger(__name__)
-        super().__init__(log_file)
+        super().__init__(self.log_file)
         # File.__init__(self,self.log_file)
     
     def __repr__(self):
