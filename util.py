@@ -7,9 +7,6 @@
     * Wrapper class for command line executables.
 """
 # TODO:
-#   * Add WorkDir class
-#       * DO NOT inherit from TmpDir class
-# 
 #   * Replace instance methods with slots
 #       * See links for details: 
 #           * https://stackoverflow.com/questions/41893267/how-to-use-slots-with-initialization-of-attributes
@@ -20,6 +17,7 @@ import logging
 import os
 import random
 import shutil
+import nibabel as nib
 
 from typing import(
     Dict, 
@@ -31,27 +29,30 @@ from typing import(
 
 # Define class(es)
 class DependencyError(Exception):
+    """Exception intended for unment dependencies"""
     pass
 
-class ConversionError(Exception):
+class InvalidNiftiFileError(Exception):
+    """Exception intended for invalid NIFTI files."""
     pass
 
 class File:
-    """File objecte base class. This class creates a ``File`` object that encapsulates a number of methods and properites for file and filename handling.
+    """File object base class. This class creates a ``File`` object that encapsulates a number of methods and properites for file and filename handling, and file manipulation.
     
     Attributes:
         file: Class variable that is set once class is instantiated.
 
     Usage example:
-            >>> with File("file_name.txt") as file:
-            ...     file.touch()
-            ...     file.write_txt("some text")
-            ...
-            >>> # or
-            >>> 
-            >>> file = File("file_name.txt")
-            >>> file
-            "file_name.txt"
+        >>> # Using class object as context manager
+        >>> with File("file_name.txt") as file:
+        ...     file.touch()
+        ...     file.write_txt("some text")
+        ...
+        >>> # or
+        >>> 
+        >>> file = File("file_name.txt")
+        >>> file
+        "file_name.txt"
 
     Arguments:
         file: Input file (need not exist at runtime/instantiated).
@@ -61,11 +62,12 @@ class File:
     
     def __init__(self,
                  file: str,
-                 ext: str = ""
+                 ext: Optional[str] = ""
                 ) -> None:
-        """Init doc-string for File object class.
+        """Initialization method for the File base class.
         
         Usage example:
+            >>> # Using class object as context manager
             >>> with File("file_name.txt") as file:
             ...     file.touch()
             ...     file.write_txt("some text")
@@ -78,8 +80,7 @@ class File:
 
         Arguments:
             file: Input file (need not exist at runtime/instantiated).
-            ext: File extension of input file. If no extension is provided, it
-                is inferred.
+            ext: File extension of input file. If no extension is provided, it is inferred.
         """
         self.file: str = file
 
@@ -91,22 +92,33 @@ class File:
             self.ext: str = self.file[-(4):]
     
     def __enter__(self):
+        """Context manager entrance method."""
         return self
 
     def __exit__(self, exc_type, exc_val, traceback):
+        """Context manager exit method."""
         return False
 
     def __repr__(self):
+        """Representation request method."""
         return self.file
         
     def touch(self) -> None:
         """Creates empty file.
+
+        This class mehtod is analagous to UNIX's ``touch`` command.
         
         Usage example:
-            >>> file_obj = File("file_name.txt")
-            >>> file_obj.touch()   # Creates empty file
+            >>> # Using class object as context manager
+            >>> with File("file_name.txt") as file:
+            ...     file.touch()
+            ...
+            >>> # or
+            >>> 
+            >>> file = File("file_name.txt")
+            >>> file.touch()
         """
-        with open(self.file,'w') as tmp_file:
+        with open(self.file,'w') as _:
             pass
         return None
     
@@ -114,15 +126,24 @@ class File:
         """Returns absolute path of file.
         
         Usage example:
-            >>> file_obj = File("file_name.txt")
-            >>> file_obj.abs_path()
+            >>> # Using class object as context manager
+            >>> with File("file_name.txt") as file:
+            ...     file.touch()
+            ...     print(file.abs_path())
+            ...
+            "abspath/to/file_namt.txt"
+            >>> 
+            >>> # or
+            >>> 
+            >>> file = File("file_name.txt")
+            >>> file.abs_path()
             "abspath/to/file_namt.txt"
         """
         if os.path.exists(self.file):
             return os.path.abspath(self.file)
         else:
             self.touch()
-            file_path = os.path.abspath(self.file)
+            file_path: str = os.path.abspath(self.file)
             os.remove(self.file)
             return file_path
     
@@ -131,8 +152,17 @@ class File:
         """Removes file extension from the file.
         
         Usage example:
-            >>> file_obj = File("file_name.txt")
-            >>> file_obj.rm_ext() 
+            >>> # Using class object as context manager
+            >>> with File("file_name.txt") as file:
+            ...     file.touch()
+            ...     print(file.rm_ext())
+            ...
+            "file_name"
+            >>> 
+            >>> # or
+            >>> 
+            >>> file = File("file_name.txt")
+            >>> file.rm_ext()
             "file_name"
         
         Arguments:
@@ -142,11 +172,11 @@ class File:
             Filename as string with no extension.
         """
         if ext:
-            ext_num: int = len(ext)
-            return self.file[:-(ext_num)]
+            ext_len: int = len(ext)
+            return self.file[:-(ext_len)]
         elif self.ext:
-            ext_num = len(self.ext)
-            return self.file[:-(ext_num)]
+            ext_len = len(self.ext)
+            return self.file[:-(ext_len)]
         else:
             return self.file[:-(4)]
         
@@ -154,13 +184,22 @@ class File:
                   txt: str = ""
                  ) -> None:
         """Writes/appends text to file.
+
+        NOTE:
+            Text written to file is ALWAYS utf-8 encoded.
         
         Usage example:
-            >>> file_obj = File("file_name.txt")
-            >>> file_obj.write_txt("<Text to be written>")
+            >>> # Using class object as context manager
+            >>> with File("file_name.txt") as file:
+            ...     file.write_txt("<Text to be written>")
+            ...
+            >>> # or
+            >>> 
+            >>> file = File("file_name.txt")
+            >>> file.write_txt("<Text to be written>")
         
         Arguments:
-            txt: Text to be written to file.
+            txt: Text/string to be written to file.
         """
         with open(self.file, mode="a", encoding='utf-8') as tmp_file:
             tmp_file.write(txt)
@@ -177,9 +216,17 @@ class File:
             * extension
         
         Usage example:
-            >>> file_obj = File("file_name.txt")
-            >>> file_obj.file_parts()
-            ("path/to/file", "filename", ".ext")   # .ext = file extension
+            >>> # Using class object as context manager
+            >>> with File("file_name.txt") as file:
+            ...     print(file.file_parts())
+            ...
+            ("path/to/file", "filename", ".txt")
+            >>> 
+            >>> # or
+            >>> 
+            >>> file = File("file_name.txt")
+            >>> file.file.file_parts()
+            ("path/to/file", "filename", ".txt")
         
         Arguments:
             ext: File extension, needed if the file extension of file object is longer than 4 characters.
@@ -210,11 +257,31 @@ class File:
         return path, filename, ext
 
 class WorkDir:
-    """Working directory class that creates working directories.
+    """Working directory base class that instantiates ``WorkDir`` objects that creates and manipulates working directories.
 
     Attributes:
+        work_dir: Input working directory.
+        parent_dir: Parent directory.
+
     Usage example:
+            >>> # Using class object as context manager
+            >>> ## Create work directory , then clean-up (remove it)
+            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            ...     work.mkdir()
+            ...     work.rmdir(rm_parent=False)
+            ...
+            >>> # or
+            >>>
+            >>> work = TmpDir(work_dir="/path/to/working_directory", 
+            ...               use_cwd=False)
+            >>> work.mkdir()
+            >>> work
+            "/path/to/working_directory"
+            >>> work.rmdir(rm_parent=False)
+
     Arguments:
+        work_dir: Working directory name/path. This directory need not exist at runtime.
+        use_cwd: Use current working directory as the parent directory.
     """
     work_dir: str = ""
     parent_dir: str = ""
@@ -223,12 +290,27 @@ class WorkDir:
                  work_dir: str,
                  use_cwd: bool = False
                 ) -> None:
-        """Initialization method for the ``WorkDir`` class.
+        """Initialization method for the ``WorkDir`` base class.
 
         Usage example:
+            >>> # Using class object as context manager
+            >>> ## Create work directory , then clean-up (remove it)
+            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            ...     work.mkdir()
+            ...     work.rmdir(rm_parent=False)
+            ...
+            >>> # or
+            >>>
+            >>> work = TmpDir(work_dir="/path/to/working_directory", 
+            ...               use_cwd=False)
+            >>> work.mkdir()
+            >>> work
+            "/path/to/working_directory"
+            >>> work.rmdir(rm_parent=False)
+        
         Arguments:
-            work_dir:
-            use_cwd:
+            work_dir: Working directory name/path. This directory need not exist at runtime.
+            use_cwd: Use current working directory as the parent directory.
         """
         self.work_dir: str = work_dir
         self.parent_dir: str = os.path.dirname(self.work_dir)
@@ -239,18 +321,34 @@ class WorkDir:
             self.parent_dir: str = os.path.dirname(self.work_dir)
 
     def __enter__(self):
+        """Context manager entrance method."""
         return self
 
     def __exit__(self, exc_type, exc_val, traceback):
+        """Context manager exit method."""
         return False
     
     def __repr__(self):
+        """Representation request method."""
         return self.work_dir
     
     def mkdir(self) -> None:
         """Makes/creates the working directory.
 
+        This class method is analogous to UNIX's ``mkdir -p`` command and option combination.
+
         Usage example:
+            >>> # Using class object as context manager
+            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            ...     work.mkdir()
+            ...
+            >>> # or
+            >>>
+            >>> work = TmpDir(work_dir="/path/to/working_directory", 
+            ...               use_cwd=False)
+            >>> work.mkdir()
+            >>> work
+            "/path/to/working_directory"
         """
         if not os.path.exists(self.work_dir):
             return os.makedirs(self.work_dir)
@@ -263,9 +361,23 @@ class WorkDir:
              ) -> None:
         """Removes working directory, and the parent directory if indicated to do so.
 
+        This class method is analogous to UNIX's ``rm -rf`` command and option combination.
+
         Usage example:
+            >>> # Using class object as context manager
+            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            ...     work.mkdir()
+            ...     work.rmdir(rm_parent=False)
+            ...
+            >>> # or
+            >>>
+            >>> work = TmpDir(work_dir="/path/to/working_directory", 
+            ...               use_cwd=False)
+            >>> work.mkdir()
+            >>> work.rmdir(rm_parent=False)
+
         Arguments:
-            rm_parent:
+            rm_parent: Removes parent directory as well.
         """
         if rm_parent and os.path.exists(self.parent_dir):
             return shutil.rmtree(self.parent_dir,ignore_errors=True)
@@ -276,11 +388,11 @@ class WorkDir:
             return None
 
 class TmpDir(WorkDir):
-    """Temporary directory class that creates (random) temporary directories and files given a parent directory.
+    """Temporary directory class that creates (random) temporary directories and files given a parent directory. This class inherits methods from the ``WorkDir`` base class.
     
     Attributes:
         tmp_dir: Temproary directory.
-        parent_tmp_dir: Input parent directory.
+        parent_tmp_dir: Parent directory.
     
     Usage example:
             >>> with TmpDir("/path/to/temporary_directory",False) as tmp_dir:
@@ -306,7 +418,7 @@ class TmpDir(WorkDir):
                  tmp_dir: str,
                  use_cwd: bool = False
                 ) -> None:
-        """Init doc-string for TmpDir class.
+        """Initialization method for the TmpDir child class.
         
         Usage example:
             >>> with TmpDir("/path/to/temporary_directory",False) as tmp_dir:
@@ -337,51 +449,9 @@ class TmpDir(WorkDir):
         
         super(TmpDir, self).__init__(self.tmp_dir,
                                      use_cwd)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, traceback):
-        return False
-    
-    def __repr__(self):
-        return self.tmp_dir
-        
-    def mk_tmp_dir(self) -> Union[str,None]:
-        """Creates/makes temporary directory.
-        
-        Usage example:
-            >>> tmp_directory = TmpDir("/path/to/temporary_directory")
-            >>> tmp_directory.mk_tmp_dir()
-        """
-        if not os.path.exists(self.tmp_dir):
-            return os.makedirs(self.tmp_dir)
-        else:
-            print("Temporary directory already exists")
-        
-    def rm_tmp_dir(self,
-                  rm_parent: bool = False) -> None:
-        """Removes temporary directory.
-        
-        Usage example:
-            >>> tmp_directory = TmpDir("/path/to/temporary_directory")
-            >>> tmp_directory.rm_tmp_dir() 
-        
-        Arguments:
-            rm_parent: Removes parent directory as well.
-        """
-        if rm_parent and os.path.exists(self.parent_tmp_dir):
-            return shutil.rmtree(self.parent_tmp_dir,ignore_errors=True)
-        elif os.path.exists(self.tmp_dir):
-            return shutil.rmtree(self.tmp_dir,ignore_errors=True)
-        else:
-            print("Temporary directory does not exist")
     
     class TmpFile(File):
-        """Child/sub-class of TmpDir. Creates temporary files by inheriting File object
-        methods and properties from the File class.  Allows for creation of a temporary file 
-        in parent class' temporary directory location. TmpFile also inherits methods from the 
-        File class.
+        """Sub-class of ``TmpDir`` class, which creates and manipulates temporary files via inheritance from the ``File`` object base class.
         
         Attributes:
             tmp_file: Temporary file name.
@@ -409,9 +479,7 @@ class TmpDir(WorkDir):
                      tmp_file: Optional[str] = "",
                      ext: Optional[str] = "",
                     ) -> None:
-            """Init doc-string for TmpFile class. Allows for creation of 
-            a temporary file in parent class' temporary directory location.
-            TmpFile also inherits methods from the File class.
+            """Initialization method for the TmpFile sub-class that inherits from the ``File`` base class, allowing for the creation and maninuplation of temporary files.
             
             Usage example:
                 >>> tmp_directory = TmpDir("/path/to/temporary_directory")
@@ -432,7 +500,7 @@ class TmpDir(WorkDir):
             if tmp_file:
                 self.tmp_file: str = tmp_file
             else:
-                _n: int = 10000 # maximum N for random number generator
+                _n: int = 10000 
                 self.tmp_file: str = "tmp_file_" + str(random.randint(0,_n))
             
             if ext:
@@ -444,37 +512,97 @@ class TmpDir(WorkDir):
                                               self.tmp_file)
             super(TmpDir.TmpFile, self).__init__(self.tmp_file, 
                                                  ext)
-            # File.__init__(self,self.tmp_file)
-            # print(self.tmp_dir)
         
 class NiiFile(File):
-    """NIFTI file class object for handling NIFTI files. Inherits methods and 
-    properties from the File class.
-    
-    Attributes:
-        file: NIFTI file path.
+    """NIFTI file class specific for NIFTI files which inherits class methods from the ``File`` base class.
     
     Usage example:
-        >>> nii_file = NiiFile("file.nii")
-        >>> nii_file
+        >>> # Using class object as context manager
+        >>> with NiiFile("file.nii") as nii:
+        ...     print(nii.file_parts())
+        ...
+        "abspath/to/file.nii"
+        "file"
+        ("path/to/file", "file", ".nii")
+        >>> 
+        >>> # or
+        >>> 
+        >>> nii = NiiFile("file.nii")
+        >>> nii
         "file.nii"
+        >>> nii.abs_path()
+        "abspath/to/file.nii"
+        >>> 
+        >>> nii.rm_ext()
+        "file"
+        >>>
+        >>> nii.file_parts()
+        ("path/to/file", "file", ".nii")
+    
+    Arguments:
+        file: Path to NIFTI file.
+        
+    Raises:
+        InvalidNiftiFileError: Exception that is raised in the case **IF** the specified NIFTI file exists, but is an invalid NIFTI file.
     """
     def __init__(self,
                  file: str
                 ) -> None:
-        """Init doc-string for NiiFile class.
+        """Initialization method for the NiiFile class.
         
         Usage example:
-            >>> nii_file = NiiFile("file.nii")
-            >>> nii_file
+            >>> # Using class object as context manager
+            >>> with NiiFile("file.nii") as nii:
+            ...     print(nii.file_parts())
+            ...
+            "abspath/to/file.nii"
+            "file"
+            ("path/to/file", "file", ".nii")
+            >>> 
+            >>> # or
+            >>> 
+            >>> nii = NiiFile("file.nii")
+            >>> nii
             "file.nii"
+            >>> nii.abs_path()
+            "abspath/to/file.nii"
+            >>> 
+            >>> nii.rm_ext()
+            "file"
+            >>>
+            >>> nii.file_parts()
+            ("path/to/file", "file", ".nii")
+        
+        Arguments:
+            file: Path to NIFTI file.
+        
+        Raises:
+            InvalidNiftiFileError: Exception that is raised in the case **IF** the specified NIFTI file exists, but is an invalid NIFTI file.
         """
         self.file: str = file
         super(NiiFile, self).__init__(self.file)
-        # File.__init__(self,self.file)
+        
+        if os.path.exists(self.file):
+            try:
+                _: nib.Nifti1Header = nib.load(filename=self.file)
+            except Exception as e:
+                print(e)
+                raise InvalidNiftiFileError(f"The NIFTI file {self.file} is not a valid NIFTI file.")
+        
+    # Overwrite irrelevant File base class method
+    def write_txt(self,
+                  txt: str = ""
+                 ) -> None:
+        """This class method is not relevant for NIFTI files.
+
+        TODO:
+            Make this method append to comment section of NIFTI file header.
+        """
+        _: str = txt
+        return None 
 
 class LogFile(File):
-    """Class that creates a log file for logging purposes. Due to how this class is constructed - its 
+    """Convenience class that creates a log file object for logging purposes. Due to how this class is constructed - its 
     intended use case requires that this class is instantiated/called once and ONLY once.
     
     Once a class instance has been instantiated, then it and its associated methods can be used.
@@ -495,8 +623,7 @@ class LogFile(File):
     def __init__(self,
                  log_file: str = "",
                  print_to_screen: bool = False) -> None:
-        """Init doc-string for LogFile class. Initiates logging and its 
-        associated methods.
+        """Initialization method for the LogFile class. Initiates logging and its associated methods (from the ``logging`` module).
         
         Usage examples:
             >>> log = LogFile("file.log",False)
@@ -626,6 +753,8 @@ class Command:
     Returns:
         Mutable list that can be appended to.
     """
+    command: str = ""
+    cmd_list: List[str] = []
 
     def __init__(self,
                  command: str) -> List[str]:
@@ -652,7 +781,7 @@ class Command:
             Mutable list that can be appended to.
         """
         self.command: str = command
-        self.cmd_list: List[str] = [f"{self.command}"]
+        self.cmd_list: List[str] = [ f"{self.command}" ]
     
     def __repr__(self):
         """NOTE: This returns a string represnted as a joined list of strings."""
