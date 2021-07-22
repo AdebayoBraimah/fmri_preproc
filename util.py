@@ -36,6 +36,10 @@ class InvalidNiftiFileError(Exception):
     """Exception intended for invalid NIFTI files."""
     pass
 
+class NiftiFileIOWarning(Warning):
+    """Warning that is raised in the case of char byte overflow written to NIFTI file headers."""
+    pass
+
 class File:
     """File object base class. This class creates a ``File`` object that encapsulates a number of methods and properites for file and filename handling, and file manipulation.
     
@@ -603,20 +607,40 @@ class NiiFile(File):
         """This class method is not relevant for NIFTI files.
 
         TODO:
-            Make this method append to comment section of NIFTI file header.
+            Use enumerators (enums) in this class method.
+        
+        Usage example:
+            >>> # Using class object as context manager
+            >>> with NiiFile("file.nii") as nii:
+            ...     nii.write_txt(txt='Source NIFTI',
+            ...                   header_field='intent_name')
+            ...
+            >>> # or
+            >>> 
+            >>> nii = NiiFile("file.nii")
+            >>> nii.write_txt(txt='Source NIFTI',
+            ...               header_field='intent_name')
+
+        Arguments:
+            txt: Input text to be added to the NIFTI file header.
+            header_field: Header field to have text added to.
+
+        Raises:
+            AttributeError: Error that is raised if the input option for 'header_field' is not valid.
+            NiftiFileIOWarning: Warning that is raised if the byte character limit is surpassed for the specified header field.
         """
         img: nib.Nifti1Header = nib.load(self.file)
 
         if header_field == 'descrip':
             if len(txt) >= 24:
-                # raise warning
-                pass
+                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field}' header field.")
             img.header['descrip'] = txt
         elif header_field == 'intent_name':
             if len(txt) >= 16:
-                # raise warning
-                pass
+                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field}' header field.")
             img.header['intent_name'] = txt
+        else:
+            raise AttributeError(f"The specified NIFTI file header field is not supported: '{header_field}'.")
         return None
 
 class LogFile(File):
