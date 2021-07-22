@@ -596,7 +596,7 @@ class NiiFile(File):
         
     # Overwrite several File base class methods
     def touch(self) -> None:
-        """This class method is not relevant/needed for NIFTI files.
+        """This class method is not implemented and will simply return None, and is not relevant/needed for NIFTI files.
         """
         return None
 
@@ -694,7 +694,6 @@ class LogFile(File):
         # Define logging
         self.logger = logging.getLogger(__name__)
         super(LogFile, self).__init__(self.log_file)
-        # File.__init__(self,self.log_file)
     
     def __repr__(self):
         return self.log_file
@@ -799,7 +798,8 @@ class Command:
     cmd_list: List[str] = []
 
     def __init__(self,
-                 command: str) -> List[str]:
+                 command: str
+                ) -> List[str]:
         """Init doc-string for Command class. Initializes a command to be used on UNIX command line.
         The input argument is a command (string), and a mutable list is returned (, that can later
         be appended to).
@@ -832,7 +832,7 @@ class Command:
     def check_dependency(self,
                          err_msg: Optional[str] = None,
                          path_envs: Optional[List[str]] = []
-                         ) -> Union[bool,None]:
+                        ) -> Union[bool,None]:
         """Checks dependency of some command line executable. Should the 
         dependency not be met, then an exception is raised. Check the 
         system path should problems arise and ensure that the executable
@@ -986,4 +986,4 @@ class Command:
                     log.warning(err)
             else:
                 print(f"ERROR: {err}")
-        return p.returncode,stdout,stderr
+        return p.returncode, stdout, stderr
