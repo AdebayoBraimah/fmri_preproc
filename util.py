@@ -587,19 +587,37 @@ class NiiFile(File):
                 _: nib.Nifti1Header = nib.load(filename=self.file)
             except Exception as e:
                 print(e)
+            finally:
                 raise InvalidNiftiFileError(f"The NIFTI file {self.file} is not a valid NIFTI file.")
         
-    # Overwrite irrelevant File base class method
+    # Overwrite several File base class methods
+    def touch(self) -> None:
+        """This class method is not relevant/needed for NIFTI files.
+        """
+        return None
+
     def write_txt(self,
-                  txt: str = ""
+                  txt: str = "",
+                  header_field: Optional[str] = 'intent_name'
                  ) -> None:
         """This class method is not relevant for NIFTI files.
 
         TODO:
             Make this method append to comment section of NIFTI file header.
         """
-        _: str = txt
-        return None 
+        img: nib.Nifti1Header = nib.load(self.file)
+
+        if header_field == 'descrip':
+            if len(txt) >= 24:
+                # raise warning
+                pass
+            img.header['descrip'] = txt
+        elif header_field == 'intent_name':
+            if len(txt) >= 16:
+                # raise warning
+                pass
+            img.header['intent_name'] = txt
+        return None
 
 class LogFile(File):
     """Convenience class that creates a log file object for logging purposes. Due to how this class is constructed - its 
