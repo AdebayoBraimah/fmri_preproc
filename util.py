@@ -254,7 +254,9 @@ class File:
         else:
             [filename, ext] = os.path.splitext(_filename)
         
-        return path, filename, ext
+        return (path, 
+                filename, 
+                ext)
 
 class WorkDir:
     """Working directory base class that instantiates ``WorkDir`` objects that creates and manipulates working directories.
@@ -802,7 +804,7 @@ class Command:
     def __init__(self,
                  command: str
                 ) -> List[str]:
-        """Init doc-string for Command class. Initializes a command to be used on UNIX command line.
+        """Initialization method for the Command class. Initializes a command to be used on UNIX command line.
         The input argument is a command (string), and a mutable list is returned (, that can later
         be appended to).
         
@@ -943,11 +945,11 @@ class Command:
             merged_env['PATH'] = mod_path_env
         
         # Execute/run command
-        p = subprocess.Popen(self.cmd_list,
-                             shell=shell,
-                             env=merged_env,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+        p: subprocess.Popen = subprocess.Popen(self.cmd_list,
+                                               shell=shell,
+                                               env=merged_env,
+                                               stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE)
 
         # Write log files
         out,err = p.communicate()
@@ -967,7 +969,7 @@ class Command:
             stdout = None
             stderr = None
 
-        if p.returncode:
+        if p.returncode != 0:
             if log:
                 log.error(f"command: {cmd} \n Failed with returncode {p.returncode}")
             else:
@@ -988,4 +990,6 @@ class Command:
                     log.warning(err)
             else:
                 print(f"ERROR: {err}")
-        return p.returncode, stdout, stderr
+        return (p.returncode, 
+                stdout, 
+                stderr)

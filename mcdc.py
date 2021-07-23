@@ -122,7 +122,8 @@ def generate_acq_params(num_frames: int,
     out_dist: str = os.path.abspath(out_dist)
     out_func: str = os.path.abspath(out_func)
     
-    return out_dist, out_func
+    return (out_dist, 
+            out_func)
 
 def generate_index(num_frames: int,
                    out_file: str = 'file.idx'

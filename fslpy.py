@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 """Wrappers functions for FSL executable binaries.
 """
+from typing import (
+    Dict,
+    List,
+    Optional,
+    Tuple
+)
 from util import (
     File,
     WorkDir,
@@ -22,15 +28,66 @@ def bet():
     """work"""
     pass
 
-def topup():
+def topup(img: str,
+          param: str,
+          out: str,
+          config: Optional[str] = None,
+          fout: Optional[str] = None,
+          iout: Optional[str] = None,
+          scale: int = 1,
+          verbose: bool = False,
+          log: Optional[LogFile] = None
+         ) -> str:
     """work"""
-    pass
+    top: Command = Command("topup")
+    top.cmd_list.append(f"--imain={img}")
+    top.cmd_list.append(f"--out={out}")
+    top.cmd_list.append(f"--datain={param}")
+    top.cmd_list.append(f"--scale={scale}")
 
-def fslreorient2std():
+    if config:
+        top.cmd_list.append(f"--config={config}")
+    
+    if fout:
+        top.cmd_list.append(f"--fout={fout}")
+    
+    if iout:
+        top.cmd_list.append(f"--iout={iout}")
+
+    if verbose:
+        top.cmd_list.append("--verbose")
+    
+    top.run(log=log)
+    return out
+
+def fslreorient2std(img: str,
+                    out: Optional[str] = None,
+                    out_mat: Optional[str] = None,
+                    log: Optional[LogFile] = None
+                   ) -> Tuple[str,str,str]:
     """work"""
-    pass
+    reorient: Command = Command("fslreorient2std")
+
+    if out_mat:
+        reorient.cmd_list.append("-m")
+        reorient.cmd_list.append(f"{out_mat}")
+    
+    reorient.cmd_list.append(f"{img}")
+    
+    if out:
+        reorient.cmd_list.append(f"{out}")
+
+    reorient.run(log=log)
+
+    return (img, 
+            out, 
+            out_mat)
 
 def fslroi():
+    """work"""
+    pass
+
+def fslmerge():
     """work"""
     pass
 
