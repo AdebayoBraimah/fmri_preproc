@@ -6,18 +6,14 @@
     * Logging
     * Wrapper class for command line executables.
 """
-# TODO:
-#   * Replace instance methods with slots
-#       * See links for details: 
-#           * https://stackoverflow.com/questions/41893267/how-to-use-slots-with-initialization-of-attributes
-#           * https://stackoverflow.com/questions/472000/usage-of-slots
-
 import subprocess
 import logging
 import os
 import random
 import shutil
 import nibabel as nib
+
+from enums import NiiHeaderField
 
 from typing import(
     Dict, 
@@ -602,7 +598,7 @@ class NiiFile(File):
 
     def write_txt(self,
                   txt: str = "",
-                  header_field: Optional[str] = 'intent_name'
+                  header_field: NiiHeaderField = NiiHeaderField.intent_name
                  ) -> None:
         """This class method is not relevant for NIFTI files.
 
@@ -626,21 +622,28 @@ class NiiFile(File):
             header_field: Header field to have text added to.
 
         Raises:
-            AttributeError: Error that is raised if the input option for 'header_field' is not valid.
             NiftiFileIOWarning: Warning that is raised if the byte character limit is surpassed for the specified header field.
         """
         img: nib.Nifti1Header = nib.load(self.file)
 
-        if header_field == 'descrip':
+        # NOTE: 
+        #   NiiHeaderField enum is imported.
+        #   This class may need to be moved 
+        #   locally to this module.
+
+        if header_field == NiiHeaderField.descrip:
+            header_field_data: str = 'descrip'
+        elif header_field == NiiHeaderField.intent_name:
+            header_field_data: str = 'intent_name'
+
+        if header_field_data == 'descrip':
             if len(txt) >= 24:
-                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field}' header field.")
+                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field_data}' header field.")
             img.header['descrip'] = txt
-        elif header_field == 'intent_name':
+        elif header_field_data == 'intent_name':
             if len(txt) >= 16:
-                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field}' header field.")
+                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field_data}' header field.")
             img.header['intent_name'] = txt
-        else:
-            raise AttributeError(f"The specified NIFTI file header field is not supported: '{header_field}'.")
         return None
 
 class LogFile(File):
@@ -761,7 +764,6 @@ class LogFile(File):
         Arguments:
             log_cmd: Message to be written to log file
         """
-        # Log command/message
         self.info(log_cmd)
 
 class Command:
