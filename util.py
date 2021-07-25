@@ -602,22 +602,25 @@ class NiiFile(File):
                   txt: str = "",
                   header_field: NiiHeaderField = NiiHeaderField.intent_name
                  ) -> None:
-        """This class method is not relevant for NIFTI files.
+        """This class method relevant information to the NIFTI file header.
+        This is done by writing text to either the ``descrip`` or ``intent_name``
+        field of the NIFTI header.
 
-        TODO:
-            Use enumerators (enums) in this class method.
+        NOTE:
+            * The ``descrip`` NIFTI header field has limitation of 24 bytes - meaning that only a string of 24 characters can be written without truncation.
+            * The ``intent_name`` NIFTI header field has limitation of 16 bytes - meaning that only a string of 16 characters can be written without truncation.
         
         Usage example:
             >>> # Using class object as context manager
             >>> with NiiFile("file.nii") as nii:
             ...     nii.write_txt(txt='Source NIFTI',
-            ...                   header_field='intent_name')
+            ...                   header_field = NiiHeaderField.intent_name)
             ...
             >>> # or
             >>> 
             >>> nii = NiiFile("file.nii")
             >>> nii.write_txt(txt='Source NIFTI',
-            ...               header_field='intent_name')
+            ...               header_field = NiiHeaderField.intent_name)
 
         Arguments:
             txt: Input text to be added to the NIFTI file header.
@@ -881,7 +884,7 @@ class Command:
             env: Dict = {},
             stdout: str = "",
             shell: bool = False
-           ) -> Tuple[int,File,File]:
+           ) -> Tuple[int,Union[File,None]]:
         """Uses python's built-in subprocess class to execute (run) a command from an input command list.
         The standard output and error can optionally be written to file.
         
@@ -966,8 +969,8 @@ class Command:
             stdout.write_txt(out)
             stderr.write_txt(err)
         else:
-            stdout = None
-            stderr = None
+            stdout: None = None
+            stderr: None = None
 
         if p.returncode != 0:
             if log:
