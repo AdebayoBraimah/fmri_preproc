@@ -839,7 +839,7 @@ class Command:
     def check_dependency(self,
                          err_msg: Optional[str] = None,
                          path_envs: Optional[List[str]] = []
-                        ) -> Union[bool,None]:
+                        ) -> bool:
         """Checks dependency of some command line executable. Should the 
         dependency not be met, then an exception is raised. Check the 
         system path should problems arise and ensure that the executable
@@ -854,7 +854,7 @@ class Command:
             path_envs: List of directory paths to append to the system's 'PATH' variable.
 
         Returns:
-            Returns True if dependency is met.
+            Returns True if dependency is met, raises exception otherwise.
         
         Raises:
             DependencyError: Dependency error exception is raised if the dependency is not met.
