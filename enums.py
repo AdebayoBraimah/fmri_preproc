@@ -9,50 +9,72 @@ from enum import (
 @unique
 class NiiHeaderField(Enum):
     """NIFTI file header field options."""
-    descrip:        int = 1
-    intent_name:    int = 2
+    descrip:        str = "descrip"
+    intent_name:    str = "intent_name"
 
 @unique
 class MergeDim(Enum):
     """``fslmerge`` options."""
-    t:  int = 1
-    x:  int = 2
-    y:  int = 3
-    z:  int = 4
-    a:  int = 5
-    tr: int = 6
-    n:  int = 7
+    t:  str = "t"
+    x:  str = "x"
+    y:  str = "y"
+    z:  str = "z"
+    a:  str = "a"
+    tr: str = "tr"
+    n:  str = "n"
     
 @unique
 class ECModelFLM(Enum):
     """``eddy`` first level EC model (``flm``) options."""
-    movement:   int = 1
-    linear:     int = 2
-    quadratic:  int = 3     # default
-    cubic:      int = 4
+    movement:   str = "movement"
+    linear:     str = "linear"
+    quadratic:  str = "quadratic"   # default
+    cubic:      str = "cubic"
 
 @unique
 class ECModelSLM(Enum):
     """``eddy`` second level EC model (``slm``) options."""
-    none:       int = 1     # default
-    linear:     int = 2
-    quadratic:  int = 3
+    none:       str = "none"        # default
+    linear:     str = "linear"
+    quadratic:  str = "quadratic"
 
 @unique
 class ECInterp(Enum):
     """``eddy`` interpolation model options."""
-    spline:     int = 1     # default
-    trilinear:  int = 2
+    spline:     str = "spline"      # default
+    trilinear:  str = "trilinear"
 
 @unique
 class ECresamp(Enum):
     """``eddy`` image resampling methods."""
-    jac: int = 1            # default
-    lsr: int = 2
+    jac: str = "jac"                # default
+    lsr: str = "lsr"
 
 @unique
 class ECOLType(Enum):
     """``eddy`` outlier type methods."""
-    sw:     int = 1         # default
-    gw:     int = 2
-    both:   int = 3
+    sw:     str = "sw"              # default
+    gw:     str = "gw"
+    both:   str = "both"
+
+@unique
+class FSLDataType(Enum):
+    """``FSL`` input and output data types.
+
+    NOTE:
+        * The 'input' option will set the datatype to that of the original image.
+    """
+    char:   str = "char"
+    short:  str = "short"
+    int:    str = "int"
+    float:  str = "float"
+    double: str = "double"
+    input:  str = "input"
+
+@unique
+class RegInterp(Enum):
+    """``FSL`` registration interpolation methods."""
+    nn:         str = "nn"
+    trilinear:  str = "trilinear"
+    sinc:       str = "sinc"
+    spline:     str = "spline"      # default

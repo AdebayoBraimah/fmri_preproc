@@ -1,14 +1,21 @@
 # -*- coding: utf-8 -*-
 """Wrappers functions for FSL executable binaries.
 """
+import glob
+import os
+
+from math import (
+    e as EULER_CONST,
+    log,
+    sqrt
+)
+
 from typing import (
     List,
     Optional,
     Tuple,
     Union
 )
-
-from numpy import log
 
 from util import (
     Command,
@@ -24,7 +31,9 @@ from enums import (
     MergeDim,
     ECInterp,
     ECresamp,
-    ECOLType
+    ECOLType,
+    FSLDataType,
+    RegInterp
 )
 
 class FSLError(Exception):
@@ -49,8 +58,8 @@ def eddy(img: str,
          topup: Optional[str] = "",
          field: Optional[str] = "",
          field_mat: Optional[str] = "",
-         flm: ECModelFLM = ECModelFLM.quadratic,
-         slm: ECModelSLM = ECModelSLM.none,
+         flm: str = "quadratic",
+         slm: str = "none",
          fwhm: Union[int,str] = 0,
          s2v_fwhm: Union[int,str] = 0,
          niter: Union[int,str] = 5,
@@ -58,16 +67,16 @@ def eddy(img: str,
          cnr_maps: bool = False,
          residuals: bool = False,
          fep: bool = False,
-         interp: ECInterp = ECInterp.spline,
-         s2v_interp: ECInterp = ECInterp.trilinear,
-         resamp: ECresamp = ECresamp.jac,
+         interp: str = "spline",
+         s2v_interp: str = "trilinear",
+         resamp: str = "jac",
          nvoxhp: int = 1000,
          initrand: int = 0,
          ff: float = 10.0,
          repol: bool = False,
          ol_nstd: int = 4,
          ol_nvox: int = 250,
-         ol_type: ECOLType = ECOLType.sw,
+         ol_type: str = "sw",
          ol_pos: bool = False,
          ol_sqr: bool = False,
          estimate_move_by_susceptibility: bool = False,
@@ -143,28 +152,20 @@ def eddy(img: str,
         eddy_proc.cmd_list.append(f"--topup={topup.rm_ext()}")
     
     if field:
-        field: File = File(file=field)
+        field: NiiFile = NiiFile(file=field)
         eddy_proc.cmd_list.append(f"--field={field.file}")
     
     if field_mat:
         field_mat: File = File(file=field_mat)
         eddy_proc.cmd_list.append(f"--field_mat={field_mat.file}")
     
-    if flm == ECModelFLM.movement:
-        eddy_proc.cmd_list.append("--flm=movement")
-    elif flm == ECModelFLM.linear:
-        eddy_proc.cmd_list.append("--flm=linear")
-    elif flm == ECModelFLM.quadratic:
-        eddy_proc.cmd_list.append("--flm=quadratic")
-    elif flm == ECModelFLM.cubic:
-        eddy_proc.cmd_list.append("--flm=cubic")
+    if flm:
+        flm: str = ECModelFLM(flm).name
+        eddy_proc.cmd_list.append(f"--flm={flm}")
     
-    if slm == ECModelSLM.none:
-        eddy_proc.cmd_list.append("--slm=none")
-    elif slm == ECModelSLM.linear:
-        eddy_proc.cmd_list.append("--slm=linear")
-    elif slm == ECModelSLM.quadratic:
-        eddy_proc.cmd_list.append("--slm=quadratic")
+    if slm:
+        slm: str = ECModelSLM(slm).name
+        eddy_proc.cmd_list.append(f"--slm={slm}")
     
     if fwhm:
         eddy_proc.cmd_list.append(f"--fwhm={fwhm}")
@@ -181,15 +182,13 @@ def eddy(img: str,
     if fep:
         eddy_proc.cmd_list.append("--fep")
     
-    if interp == ECInterp.spline:
-        eddy_proc.cmd_list.append("--interp=spline")
-    elif interp == ECInterp.trilinear:
-        eddy_proc.cmd_list.append("--interp=trilinear")
+    if interp:
+        interp: str = ECInterp(interp).name
+        eddy_proc.cmd_list.append(f"--interp={interp}")
     
-    if resamp == ECresamp.jac:
-        eddy_proc.cmd_list.append("--resamp=jac")
-    elif resamp == ECresamp.lsr:
-        eddy_proc.cmd_list.append("--resamp=lsr")
+    if resamp:
+        resamp: str = ECresamp(resamp).name
+        eddy_proc.cmd_list.append(f"--resamp={resamp}")
     
     if nvoxhp:
         eddy_proc.cmd_list.append(f"--nvoxhp={nvoxhp}")
@@ -209,12 +208,9 @@ def eddy(img: str,
     if ol_nvox:
         eddy_proc.cmd_list.append(f"--ol_nvox={ol_nvox}")
 
-    if ol_type == ECOLType.sw:
-        eddy_proc.cmd_list.append("--ol_type=sw")
-    elif ol_type == ECOLType.gw:
-        eddy_proc.cmd_list.append("--ol_type=gw")
-    elif ol_type == ECOLType.both:
-        eddy_proc.cmd_list.append("--ol_type=both")
+    if ol_type:
+        ol_type: str = ECOLType(ol_type).name
+        eddy_proc.cmd_list.append(f"--ol_type={ol_type}")
 
     if ol_pos:
         eddy_proc.cmd_list.append("--ol_pos")
@@ -277,10 +273,9 @@ def eddy(img: str,
     if s2v_niter:
         eddy_proc.cmd_list.append(f"--s2v_niter={s2v_niter}")
     
-    if s2v_interp == ECInterp.spline:
-        eddy_proc.cmd_list.append("--s2v_interp=spline")
-    elif s2v_interp == ECInterp.trilinear:
-        eddy_proc.cmd_list.append("--s2v_interp=trilinear")
+    if s2v_interp: 
+        s2v_interp: str = ECInterp(s2v_interp).name
+        eddy_proc.cmd_list.append(f"--s2v_interp={s2v_interp}")
     
     out: str = out.file + '.nii.gz'
     out: File = File(file=out)
@@ -435,6 +430,9 @@ def fslroi(img: str,
 
     if (xmin and xsize and ymin and ysize and zmin and zsize) and (tmin and tsize):
         raise FSLError("Cannot specify both xyz and temporal dimensions.")
+    elif (not (xmin and xsize and ymin and ysize and zmin and zsize) and 
+            not (tmin and tsize)):
+        raise FSLError("Neither xyz nor temporal dimensions were specified.")
     else:
         roi: Command = Command("fslroi")
         roi.cmd_list.append(img.file)
@@ -444,12 +442,12 @@ def fslroi(img: str,
         roi.cmd_list.append(xmin); roi.cmd_list.append(xsize)
         roi.cmd_list.append(ymin); roi.cmd_list.append(ysize)
         roi.cmd_list.append(zmin); roi.cmd_list.append(zsize)
-    elif (xmin is None) and \
-        (xsize is None) and \
-        (ymin is None) and \
-        (ysize is None) and \
-        (zmin is None) and \
-        (zsize is None):
+    elif ((xmin is None) and
+            (xsize is None) and
+            (ymin is None) and
+            (ysize is None) and
+            (zmin is None) and
+            (zsize is None)):
         pass
     else:
         raise FSLError("Either the xyz min or size was not specified.")
@@ -467,31 +465,17 @@ def fslroi(img: str,
     return out.file
 
 def fslmerge(out: str,
-             merge_opt: MergeDim = MergeDim.t,
+             merge_opt: str = "t",
              tr: Optional[float] = None,
              log: Optional[LogFile] = None,
              *args
             ) -> str:
-    """work"""
+    """Merges a series of 3D NIFTI files."""
     out: NiiFile = NiiFile(file=out)
+    merge_opt: str = MergeDim(merge_opt).name
 
     merge: Command = Command("fslmerge")
-
-    if merge_opt == MergeDim.t:
-        merge.cmd_list.append("-t")
-    elif merge_opt == MergeDim.x:
-        merge.cmd_list.append("-x")
-    elif merge_opt == MergeDim.y:
-        merge.cmd_list.append("-y")
-    elif merge_opt == MergeDim.z:
-        merge.cmd_list.append("-z")
-    elif merge_opt == MergeDim.a:
-        merge.cmd_list.append("-a")
-    elif merge_opt == MergeDim.tr:
-        merge.cmd_list.append("-tr")
-    elif merge_opt == MergeDim.n:
-        merge.cmd_list.append("-n")
-    
+    merge.cmd_list.append(f"-{merge_opt}")
     merge.cmd_list.append(out.file)
     
     for arg in args:
@@ -505,17 +489,99 @@ def fslmerge(out: str,
 
     return out.file
 
-def catmats():
-    """work"""
-    pass
+def catmats(matdir: str,
+            out: str
+           ) -> str:
+    """Concatenate ``FSL`` linear trasformations files into a single file."""
+    mats: List[str] = glob.glob(matdir, "MAT_????")
+    with open(out,'w') as output_file:
+        for mat_file in mats:
+            with open(mat_file) as f:
+                output_file.write(f.read())
+    return out
 
-def applywarp():
-    """work"""
-    pass
+def applywarp(src: str,
+              ref: str,
+              out: str,
+              warp: Optional[str] = "",
+              premat: Optional[str] = "",
+              prematdir: Optional[str] = "",
+              postmat: Optional[str] = "",
+              postmatdir: Optional[str] = "",
+              interp: str = "spline",
+              paddingsize: Optional[int] = None,
+              abs: bool = False,
+              rel: bool = False,
+              log: Optional[LogFile] = None
+              ):
+    """Applies ``FSL`` warps."""
+    assert (warp or premat or postmat or prematdir or postmatdir), \
+        "either a warp or mat (premat, postmat or prematdir) must be supplied"
+    assert not (premat and prematdir), \
+        "cannot use premat and prematdir arguments together"
+    assert not (postmat and postmatdir), \
+        "cannot use postmat and postmatdir arguments together"
 
-def invxfm():
-    """work"""
-    pass
+    src: NiiFile = NiiFile(file=src)
+    ref: NiiFile = NiiFile(file=ref)
+    out: NiiFile = NiiFile(file=out)
+
+    apply: Command = Command("applywarp")
+
+    apply.cmd_list.append(f"--in={src.abs_path()}")
+    apply.cmd_list.append(f"--ref={ref.abs_path()}")
+    apply.cmd_list.append(f"--out={out.file}")
+
+    if interp:
+        interp: str = RegInterp(interp).name
+        apply.cmd_list.append(f"--interp={interp}")
+    
+    if prematdir:
+        premat: str = os.path.join(prematdir,'allmats.txt')
+        premat: str = catmats(matdir=prematdir, out=premat)
+
+    if postmatdir:
+        postmat: str = os.path.join(postmatdir,'allmats.txt')
+        postmat: str = catmats(matdir=postmatdir, out=postmat)
+
+    if warp:
+        warp: NiiFile = NiiFile(file=warp)
+        apply.cmd_list.append(f"--warp={warp}")
+
+    if premat:
+        apply.cmd_list.append(f"--premat={premat}")
+
+    if postmat:
+        apply.cmd_list.append(f"--postmat={postmat}")
+
+    if paddingsize and (isinstance(paddingsize,int)):
+        apply.cmd_list.append(f"--paddingsize={paddingsize}")
+
+    if abs:
+        apply.cmd_list.append("--abs")
+
+    if rel:
+        apply.cmd_list.append("--rel")
+
+    apply.run(log=log)
+    return out.file
+
+
+def invxfm(inmat: str,
+           outmat: str,
+           log: Optional[LogFile] = None
+          ) -> str:
+    """Inverts ``FSL`` transformation matrices."""
+    inv: Command = Command("invxfm")
+
+    inv.cmd_list.append("-omat")
+    inv.cmd_list.append(outmat)
+
+    inv.cmd_list.append("-inverse")
+    inv.cmd_list.append(inmat)
+
+    inv.run(log=log)
+    return outmat
 
 def applyxfm():
     """work"""
@@ -556,56 +622,73 @@ class fslmaths:
     """work"""
 
     def __init__(self,
-                 img: str):
+                 img: str,
+                 dt: Optional[str] = None,
+                ):
         """Constructor"""
-        # TODO: Add options for input data-type '-dt'
-        #   and output data-type '-odt' options
-        self.maths: Command = Command("fslmaths")
-        self.maths.cmd_list.append(img)
+        img: NiiFile = NiiFile(file=img)
+        self._maths: Command = Command("fslmaths")
+
+        if dt:
+            dt: str = FSLDataType(dt).name
+            self._maths.cmd_list.append("-dt")
+            self._maths.cmd_list.append(dt)
+        
+        self._maths.cmd_list.append(img.file)
     
     def abs(self):
         """work"""
-        self.maths.cmd_list.append("-abs")
+        self._maths.cmd_list.append("-abs")
         return self
     
     def bin(self):
         """work"""
-        self.maths.cmd_list.append("-bin")
+        self._maths.cmd_list.append("-bin")
         return self
     
     def binv(self):
         """work"""
-        self.maths.cmd_list.append("-binv")
+        self._maths.cmd_list.append("-binv")
         return self
     
     def recip(self):
         """work"""
-        self.maths.cmd_list.append("-recip")
+        self._maths.cmd_list.append("-recip")
         return self
     
     def Tmean(self):
         """work"""
-        self.maths.cmd_list.append("-Tmean")
+        self._maths.cmd_list.append("-Tmean")
         return self
     
     def Tstd(self):
         """work"""
-        self.maths.cmd_list.append("-Tstd")
+        self._maths.cmd_list.append("-Tstd")
         return self
     
     def Tmin(self):
         """work"""
-        self.maths.cmd_list.append("-Tmin")
+        self._maths.cmd_list.append("-Tmin")
         return self
     
     def Tmax(self):
         """work"""
-        self.maths.cmd_list.append("-Tmax")
+        self._maths.cmd_list.append("-Tmax")
+        return self
+    
+    def sqrt(self):
+        """work"""
+        self._maths.cmd_list.append("-sqrt")
+        return self
+    
+    def sqr(self):
+        """work"""
+        self._maths.cmd_list.append("-sqr")
         return self
     
     def fillh(self):
         """work"""
-        self.maths.cmd_list.append("-fillh")
+        self._maths.cmd_list.append("-fillh")
         return self
     
     def ero(self,
@@ -613,7 +696,7 @@ class fslmaths:
            ):
         """work"""
         for _ in range(repeat):
-            self.maths.cmd_list.append("-ero")
+            self._maths.cmd_list.append("-ero")
         return self
     
     def dilM(self,
@@ -621,7 +704,7 @@ class fslmaths:
             ):
         """work"""
         for _ in range(repeat):
-            self.maths.cmd_list.append("-dilM")
+            self._maths.cmd_list.append("-dilM")
         return self
     
     def dilF(self,
@@ -629,18 +712,203 @@ class fslmaths:
             ):
         """work"""
         for _ in range(repeat):
-            self.maths.cmd_list.append("-dilF")
+            self._maths.cmd_list.append("-dilF")
         return self
 
-    # Add more fslmaths options below this comment
+    def add(self,
+            input: Union[int,str]
+           ):
+        """work"""
+        self._maths.cmd_list.append("-add")
+
+        if isinstance(input,int):
+            self._maths.cmd_list.append(f"{input}")
+        elif isinstance(input,str):
+            img: NiiFile = NiiFile(file=input)
+            self._maths.cmd_list.append(img.file)
+        return self
+    
+    def sub(self,
+            input: Union[int,str]
+           ):
+        """work"""
+        self._maths.cmd_list.append("-sub")
+
+        if isinstance(input,int):
+            self._maths.cmd_list.append(f"{input}")
+        elif isinstance(input,str):
+            img: NiiFile = NiiFile(file=input)
+            self._maths.cmd_list.append(img.file)
+        return self
+    
+    def mul(self,
+            input: Union[int,str]
+           ):
+        """work"""
+        self._maths.cmd_list.append("-mul")
+
+        if isinstance(input,int):
+            self._maths.cmd_list.append(f"{input}")
+        elif isinstance(input,str):
+            img: NiiFile = NiiFile(file=input)
+            self._maths.cmd_list.append(img.file)
+        return self
+    
+    def div(self,
+            input: Union[int,str]
+           ):
+        """work"""
+        self._maths.cmd_list.append("-div")
+
+        if isinstance(input,int):
+            self._maths.cmd_list.append(f"{input}")
+        elif isinstance(input,str):
+            img: NiiFile = NiiFile(file=input)
+            self._maths.cmd_list.append(img.file)
+        return self
+    
+    def mas(self,
+            img: str
+           ):
+        """work"""
+        img: NiiFile = NiiFile(file=img)
+        self._maths.cmd_list.append("-mas")
+        self._maths.cmd_list.append(img.file)
+        return self
+
+    def rem(self,
+            input: Union[int,str]
+           ):
+        """work"""
+        self._maths.cmd_list.append("-rem")
+
+        if isinstance(input,int):
+            self._maths.cmd_list.append(f"{input}")
+        elif isinstance(input,str):
+            img: NiiFile = NiiFile(file=input)
+            self._maths.cmd_list.append(img.file)
+        return self
+    
+    def thr(self,
+            num: Union[int,float]
+           ):
+        """work"""
+        if isinstance(num,int) or isinstance(num,float):
+            self._maths.cmd_list.append("-thr")
+            self._maths.cmd_list.append(f"{num}")
+        else:
+            raise TypeError(f"Input {num} is not a number.")
+        return self
+    
+    def uthr(self,
+             num: Union[int,float]
+            ):
+        """work"""
+        if isinstance(num,int) or isinstance(num,float):
+            self._maths.cmd_list.append("-uthr")
+            self._maths.cmd_list.append(f"{num}")
+        else:
+            raise TypeError(f"Input {num} is not a number.")
+        return self
+
+    def inm(self,
+            num: Union[int,float]
+           ):
+        """work"""
+        if isinstance(num,int) or isinstance(num,float):
+            self._maths.cmd_list.append("-inm")
+            self._maths.cmd_list.append(f"{num}")
+        else:
+            raise TypeError(f"Input {num} is not a number.")
+        return self
+    
+    def bptf(self,
+             high_pass: Union[int,float],
+             low_pass: Union[int,float],
+             tr: Optional[Union[int,float]] = None,
+             input_is_hz: bool = False,
+             input_is_sec: bool = False
+            ):
+        """
+        Input is assumed to in sigma (in volume).
+        """
+        if input_is_hz and input_is_sec:
+            raise RuntimeError("Both 'input_is_hz' and 'input_is_sec' were specified. ONLY ONE of these options may be specified.")
+        elif (input_is_hz or input_is_sec) and (not tr):
+            raise FSLError("The TR (Repetition Time) is required when either the 'input_is_hz' or 'input_is_sec' options are specified.")
+
+        def _compute_sigma(tr: Union[int,float],
+                           hz: Union[int,float],
+                           compute_low_pass: bool = False
+                          ):
+            """
+            relevant links: 
+                * https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=fsl;fc5b33c5.1205
+                * https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=FSL;f6fd75a6.1709
+            """
+            if ((isinstance(tr,int) or isinstance(tr,float)) and
+                    (isinstance(hz,int) or isinstance(hz,float))):
+
+                if compute_low_pass:
+                    fwhm_kernel: float = 18.0
+                else:
+                    fwhm_kernel: float = sqrt(8*log(2,EULER_CONST))
+                
+                try:
+                    sigma_vol:   float = 1/(fwhm_kernel * tr * hz)
+                except ZeroDivisionError:
+                    sigma_vol: float = 0.0
+                return sigma_vol
+            else:
+                raise TypeError(f"Input TR: {tr} or Hz: {hz} is not a number.")
+        
+        if input_is_sec:
+            try:
+                high_pass: float = _compute_sigma(tr=tr, 
+                                                  hz=(1/high_pass), 
+                                                  compute_low_pass=False)
+            except ZeroDivisionError:
+                high_pass: float = 0.0
+            
+            try:
+                low_pass:  float = _compute_sigma(tr=tr, 
+                                                  hz=(1/low_pass), 
+                                                  compute_low_pass=True)
+            except ZeroDivisionError:
+                low_pass: float = 0.0
+            
+        elif input_is_hz:
+            high_pass: float = _compute_sigma(tr=tr, 
+                                              hz=high_pass,
+                                              compute_low_pass=False)
+            low_pass:  float = _compute_sigma(tr=tr, 
+                                              hz=low_pass,
+                                              compute_low_pass=True)
+
+        if ((isinstance(high_pass,int) or isinstance(high_pass,float)) and
+                (isinstance(low_pass,int) or isinstance(low_pass,float))):
+            self._maths.cmd_list.append("-bptf")
+            self._maths.cmd_list.append(f"{high_pass}")
+            self._maths.cmd_list.append(f"{low_pass}")
+        else:
+            raise TypeError(f"Input high_pass: {high_pass} or low_pass: {low_pass} is not a number.")
+        
+        return self
     
     def run(self,
             out: str,
+            odt: Optional[str] = None,
             log: Optional[LogFile] = None
            ) -> str:
         """work"""
-        self.maths.cmd_list.append(out)
-        self.maths.run(log=log)
+        self._maths.cmd_list.append(out)
+
+        if odt:
+            odt: str = FSLDataType(odt).name
+            self._maths.cmd_list.append("-odt")
+            self._maths.cmd_list.append(odt)
+            
+        self._maths.run(log=log)
         return out
 
 

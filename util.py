@@ -86,7 +86,7 @@ class File:
 
         if ext:
             self.ext: str = ext
-        elif '.gz' in self.file:
+        elif self.file.endswith('.gz'):
             self.ext: str = self.file[-(7):]
         else:
             self.ext: str = self.file[-(4):]
@@ -139,6 +139,7 @@ class File:
             >>> file.abs_path()
             "abspath/to/file_namt.txt"
         """
+        # TODO: Add option to follow sym-links
         if os.path.exists(self.file):
             return os.path.abspath(self.file)
         else:
@@ -582,8 +583,17 @@ class NiiFile(File):
             InvalidNiftiFileError: Exception that is raised in the case **IF** the specified NIFTI file exists, but is an invalid NIFTI file.
         """
         self.file: str = file
+
+        if self.file.endswith(".nii.gz"):
+            self.ext: str = ".nii.gz"
+        elif self.file.endswith(".nii"):
+            self.ext: str = ".nii"
+        else:
+            self.ext: str = ".nii.gz"
+            self.file: str = self.file + self.ext
+
         super(NiiFile, self).__init__(self.file)
-        
+
         if os.path.exists(self.file):
             try:
                 _: nib.Nifti1Header = nib.load(filename=self.file)
@@ -600,7 +610,7 @@ class NiiFile(File):
 
     def write_txt(self,
                   txt: str = "",
-                  header_field: NiiHeaderField = NiiHeaderField.intent_name
+                  header_field: str = "intent_name"
                  ) -> None:
         """This class method relevant information to the NIFTI file header.
         This is done by writing text to either the ``descrip`` or ``intent_name``
@@ -614,13 +624,13 @@ class NiiFile(File):
             >>> # Using class object as context manager
             >>> with NiiFile("file.nii") as nii:
             ...     nii.write_txt(txt='Source NIFTI',
-            ...                   header_field = NiiHeaderField.intent_name)
+            ...                   header_field='intent_name')
             ...
             >>> # or
             >>> 
             >>> nii = NiiFile("file.nii")
             >>> nii.write_txt(txt='Source NIFTI',
-            ...               header_field = NiiHeaderField.intent_name)
+            ...               header_field='intent_name')
 
         Arguments:
             txt: Input text to be added to the NIFTI file header.
@@ -636,18 +646,15 @@ class NiiFile(File):
         #   This class may need to be moved 
         #   locally to this module.
 
-        if header_field == NiiHeaderField.descrip:
-            header_field_data: str = 'descrip'
-        elif header_field == NiiHeaderField.intent_name:
-            header_field_data: str = 'intent_name'
+        header_field: str = NiiHeaderField(header_field).name
 
-        if header_field_data == 'descrip':
+        if header_field == 'descrip':
             if len(txt) >= 24:
-                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field_data}' header field.")
+                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field}' header field.")
             img.header['descrip'] = txt
-        elif header_field_data == 'intent_name':
+        elif header_field == 'intent_name':
             if len(txt) >= 16:
-                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field_data}' header field.")
+                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field}' header field.")
             img.header['intent_name'] = txt
         return None
 
