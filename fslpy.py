@@ -513,7 +513,7 @@ def applywarp(src: str,
               abs: bool = False,
               rel: bool = False,
               log: Optional[LogFile] = None
-              ):
+             ) -> str:
     """Applies ``FSL`` warps."""
     assert (warp or premat or postmat or prematdir or postmatdir), \
         "either a warp or mat (premat, postmat or prematdir) must be supplied"
@@ -583,16 +583,103 @@ def invxfm(inmat: str,
     inv.run(log=log)
     return outmat
 
-def applyxfm():
-    """work"""
-    pass
+def applyxfm(src: str,
+             ref: str,
+             mat: str,
+             out: str,
+             interp: Optional[str] = "trilinear",
+             log: Optional[LogFile] = None
+            ) -> str:
+    """Applies ``FSL`` transformation matrices."""
+    src: NiiFile = NiiFile(file=src)
+    ref: NiiFile = NiiFile(file=ref)
+    out: NiiFile = NiiFile(file=out)
+    mat: File = File(file=mat)
 
-def apply_isoxfm():
-    """work"""
-    pass
+    xfm: Command = Command("flirt")
 
-def concatxfm():
-    pass
+    xfm.cmd_list.append("-init")
+    xfm.cmd_list.append(mat.file)
+
+    xfm.cmd_list.append("-in")
+    xfm.cmd_list.append(src.file)
+
+    xfm.cmd_list.append("-ref")
+    xfm.cmd_list.append(ref.file)
+
+    xfm.cmd_list.append("-applyxfm")
+
+    xfm.cmd_list.append("-out")
+    xfm.cmd_list.append(out.file)
+
+    interp: str = RegInterp(interp).name
+    xfm.cmd_list.append("-interp")
+    xfm.cmd_list.append(interp)
+
+    xfm.run(log=log)
+    return out.file
+
+def apply_isoxfm(src: str,
+                 ref: str,
+                 res: int,
+                 out: str,
+                 interp: Optional[str] = "interp",
+                 log: Optional[str] = None
+                ) -> str:
+    """Resamples images to an isometric resolution."""
+    src: NiiFile = NiiFile(file=src)
+    ref: NiiFile = NiiFile(file=ref)
+    out: NiiFile = NiiFile(file=out)
+
+    fsldir: str = os.getenv('FSLDIR',None)
+    assert fsldir is not None, 'FSLDIR environment must be set.'
+
+    ident: str = os.path.join(fsldir,'etc/flirtsch/ident.mat')
+
+    xfm: Command = Command("flirt")
+
+    xfm.cmd_list.append("-init")
+    xfm.cmd_list.append(ident)
+
+    xfm.cmd_list.append("-in")
+    xfm.cmd_list.append(src.file)
+
+    xfm.cmd_list.append("-ref")
+    xfm.cmd_list.append(ref.file)
+
+    xfm.cmd_list.append("-applyisoxfm")
+    xfm.cmd_list.append(f"{res}")
+
+    xfm.cmd_list.append("-out")
+    xfm.cmd_list.append(out.file)
+
+    interp: str = RegInterp(interp).name
+    xfm.cmd_list.append("-interp")
+    xfm.cmd_list.append(interp)
+
+    xfm.run(log=log)
+    return out.file
+
+def concatxfm(inmat1: str,
+              inmat2: str,
+              outmat: str,
+              log: Optional[LogFile] = None
+             ) -> str:
+    """Concatenates two ``FSL`` transformation matrices."""
+    inmat1: File = File(file=inmat1)
+    inmat2: File = File(file=inmat2)
+
+    concat: Command = Command("convert_xfm")
+
+    concat.cmd_list.append("-omat")
+    concat.cmd_list.append(outmat)
+
+    concat.cmd_list.append("-concat")
+    concat.cmd_list.append(inmat1)
+    concat.cmd_list.append(inmat2)
+
+    concat.run(log=log)
+    return outmat
 
 def invwarp():
     pass
