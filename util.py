@@ -130,7 +130,9 @@ class File:
             pass
         return None
     
-    def abs_path(self) -> str:
+    def abs_path(self,
+                 follow_sym_links: bool = False
+                ) -> str:
         """Returns absolute path of file.
         
         Usage example:
@@ -146,10 +148,13 @@ class File:
             >>> file = File("file_name.txt")
             >>> file.abs_path()
             "abspath/to/file_namt.txt"
+        
+        Arguments:
+            follow_sym_links: If set to true, the absolute path of the symlinked file is returned.
         """
-        # TODO: 
-        #   Add option to follow sym-links
-        if os.path.exists(self.file):
+        if follow_sym_links and os.path.exists(self.file):
+            return os.path.abspath(os.path.realpath(self.file))
+        elif os.path.exists(self.file):
             return os.path.abspath(self.file)
         else:
             self.touch()
@@ -448,21 +453,7 @@ class TmpDir(WorkDir):
             tmp_dir: Temporary parent directory name/path.
             use_cwd: Use current working directory as working direcory.
         """
-        # _n: int = 10000 # maximum N for random number generator
-        # tmp_dir: str = os.path.join(tmp_dir,'tmp_dir_' + 
-        #                             str(random.randint(0,_n)))
-        # self.tmp_dir: str = tmp_dir
-        # self.parent_tmp_dir: str = os.path.dirname(self.tmp_dir)
-        # 
-        # if use_cwd:
-        #     _cwd: str = os.getcwd()
-        #     self.tmp_dir = os.path.join(_cwd,self.tmp_dir)
-        #     self.parent_tmp_dir = os.path.dirname(self.tmp_dir)
-        # 
-        # super(TmpDir, self).__init__(self.tmp_dir,
-        #                              use_cwd)
-
-        _n: int = 10000 # maximum N for random number generator
+        _n: int = 10000
         tmp_dir: str = os.path.join(tmp_dir,'tmp_dir_' + 
                                     str(random.randint(0,_n)))
         
@@ -515,25 +506,7 @@ class TmpDir(WorkDir):
                 tmp_dir: Temporary directory name.
                 tmp_file: Temporary file name.
                 ext: File extension.
-            """
-            # self.tmp_dir: str = tmp_dir
-            # 
-            # if tmp_file:
-            #     self.tmp_file: str = tmp_file
-            # else:
-            #     _n: int = 10000 
-            #     self.tmp_file: str = "tmp_file_" + str(random.randint(0,_n))
-            # 
-            # if ext:
-            #     self.tmp_file: str = self.tmp_file + f".{ext}"
-            # else:
-            #     self.tmp_file: str = self.tmp_file + ".txt"
-            # 
-            # self.tmp_file: str = os.path.join(self.tmp_dir,
-            #                                   self.tmp_file)
-            # super(TmpDir.TmpFile, self).__init__(self.tmp_file, 
-            #                                      ext)
-            
+            """          
             if tmp_file:
                 pass
             else:
@@ -639,9 +612,8 @@ class NiiFile(File):
             try:
                 _: nib.Nifti1Header = nib.load(filename=self.file)
             except Exception as e:
-                # print(e)
-                # raise InvalidNiftiFileError(f"The NIFTI file {self.file} is not a valid NIFTI file.")
-                raise e
+                print(e)
+                raise InvalidNiftiFileError(f"The NIFTI file {self.file} is not a valid NIFTI file.")
         
     # Overwrite several File base class methods
     def touch(self) -> None:
@@ -681,12 +653,6 @@ class NiiFile(File):
             NiftiFileIOWarning: Warning that is raised if the byte character limit is surpassed for the specified header field.
         """
         img: nib.Nifti1Header = nib.load(self.file)
-
-        # NOTE: 
-        #   NiiHeaderField enum is imported.
-        #   This class may need to be moved 
-        #   locally to this class method.
-
         header_field: str = NiiHeaderField(header_field).name
 
         if header_field == 'descrip':
@@ -966,7 +932,7 @@ class Command:
                 * Standard error writtent to file should the 'stdout' option be used.
         """
         # Create command str for log
-        cmd: str = ' '.join(self.cmd_list) # Join list for logging purposes
+        cmd: str = ' '.join(self.cmd_list)      # Join list for logging purposes
         
         if log:
             if debug:
