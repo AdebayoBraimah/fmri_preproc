@@ -23,7 +23,6 @@ from typing import(
     Union
 )
 
-# Define class(es)
 class DependencyError(Exception):
     """Exception intended for unment dependencies"""
     pass
@@ -40,7 +39,8 @@ class File:
     """File object base class. This class creates a ``File`` object that encapsulates a number of methods and properites for file and filename handling, and file manipulation.
     
     Attributes:
-        file: Class variable that is set once class is instantiated.
+        file: Input file.
+        ext: File extension of input file. If no extension is provided, it is inferred.
 
     Usage example:
         >>> # Using class object as context manager
@@ -58,11 +58,15 @@ class File:
         file: Input file (need not exist at runtime/instantiated).
         ext: File extension of input file. If no extension is provided, it is inferred.
     """
-    file: str = ""
+    __slots__ = [ 
+                    "file", 
+                    "ext"
+                ]
     
     def __init__(self,
                  file: str,
-                 ext: Optional[str] = ""
+                 ext: Optional[str] = "",
+                 assert_exists: bool = False
                 ) -> None:
         """Initialization method for the File base class.
         
@@ -81,6 +85,7 @@ class File:
         Arguments:
             file: Input file (need not exist at runtime/instantiated).
             ext: File extension of input file. If no extension is provided, it is inferred.
+            assert_exists: Asserts that the specified input file must exist. 
         """
         self.file: str = file
 
@@ -90,6 +95,9 @@ class File:
             self.ext: str = self.file[-(7):]
         else:
             self.ext: str = self.file[-(4):]
+        
+        if assert_exists:
+            assert os.path.exists(self.file), f"Input file {self.file} does not exist."
     
     def __enter__(self):
         """Context manager entrance method."""
@@ -139,7 +147,8 @@ class File:
             >>> file.abs_path()
             "abspath/to/file_namt.txt"
         """
-        # TODO: Add option to follow sym-links
+        # TODO: 
+        #   Add option to follow sym-links
         if os.path.exists(self.file):
             return os.path.abspath(self.file)
         else:
@@ -286,8 +295,10 @@ class WorkDir:
         work_dir: Working directory name/path. This directory need not exist at runtime.
         use_cwd: Use current working directory as the parent directory.
     """
-    work_dir: str = ""
-    parent_dir: str = ""
+    __slots__ = [ 
+                    "work_dir", 
+                    "parent_dir"
+                ]
 
     def __init__(self, 
                  work_dir: str,
@@ -394,8 +405,8 @@ class TmpDir(WorkDir):
     """Temporary directory class that creates (random) temporary directories and files given a parent directory. This class inherits methods from the ``WorkDir`` base class.
     
     Attributes:
-        tmp_dir: Temproary directory.
-        parent_tmp_dir: Parent directory.
+        work_dir: Input temproary working directory.
+        parent_dir: Parent directory of the specified temproary directory.
     
     Usage example:
             >>> with TmpDir("/path/to/temporary_directory",False) as tmp_dir:
@@ -414,8 +425,6 @@ class TmpDir(WorkDir):
         tmp_dir: Temporary parent directory name/path.
         use_cwd: Use current working directory as working direcory.
     """
-    tmp_dir: str = ""
-    parent_tmp_dir: str = ""
     
     def __init__(self,
                  tmp_dir: str,
@@ -439,26 +448,37 @@ class TmpDir(WorkDir):
             tmp_dir: Temporary parent directory name/path.
             use_cwd: Use current working directory as working direcory.
         """
+        # _n: int = 10000 # maximum N for random number generator
+        # tmp_dir: str = os.path.join(tmp_dir,'tmp_dir_' + 
+        #                             str(random.randint(0,_n)))
+        # self.tmp_dir: str = tmp_dir
+        # self.parent_tmp_dir: str = os.path.dirname(self.tmp_dir)
+        # 
+        # if use_cwd:
+        #     _cwd: str = os.getcwd()
+        #     self.tmp_dir = os.path.join(_cwd,self.tmp_dir)
+        #     self.parent_tmp_dir = os.path.dirname(self.tmp_dir)
+        # 
+        # super(TmpDir, self).__init__(self.tmp_dir,
+        #                              use_cwd)
+
         _n: int = 10000 # maximum N for random number generator
         tmp_dir: str = os.path.join(tmp_dir,'tmp_dir_' + 
                                     str(random.randint(0,_n)))
-        self.tmp_dir: str = tmp_dir
-        self.parent_tmp_dir: str = os.path.dirname(self.tmp_dir)
-
+        
         if use_cwd:
             _cwd: str = os.getcwd()
-            self.tmp_dir = os.path.join(_cwd,self.tmp_dir)
-            self.parent_tmp_dir = os.path.dirname(self.tmp_dir)
+            tmp_dir = os.path.join(_cwd,tmp_dir)
         
-        super(TmpDir, self).__init__(self.tmp_dir,
+        super(TmpDir, self).__init__(tmp_dir,
                                      use_cwd)
     
     class TmpFile(File):
         """Sub-class of ``TmpDir`` class, which creates and manipulates temporary files via inheritance from the ``File`` object base class.
         
         Attributes:
-            tmp_file: Temporary file name.
-            tmp_dir: Temporary directory name.
+            file: Temporary file name.
+            ext: File extension of input file. If no extension is provided, it is inferred.
         
         Usage example:
             >>> tmp_directory = TmpDir("/path/to/temporary_directory")
@@ -474,8 +494,6 @@ class TmpDir(WorkDir):
             tmp_file: Temporary file name.
             ext: Temporary directory file extension.
         """
-        tmp_file: str = ""
-        tmp_dir: str = ""
 
         def __init__(self,
                      tmp_dir: str,
@@ -498,22 +516,37 @@ class TmpDir(WorkDir):
                 tmp_file: Temporary file name.
                 ext: File extension.
             """
-            self.tmp_dir: str = tmp_dir
+            # self.tmp_dir: str = tmp_dir
+            # 
+            # if tmp_file:
+            #     self.tmp_file: str = tmp_file
+            # else:
+            #     _n: int = 10000 
+            #     self.tmp_file: str = "tmp_file_" + str(random.randint(0,_n))
+            # 
+            # if ext:
+            #     self.tmp_file: str = self.tmp_file + f".{ext}"
+            # else:
+            #     self.tmp_file: str = self.tmp_file + ".txt"
+            # 
+            # self.tmp_file: str = os.path.join(self.tmp_dir,
+            #                                   self.tmp_file)
+            # super(TmpDir.TmpFile, self).__init__(self.tmp_file, 
+            #                                      ext)
             
             if tmp_file:
-                self.tmp_file: str = tmp_file
+                pass
             else:
                 _n: int = 10000 
-                self.tmp_file: str = "tmp_file_" + str(random.randint(0,_n))
+                tmp_file: str = "tmp_file_" + str(random.randint(0,_n))
             
             if ext:
-                self.tmp_file: str = self.tmp_file + f".{ext}"
-            else:
-                self.tmp_file: str = self.tmp_file + ".txt"
+                tmp_file: str = tmp_file + f".{ext}"
 
-            self.tmp_file: str = os.path.join(self.tmp_dir,
-                                              self.tmp_file)
-            super(TmpDir.TmpFile, self).__init__(self.tmp_file, 
+            tmp_file: str = os.path.join(tmp_dir, 
+                                         tmp_file)
+
+            super(TmpDir.TmpFile, self).__init__(tmp_file, 
                                                  ext)
         
 class NiiFile(File):
@@ -548,8 +581,11 @@ class NiiFile(File):
     Raises:
         InvalidNiftiFileError: Exception that is raised in the case **IF** the specified NIFTI file exists, but is an invalid NIFTI file.
     """
+
     def __init__(self,
-                 file: str
+                 file: str,
+                 assert_exists: bool = False,
+                 validate_nifti: bool = False
                 ) -> None:
         """Initialization method for the NiiFile class.
         
@@ -578,12 +614,14 @@ class NiiFile(File):
         
         Arguments:
             file: Path to NIFTI file.
+            assert_exists: Asserts that the specified input file must exist. 
+            validate_nifti: Validates the input NIFTI file if it exists.
         
         Raises:
             InvalidNiftiFileError: Exception that is raised in the case **IF** the specified NIFTI file exists, but is an invalid NIFTI file.
         """
         self.file: str = file
-
+        
         if self.file.endswith(".nii.gz"):
             self.ext: str = ".nii.gz"
         elif self.file.endswith(".nii"):
@@ -591,16 +629,19 @@ class NiiFile(File):
         else:
             self.ext: str = ".nii.gz"
             self.file: str = self.file + self.ext
-
+        
         super(NiiFile, self).__init__(self.file)
 
-        if os.path.exists(self.file):
+        if assert_exists:
+            assert os.path.exists(self.file), f"Input file {self.file} does not exist."
+        
+        if validate_nifti and os.path.exists(self.file):
             try:
                 _: nib.Nifti1Header = nib.load(filename=self.file)
             except Exception as e:
-                print(e)
-            finally:
-                raise InvalidNiftiFileError(f"The NIFTI file {self.file} is not a valid NIFTI file.")
+                # print(e)
+                # raise InvalidNiftiFileError(f"The NIFTI file {self.file} is not a valid NIFTI file.")
+                raise e
         
     # Overwrite several File base class methods
     def touch(self) -> None:
@@ -612,7 +653,7 @@ class NiiFile(File):
                   txt: str = "",
                   header_field: str = "intent_name"
                  ) -> None:
-        """This class method relevant information to the NIFTI file header.
+        """This class method writes relevant information to the NIFTI file header.
         This is done by writing text to either the ``descrip`` or ``intent_name``
         field of the NIFTI header.
 
@@ -644,7 +685,7 @@ class NiiFile(File):
         # NOTE: 
         #   NiiHeaderField enum is imported.
         #   This class may need to be moved 
-        #   locally to this module.
+        #   locally to this class method.
 
         header_field: str = NiiHeaderField(header_field).name
 
@@ -679,7 +720,8 @@ class LogFile(File):
     
     def __init__(self,
                  log_file: str = "",
-                 print_to_screen: bool = False) -> None:
+                 print_to_screen: bool = False
+                ) -> None:
         """Initialization method for the LogFile class. Initiates logging and its associated methods (from the ``logging`` module).
         
         Usage examples:
@@ -709,9 +751,6 @@ class LogFile(File):
         # Define logging
         self.logger = logging.getLogger(__name__)
         super(LogFile, self).__init__(self.log_file)
-    
-    def __repr__(self):
-        return self.log_file
         
     def info(self,
             msg: str = "") -> None:
@@ -808,8 +847,10 @@ class Command:
     Returns:
         Mutable list that can be appended to.
     """
-    command: str = ""
-    cmd_list: List[str] = []
+    __slots__ = [ 
+                    "command", 
+                    "cmd_list"
+                ]
 
     def __init__(self,
                  command: str
