@@ -40,6 +40,8 @@ class FSLError(Exception):
     """Exception intended to be raised for FSL specific binaries and related wrapper functions."""
     pass
 
+# TODO: Add verbose options to all wrapper functions
+
 def fnirt():
     """work"""
     pass
@@ -675,16 +677,72 @@ def concatxfm(inmat1: str,
     concat.cmd_list.append(outmat)
 
     concat.cmd_list.append("-concat")
-    concat.cmd_list.append(inmat1)
-    concat.cmd_list.append(inmat2)
+    concat.cmd_list.append(inmat1.file)
+    concat.cmd_list.append(inmat2.file)
 
     concat.run(log=log)
     return outmat
 
-def invwarp():
-    pass
+def invwarp(inwarp: str,
+            ref: str,
+            outwarp:str,
+            rel: bool = False,
+            abs: bool = False,
+            noconstraint: bool = False,
+            jmin: float = 0.01,
+            jmax: float = 100.0,
+            verbose: bool = False,
+            log: Optional[LogFile] = None
+           ) -> str:
+    """Invert existing warps."""
+    inwarp: NiiFile = NiiFile(file=inwarp)
+    ref: NiiFile = NiiFile(file=ref)
+    outwarp: NiiFile = NiiFile(file=outwarp)
 
-def convertwarp():
+    inv: Command = Command("invwarp")
+
+    # Required arguments
+    inv.cmd_list.append(f"--warp={inwarp.abs_path()}")
+    inv.cmd_list.append(f"--ref={ref.abs_path()}")
+    inv.cmd_list.append(f"--out={outwarp.file}")
+
+    # Optional arguments
+    if rel:
+        inv.cmd_list.append("--rel")
+    
+    if abs:
+        inv.cmd_list.append("--abs")
+    
+    if noconstraint:
+        inv.cmd_list.append("--noconstraint")
+    
+    if jmin:
+        inv.cmd_list.append(f"--jmin={jmin}")
+    
+    if jmax:
+        inv.cmd_list.append(f"--jamx={jmax}")
+    
+    if verbose:
+        inv.cmd_list.append("--verbose")
+    
+    inv.run(log=log)
+    return outwarp.file
+
+def convertwarp(out: str,
+                ref: str,
+                warp1: str,
+                warp2: str,
+                premat: Optional[str] = None,
+                midmat: Optional[str] = None,
+                postmat: Optional[str] = None,
+                shiftmap: Optional[str] = None,
+                shiftdir: Optional[str] = None,
+                abs: bool = False,
+                absout: bool = False,
+                rel: bool = False,
+                relout: bool = False
+               ) -> None:
+    """Convert ``FSL`` non-linear warps."""
     pass
 
 def flirt():
