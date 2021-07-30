@@ -13,6 +13,7 @@ from math import (
 from typing import (
     List,
     Optional,
+    Text,
     Tuple,
     Union
 )
@@ -125,19 +126,19 @@ def eddy(img: str,
         except (DependencyError, FileNotFoundError):
             continue
     
-    if '.nii.gz' in out:
+    if out.endswith('.nii.gz'):
         out: str = out[:-7]
-    elif '.nii' in out:
+    elif out.endswith('.nii'):
         out: str = out[:-4]
     
     # Required eddy current correction options
-    img:    NiiFile = NiiFile(file=img)
-    out:    NiiFile = NiiFile(file=out)
-    mask:   NiiFile = NiiFile(file=mask)
-    idx:    File = File(file=idx)
-    acqp:   File = File(file=acqp)
-    bvecs:  File = File(file=bvecs, ext='.bvec')
-    bvals:  File = File(file=bvals, ext='.bval')
+    img:    NiiFile = NiiFile(file=img, assert_exists=True, validate_nifti=True)
+    out:    NiiFile = NiiFile(file=out, assert_exists=False, validate_nifti=False)
+    mask:   NiiFile = NiiFile(file=mask, assert_exists=True, validate_nifti=True)
+    idx:    File = File(file=idx, ext=".idx", assert_exists=True)
+    acqp:   File = File(file=acqp, ext=".acqp", assert_exists=True)
+    bvecs:  File = File(file=bvecs, ext='.bvec', assert_exists=True)
+    bvals:  File = File(file=bvals, ext='.bval', assert_exists=True)
 
     eddy_proc.cmd_list.append(f"--imain={img.file}")
     eddy_proc.cmd_list.append(f"--mask={mask.file}")
@@ -149,16 +150,15 @@ def eddy(img: str,
 
     # Conventional eddy current correction options
     if topup:
-        # Topup files' basenames
-        topup: File = File(file=topup)
+        topup: NiiFile = NiiFile(file=topup, assert_exists=True, validate_nifti=True)
         eddy_proc.cmd_list.append(f"--topup={topup.rm_ext()}")
     
     if field:
-        field: NiiFile = NiiFile(file=field)
+        field: NiiFile = NiiFile(file=field, assert_exists=True, validate_nifti=True)
         eddy_proc.cmd_list.append(f"--field={field.file}")
     
     if field_mat:
-        field_mat: File = File(file=field_mat)
+        field_mat: File = File(file=field_mat, assert_exists=True)
         eddy_proc.cmd_list.append(f"--field_mat={field_mat.file}")
     
     if flm:
@@ -258,10 +258,10 @@ def eddy(img: str,
         eddy_proc.cmd_list.append(f"--mporder={mporder}")
     
         if slspec:
-            slspec: File = File(file=slspec)
+            slspec: File = File(file=slspec, assert_exists=True)
             eddy_proc.cmd_list.append(f"--slspec={slspec.file}")
         elif json_file:
-            json_file: File = File(file=json_file)
+            json_file: File = File(file=json_file, assert_exists=True)
             eddy_proc.cmd_list.append(f"--json={json_file.file}")
         else:
             raise FSLError("Either the 'slspec' or the 'json' option must be specified with the 'mporder' option.")
@@ -280,7 +280,7 @@ def eddy(img: str,
         eddy_proc.cmd_list.append(f"--s2v_interp={s2v_interp}")
     
     out: str = out.file + '.nii.gz'
-    out: File = File(file=out)
+    out: NiiFile = NiiFile(file=out, assert_exists=True, validate_nifti=True)
 
     eddy_proc.run(log=log)
 
@@ -296,8 +296,8 @@ def bet(img: str,
         log: Optional[LogFile] = None
        ) -> Tuple[str]:
     """work"""
-    img: NiiFile = NiiFile(file=img)
-    out: NiiFile = NiiFile(file=out)
+    img: NiiFile = NiiFile(file=img, assert_exists=True, validate_nifti=True)
+    out: NiiFile = NiiFile(file=out, assert_exists=False, validate_nifti=False)
 
     b: Command = Command("bet")
     b.cmd_list.append(img.abs_path())
@@ -340,9 +340,9 @@ def topup(img: str,
           log: Optional[LogFile] = None
          ) -> Tuple[str,str,str]:
     """work"""
-    img: NiiFile = NiiFile(file=img)
-    out: NiiFile = NiiFile(file=out)
-    param: File = File(file=param)
+    img:    NiiFile = NiiFile(file=img, assert_exists=True, validate_nifti=True)
+    out:    NiiFile = NiiFile(file=out, assert_exists=False, validate_nifti=False)
+    param:  File = File(file=param, assert_exists=True)
 
     top: Command = Command("topup")
     top.cmd_list.append(f"--imain={img.abs_path()}")
@@ -351,7 +351,7 @@ def topup(img: str,
     top.cmd_list.append(f"--scale={scale}")
 
     if config:
-        config: File = File(file=config)
+        config: File = File(file=config, assert_exists=True)
         top.cmd_list.append(f"--config={config.abs_path()}")
     
     if fout:
@@ -364,7 +364,7 @@ def topup(img: str,
     
     if iout:
         unwarped_img: str = out.rm_ext() + "_unwarped.nii.gz"
-        unwarped_img: File = File(file=unwarped_img)
+        unwarped_img: NiiFile = NiiFile(file=unwarped_img)
         top.cmd_list.append(f"--iout={unwarped_img.rm_ext()}")
     else:
         unwarped_img: str = ""
@@ -385,15 +385,12 @@ def fslreorient2std(img: str,
                     log: Optional[LogFile] = None
                    ) -> Tuple[str,str,str]:
     """work"""
-    img: NiiFile = NiiFile(file=img)
-    out: NiiFile = NiiFile(file=out)
-
-    out_mat: str = out.rm_ext() + "_native2std_reorient.mat"
-    out_mat: File = File(file=out_mat)
-
+    img: NiiFile = NiiFile(file=img, assert_exists=True, validate_nifti=True)
     reorient: Command = Command("fslreorient2std")
 
     if out_mat:
+        out_mat: str = out.rm_ext() + "_native2std_reorient.mat"
+        out_mat: File = File(file=out_mat)
         reorient.cmd_list.append("-m")
         reorient.cmd_list.append(f"{out_mat.file}")
     else:
@@ -403,10 +400,11 @@ def fslreorient2std(img: str,
     reorient.cmd_list.append(f"{img.file}")
     
     if out:
+        out: NiiFile = NiiFile(file=out)
         reorient.cmd_list.append(f"{out.file}")
     else:
         out: str = ""
-        out: File = File(file=out)
+        out: NiiFile = NiiFile(file=out)
 
     reorient.run(log=log)
 
@@ -427,8 +425,8 @@ def fslroi(img: str,
            log: Optional[LogFile] = None
           ) -> str:
     """work"""
-    img: NiiFile = NiiFile(file=img)
-    out: NiiFile = NiiFile(file=out)
+    img: NiiFile = NiiFile(file=img, assert_exists=True, validate_nifti=True)
+    out: NiiFile = NiiFile(file=out, assert_exists=False, validate_nifti=False)
 
     if (xmin and xsize and ymin and ysize and zmin and zsize) and (tmin and tsize):
         raise FSLError("Cannot specify both xyz and temporal dimensions.")
@@ -481,7 +479,7 @@ def fslmerge(out: str,
     merge.cmd_list.append(out.file)
     
     for arg in args:
-        img: NiiFile = NiiFile(file=arg)
+        img: NiiFile = NiiFile(file=arg, assert_exists=True, validate_nifti=True)
         merge.cmd_list.append(img.abs_path())
     
     if tr:
@@ -524,9 +522,9 @@ def applywarp(src: str,
     assert not (postmat and postmatdir), \
         "cannot use postmat and postmatdir arguments together"
 
-    src: NiiFile = NiiFile(file=src)
-    ref: NiiFile = NiiFile(file=ref)
-    out: NiiFile = NiiFile(file=out)
+    src: NiiFile = NiiFile(file=src, assert_exists=True, validate_nifti=True)
+    ref: NiiFile = NiiFile(file=ref, assert_exists=True, validate_nifti=True)
+    out: NiiFile = NiiFile(file=out, assert_exists=False, validate_nifti=False)
 
     apply: Command = Command("applywarp")
 
@@ -547,7 +545,7 @@ def applywarp(src: str,
         postmat: str = catmats(matdir=postmatdir, out=postmat)
 
     if warp:
-        warp: NiiFile = NiiFile(file=warp)
+        warp: NiiFile = NiiFile(file=warp, assert_exists=True, validate_nifti=True)
         apply.cmd_list.append(f"--warp={warp}")
 
     if premat:
@@ -574,13 +572,16 @@ def invxfm(inmat: str,
            log: Optional[LogFile] = None
           ) -> str:
     """Inverts ``FSL`` transformation matrices."""
+    inmat:  File = File(file=inmat, assert_exists=True)
+    outmat: File = File(file=outmat, assert_exists=False)
+
     inv: Command = Command("invxfm")
 
     inv.cmd_list.append("-omat")
-    inv.cmd_list.append(outmat)
+    inv.cmd_list.append(outmat.file)
 
     inv.cmd_list.append("-inverse")
-    inv.cmd_list.append(inmat)
+    inv.cmd_list.append(inmat.file)
 
     inv.run(log=log)
     return outmat
@@ -593,10 +594,10 @@ def applyxfm(src: str,
              log: Optional[LogFile] = None
             ) -> str:
     """Applies ``FSL`` transformation matrices."""
-    src: NiiFile = NiiFile(file=src)
-    ref: NiiFile = NiiFile(file=ref)
-    out: NiiFile = NiiFile(file=out)
-    mat: File = File(file=mat)
+    src: NiiFile = NiiFile(file=src, assert_exists=True, validate_nifti=True)
+    ref: NiiFile = NiiFile(file=ref, assert_exists=True, validate_nifti=True)
+    out: NiiFile = NiiFile(file=out, assert_exists=False, validate_nifti=False)
+    mat: File = File(file=mat, assert_exists=True)
 
     xfm: Command = Command("flirt")
 
@@ -629,9 +630,9 @@ def apply_isoxfm(src: str,
                  log: Optional[str] = None
                 ) -> str:
     """Resamples images to an isometric resolution."""
-    src: NiiFile = NiiFile(file=src)
-    ref: NiiFile = NiiFile(file=ref)
-    out: NiiFile = NiiFile(file=out)
+    src: NiiFile = NiiFile(file=src, assert_exists=True, validate_nifti=True)
+    ref: NiiFile = NiiFile(file=ref, assert_exists=True, validate_nifti=True)
+    out: NiiFile = NiiFile(file=out, assert_exists=False, validate_nifti=False)
 
     fsldir: str = os.getenv('FSLDIR',None)
     assert fsldir is not None, 'FSLDIR environment must be set.'
@@ -668,8 +669,8 @@ def concatxfm(inmat1: str,
               log: Optional[LogFile] = None
              ) -> str:
     """Concatenates two ``FSL`` transformation matrices."""
-    inmat1: File = File(file=inmat1)
-    inmat2: File = File(file=inmat2)
+    inmat1: File = File(file=inmat1, assert_exists=True)
+    inmat2: File = File(file=inmat2, assert_exists=True)
 
     concat: Command = Command("convert_xfm")
 
@@ -695,9 +696,9 @@ def invwarp(inwarp: str,
             log: Optional[LogFile] = None
            ) -> str:
     """Invert existing warps."""
-    inwarp: NiiFile = NiiFile(file=inwarp)
-    ref: NiiFile = NiiFile(file=ref)
-    outwarp: NiiFile = NiiFile(file=outwarp)
+    inwarp:  NiiFile = NiiFile(file=inwarp, assert_exists=True, validate_nifti=True)
+    ref:     NiiFile = NiiFile(file=ref, assert_exists=True, validate_nifti=True)
+    outwarp: NiiFile = NiiFile(file=outwarp, assert_exists=False, validate_nifti=False)
 
     inv: Command = Command("invwarp")
 
@@ -745,6 +746,10 @@ def convertwarp(out: str,
     """Convert ``FSL`` non-linear warps."""
     pass
 
+def fugue():
+    """FMRIB's Utility for Geometric Unwarping of EPIs."""
+    pass
+
 def flirt():
     pass
 
@@ -771,7 +776,7 @@ class fslmaths:
                  dt: Optional[str] = None,
                 ):
         """Constructor"""
-        img: NiiFile = NiiFile(file=img)
+        img: NiiFile = NiiFile(file=img, assert_exists=True, validate_nifti=True)
         self._maths: Command = Command("fslmaths")
 
         if dt:
@@ -869,7 +874,7 @@ class fslmaths:
         if isinstance(input,int):
             self._maths.cmd_list.append(f"{input}")
         elif isinstance(input,str):
-            img: NiiFile = NiiFile(file=input)
+            img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
             self._maths.cmd_list.append(img.file)
         return self
     
@@ -882,7 +887,7 @@ class fslmaths:
         if isinstance(input,int):
             self._maths.cmd_list.append(f"{input}")
         elif isinstance(input,str):
-            img: NiiFile = NiiFile(file=input)
+            img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
             self._maths.cmd_list.append(img.file)
         return self
     
@@ -895,7 +900,7 @@ class fslmaths:
         if isinstance(input,int):
             self._maths.cmd_list.append(f"{input}")
         elif isinstance(input,str):
-            img: NiiFile = NiiFile(file=input)
+            img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
             self._maths.cmd_list.append(img.file)
         return self
     
@@ -908,7 +913,7 @@ class fslmaths:
         if isinstance(input,int):
             self._maths.cmd_list.append(f"{input}")
         elif isinstance(input,str):
-            img: NiiFile = NiiFile(file=input)
+            img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
             self._maths.cmd_list.append(img.file)
         return self
     
@@ -916,7 +921,7 @@ class fslmaths:
             img: str
            ):
         """work"""
-        img: NiiFile = NiiFile(file=img)
+        img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
         self._maths.cmd_list.append("-mas")
         self._maths.cmd_list.append(img.file)
         return self
@@ -930,7 +935,7 @@ class fslmaths:
         if isinstance(input,int):
             self._maths.cmd_list.append(f"{input}")
         elif isinstance(input,str):
-            img: NiiFile = NiiFile(file=input)
+            img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
             self._maths.cmd_list.append(img.file)
         return self
     
@@ -975,7 +980,7 @@ class fslmaths:
              input_is_sec: bool = False
             ):
         """
-        Input is assumed to in sigma (in volume).
+        Input is assumed to be in sigma (in volume).
         """
         if input_is_hz and input_is_sec:
             raise RuntimeError("Both 'input_is_hz' and 'input_is_sec' were specified. ONLY ONE of these options may be specified.")
@@ -1055,5 +1060,3 @@ class fslmaths:
             
         self._maths.run(log=log)
         return out
-
-
