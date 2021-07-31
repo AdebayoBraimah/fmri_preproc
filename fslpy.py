@@ -140,144 +140,144 @@ def eddy(img: str,
     bvecs:  File = File(file=bvecs, ext='.bvec', assert_exists=True)
     bvals:  File = File(file=bvals, ext='.bval', assert_exists=True)
 
-    eddy_proc.cmd_list.append(f"--imain={img.file}")
-    eddy_proc.cmd_list.append(f"--mask={mask.file}")
-    eddy_proc.cmd_list.append(f"--index={idx.file}")
-    eddy_proc.cmd_list.append(f"--acqp={acqp.file}")
-    eddy_proc.cmd_list.append(f"--bvecs={bvecs.file}")
-    eddy_proc.cmd_list.append(f"--bvals={bvals.file}")
-    eddy_proc.cmd_list.append(f"--out={out.file}")
+    eddy_proc.opt(f"--imain={img.file}")
+    eddy_proc.opt(f"--mask={mask.file}")
+    eddy_proc.opt(f"--index={idx.file}")
+    eddy_proc.opt(f"--acqp={acqp.file}")
+    eddy_proc.opt(f"--bvecs={bvecs.file}")
+    eddy_proc.opt(f"--bvals={bvals.file}")
+    eddy_proc.opt(f"--out={out.file}")
 
     # Conventional eddy current correction options
     if topup:
         topup: NiiFile = NiiFile(file=topup, assert_exists=True, validate_nifti=True)
-        eddy_proc.cmd_list.append(f"--topup={topup.rm_ext()}")
+        eddy_proc.opt(f"--topup={topup.rm_ext()}")
     
     if field:
         field: NiiFile = NiiFile(file=field, assert_exists=True, validate_nifti=True)
-        eddy_proc.cmd_list.append(f"--field={field.file}")
+        eddy_proc.opt(f"--field={field.file}")
     
     if field_mat:
         field_mat: File = File(file=field_mat, assert_exists=True)
-        eddy_proc.cmd_list.append(f"--field_mat={field_mat.file}")
+        eddy_proc.opt(f"--field_mat={field_mat.file}")
     
     if flm:
         flm: str = ECModelFLM(flm).name
-        eddy_proc.cmd_list.append(f"--flm={flm}")
+        eddy_proc.opt(f"--flm={flm}")
     
     if slm:
         slm: str = ECModelSLM(slm).name
-        eddy_proc.cmd_list.append(f"--slm={slm}")
+        eddy_proc.opt(f"--slm={slm}")
     
     if fwhm:
-        eddy_proc.cmd_list.append(f"--fwhm={fwhm}")
+        eddy_proc.opt(f"--fwhm={fwhm}")
     
     if niter:
-        eddy_proc.cmd_list.append(f"--niter={niter}")
+        eddy_proc.opt(f"--niter={niter}")
     
     if cnr_maps:
-        eddy_proc.cmd_list.append("--cnr_maps")
+        eddy_proc.opt("--cnr_maps")
     
     if residuals:
-        eddy_proc.cmd_list.append("--residuals")
+        eddy_proc.opt("--residuals")
     
     if fep:
-        eddy_proc.cmd_list.append("--fep")
+        eddy_proc.opt("--fep")
     
     if interp:
         interp: str = ECInterp(interp).name
-        eddy_proc.cmd_list.append(f"--interp={interp}")
+        eddy_proc.opt(f"--interp={interp}")
     
     if resamp:
         resamp: str = ECresamp(resamp).name
-        eddy_proc.cmd_list.append(f"--resamp={resamp}")
+        eddy_proc.opt(f"--resamp={resamp}")
     
     if nvoxhp:
-        eddy_proc.cmd_list.append(f"--nvoxhp={nvoxhp}")
+        eddy_proc.opt(f"--nvoxhp={nvoxhp}")
     
     if initrand:
-        eddy_proc.cmd_list.append(f"--initrand={initrand}")
+        eddy_proc.opt(f"--initrand={initrand}")
     
     if ff:
-        eddy_proc.cmd_list.append(f"--ff={ff}")
+        eddy_proc.opt(f"--ff={ff}")
     
     if repol:
-        eddy_proc.cmd_list.append("--repol")
+        eddy_proc.opt("--repol")
     
     if ol_nstd:
-        eddy_proc.cmd_list.append(f"--ol_nstd={ol_nstd}")
+        eddy_proc.opt(f"--ol_nstd={ol_nstd}")
     
     if ol_nvox:
-        eddy_proc.cmd_list.append(f"--ol_nvox={ol_nvox}")
+        eddy_proc.opt(f"--ol_nvox={ol_nvox}")
 
     if ol_type:
         ol_type: str = ECOLType(ol_type).name
-        eddy_proc.cmd_list.append(f"--ol_type={ol_type}")
+        eddy_proc.opt(f"--ol_type={ol_type}")
 
     if ol_pos:
-        eddy_proc.cmd_list.append("--ol_pos")
+        eddy_proc.opt("--ol_pos")
     
     if ol_sqr:
-        eddy_proc.cmd_list.append("--ol_sqr")
+        eddy_proc.opt("--ol_sqr")
     
     if estimate_move_by_susceptibility:
-        eddy_proc.cmd_list.append("--estimate_move_by_susceptibility")
+        eddy_proc.opt("--estimate_move_by_susceptibility")
     
     if mbs_niter:
-        eddy_proc.cmd_list.append(f"--mbs_niter={mbs_niter}")
+        eddy_proc.opt(f"--mbs_niter={mbs_niter}")
     
     if mbs_lambda:
-        eddy_proc.cmd_list.append(f"--mbs_lambda={mbs_lambda}")
+        eddy_proc.opt(f"--mbs_lambda={mbs_lambda}")
     
     if mbs_ksp:
-        eddy_proc.cmd_list.append(f"--mbs_ksp={mbs_ksp}")
+        eddy_proc.opt(f"--mbs_ksp={mbs_ksp}")
     
     if dont_sep_offs_move:
-        eddy_proc.cmd_list.append("--dont_sep_offs_move")
+        eddy_proc.opt("--dont_sep_offs_move")
     
     if dont_peas:
-        eddy_proc.cmd_list.append("--dont_peas")
+        eddy_proc.opt("--dont_peas")
     
     if data_is_shelled:
-        eddy_proc.cmd_list.append("--data_is_shelled")
+        eddy_proc.opt("--data_is_shelled")
     
     if b0_only:
-        eddy_proc.cmd_list.append("--b0_only")
+        eddy_proc.opt("--b0_only")
     
     if dont_mask_output:
-        eddy_proc.cmd_list.append("--dont_mask_output")
+        eddy_proc.opt("--dont_mask_output")
     
     if verbose:
-        eddy_proc.cmd_list.append("--verbose")
+        eddy_proc.opt("--verbose")
     
     if very_verbose:
-        eddy_proc.cmd_list.append("--very_verbose")
+        eddy_proc.opt("--very_verbose")
     
     # Eddy slice-to-volume (s2v) correction options
     if mporder:
-        eddy_proc.cmd_list.append(f"--mporder={mporder}")
+        eddy_proc.opt(f"--mporder={mporder}")
     
         if slspec:
             slspec: File = File(file=slspec, assert_exists=True)
-            eddy_proc.cmd_list.append(f"--slspec={slspec.file}")
+            eddy_proc.opt(f"--slspec={slspec.file}")
         elif json_file:
             json_file: File = File(file=json_file, assert_exists=True)
-            eddy_proc.cmd_list.append(f"--json={json_file.file}")
+            eddy_proc.opt(f"--json={json_file.file}")
         else:
             raise FSLError("Either the 'slspec' or the 'json' option must be specified with the 'mporder' option.")
         
     if s2v_lambda:
-        eddy_proc.cmd_list.append(f"--s2v_lambda={s2v_lambda}")
+        eddy_proc.opt(f"--s2v_lambda={s2v_lambda}")
     
     if s2v_fwhm:
-        eddy_proc.cmd_list.append(f"--s2v_fwhm={s2v_fwhm}")
+        eddy_proc.opt(f"--s2v_fwhm={s2v_fwhm}")
     
     if s2v_niter:
-        eddy_proc.cmd_list.append(f"--s2v_niter={s2v_niter}")
+        eddy_proc.opt(f"--s2v_niter={s2v_niter}")
     
     if s2v_interp: 
         s2v_interp: str = ECInterp(s2v_interp).name
-        eddy_proc.cmd_list.append(f"--s2v_interp={s2v_interp}")
+        eddy_proc.opt(f"--s2v_interp={s2v_interp}")
     
     out: str = out.file + '.nii.gz'
     out: NiiFile = NiiFile(file=out, assert_exists=True, validate_nifti=True)
@@ -300,29 +300,29 @@ def bet(img: str,
     out: NiiFile = NiiFile(file=out, assert_exists=False, validate_nifti=False)
 
     b: Command = Command("bet")
-    b.cmd_list.append(img.abs_path())
-    b.cmd_list.append(out.abs_path())
+    b.opt(img.abs_path())
+    b.opt(out.abs_path())
 
     if mask:
-        b.cmd_list.append("-m")
+        b.opt("-m")
         mask_img: str = out.rm_ext() + "_mask.nii.gz"
     else:
         mask_img: str = ""
     
     if robust:
-        b.cmd_list.append("-R")
+        b.opt("-R")
 
     if frac_int:
-        b.cmd_list.append("-f")
-        b.cmd_list.append(frac_int)
+        b.opt("-f")
+        b.opt(frac_int)
     
     if seg:
         pass
     else:
-        b.cmd_list.append("-n")
+        b.opt("-n")
     
     if verbose:
-        b.cmd_list.append("-v")
+        b.opt("-v")
     
     b.run(log=log)
 
@@ -345,19 +345,19 @@ def topup(img: str,
     param:  File = File(file=param, assert_exists=True)
 
     top: Command = Command("topup")
-    top.cmd_list.append(f"--imain={img.abs_path()}")
-    top.cmd_list.append(f"--out={out.abs_path()}")
-    top.cmd_list.append(f"--datain={param.abs_path()}")
-    top.cmd_list.append(f"--scale={scale}")
+    top.opt(f"--imain={img.abs_path()}")
+    top.opt(f"--out={out.abs_path()}")
+    top.opt(f"--datain={param.abs_path()}")
+    top.opt(f"--scale={scale}")
 
     if config:
         config: File = File(file=config, assert_exists=True)
-        top.cmd_list.append(f"--config={config.abs_path()}")
+        top.opt(f"--config={config.abs_path()}")
     
     if fout:
         field_img: str = out.rm_ext() + "_field.nii.gz"
         field_img: File = File(file=field_img)
-        top.cmd_list.append(f"--fout={field_img.rm_ext()}")
+        top.opt(f"--fout={field_img.rm_ext()}")
     else:
         field_img: str = ""
         field_img: File = File(file=field_img)
@@ -365,13 +365,13 @@ def topup(img: str,
     if iout:
         unwarped_img: str = out.rm_ext() + "_unwarped.nii.gz"
         unwarped_img: NiiFile = NiiFile(file=unwarped_img)
-        top.cmd_list.append(f"--iout={unwarped_img.rm_ext()}")
+        top.opt(f"--iout={unwarped_img.rm_ext()}")
     else:
         unwarped_img: str = ""
         unwarped_img: File = File(file=unwarped_img)
 
     if verbose:
-        top.cmd_list.append("--verbose")
+        top.opt("--verbose")
     
     top.run(log=log)
 
@@ -391,17 +391,17 @@ def fslreorient2std(img: str,
     if out_mat:
         out_mat: str = out.rm_ext() + "_native2std_reorient.mat"
         out_mat: File = File(file=out_mat)
-        reorient.cmd_list.append("-m")
-        reorient.cmd_list.append(f"{out_mat.file}")
+        reorient.opt("-m")
+        reorient.opt(f"{out_mat.file}")
     else:
         out_mat: str = ""
         out_mat: File = File(file=out_mat)
     
-    reorient.cmd_list.append(f"{img.file}")
+    reorient.opt(f"{img.file}")
     
     if out:
         out: NiiFile = NiiFile(file=out)
-        reorient.cmd_list.append(f"{out.file}")
+        reorient.opt(f"{out.file}")
     else:
         out: str = ""
         out: NiiFile = NiiFile(file=out)
@@ -435,13 +435,13 @@ def fslroi(img: str,
         raise FSLError("Neither xyz nor temporal dimensions were specified.")
     else:
         roi: Command = Command("fslroi")
-        roi.cmd_list.append(img.file)
-        roi.cmd_list.append(out.file)
+        roi.opt(img.file)
+        roi.opt(out.file)
     
     if (xmin and xsize and ymin and ysize and zmin and zsize):
-        roi.cmd_list.append(xmin); roi.cmd_list.append(xsize)
-        roi.cmd_list.append(ymin); roi.cmd_list.append(ysize)
-        roi.cmd_list.append(zmin); roi.cmd_list.append(zsize)
+        roi.opt(xmin); roi.opt(xsize)
+        roi.opt(ymin); roi.opt(ysize)
+        roi.opt(zmin); roi.opt(zsize)
     elif ((xmin is None) and
             (xsize is None) and
             (ymin is None) and
@@ -453,7 +453,7 @@ def fslroi(img: str,
         raise FSLError("Either the xyz min or size was not specified.")
 
     if (tmin and tsize):
-        roi.cmd_list.append(tmin); roi.cmd_list.append(tsize)
+        roi.opt(tmin); roi.opt(tsize)
     elif (tmin is None) and \
         (tsize is None):
         pass
@@ -475,15 +475,15 @@ def fslmerge(out: str,
     merge_opt: str = MergeDim(merge_opt).name
 
     merge: Command = Command("fslmerge")
-    merge.cmd_list.append(f"-{merge_opt}")
-    merge.cmd_list.append(out.file)
+    merge.opt(f"-{merge_opt}")
+    merge.opt(out.file)
     
     for arg in args:
         img: NiiFile = NiiFile(file=arg, assert_exists=True, validate_nifti=True)
-        merge.cmd_list.append(img.abs_path())
+        merge.opt(img.abs_path())
     
     if tr:
-        merge.cmd_list.append(tr)
+        merge.opt(tr)
     
     merge.run(log=log)
 
@@ -528,13 +528,13 @@ def applywarp(src: str,
 
     apply: Command = Command("applywarp")
 
-    apply.cmd_list.append(f"--in={src.abs_path()}")
-    apply.cmd_list.append(f"--ref={ref.abs_path()}")
-    apply.cmd_list.append(f"--out={out.file}")
+    apply.opt(f"--in={src.abs_path()}")
+    apply.opt(f"--ref={ref.abs_path()}")
+    apply.opt(f"--out={out.file}")
 
     if interp:
         interp: str = RegInterp(interp).name
-        apply.cmd_list.append(f"--interp={interp}")
+        apply.opt(f"--interp={interp}")
     
     if prematdir:
         premat: str = os.path.join(prematdir,'allmats.txt')
@@ -546,22 +546,22 @@ def applywarp(src: str,
 
     if warp:
         warp: NiiFile = NiiFile(file=warp, assert_exists=True, validate_nifti=True)
-        apply.cmd_list.append(f"--warp={warp}")
+        apply.opt(f"--warp={warp}")
 
     if premat:
-        apply.cmd_list.append(f"--premat={premat}")
+        apply.opt(f"--premat={premat}")
 
     if postmat:
-        apply.cmd_list.append(f"--postmat={postmat}")
+        apply.opt(f"--postmat={postmat}")
 
     if paddingsize and (isinstance(paddingsize,int)):
-        apply.cmd_list.append(f"--paddingsize={paddingsize}")
+        apply.opt(f"--paddingsize={paddingsize}")
 
     if abs:
-        apply.cmd_list.append("--abs")
+        apply.opt("--abs")
 
     if rel:
-        apply.cmd_list.append("--rel")
+        apply.opt("--rel")
 
     apply.run(log=log)
     return out.file
@@ -577,11 +577,11 @@ def invxfm(inmat: str,
 
     inv: Command = Command("invxfm")
 
-    inv.cmd_list.append("-omat")
-    inv.cmd_list.append(outmat.file)
+    inv.opt("-omat")
+    inv.opt(outmat.file)
 
-    inv.cmd_list.append("-inverse")
-    inv.cmd_list.append(inmat.file)
+    inv.opt("-inverse")
+    inv.opt(inmat.file)
 
     inv.run(log=log)
     return outmat
@@ -601,23 +601,23 @@ def applyxfm(src: str,
 
     xfm: Command = Command("flirt")
 
-    xfm.cmd_list.append("-init")
-    xfm.cmd_list.append(mat.file)
+    xfm.opt("-init")
+    xfm.opt(mat.file)
 
-    xfm.cmd_list.append("-in")
-    xfm.cmd_list.append(src.file)
+    xfm.opt("-in")
+    xfm.opt(src.file)
 
-    xfm.cmd_list.append("-ref")
-    xfm.cmd_list.append(ref.file)
+    xfm.opt("-ref")
+    xfm.opt(ref.file)
 
-    xfm.cmd_list.append("-applyxfm")
+    xfm.opt("-applyxfm")
 
-    xfm.cmd_list.append("-out")
-    xfm.cmd_list.append(out.file)
+    xfm.opt("-out")
+    xfm.opt(out.file)
 
     interp: str = RegInterp(interp).name
-    xfm.cmd_list.append("-interp")
-    xfm.cmd_list.append(interp)
+    xfm.opt("-interp")
+    xfm.opt(interp)
 
     xfm.run(log=log)
     return out.file
@@ -641,24 +641,24 @@ def apply_isoxfm(src: str,
 
     xfm: Command = Command("flirt")
 
-    xfm.cmd_list.append("-init")
-    xfm.cmd_list.append(ident)
+    xfm.opt("-init")
+    xfm.opt(ident)
 
-    xfm.cmd_list.append("-in")
-    xfm.cmd_list.append(src.file)
+    xfm.opt("-in")
+    xfm.opt(src.file)
 
-    xfm.cmd_list.append("-ref")
-    xfm.cmd_list.append(ref.file)
+    xfm.opt("-ref")
+    xfm.opt(ref.file)
 
-    xfm.cmd_list.append("-applyisoxfm")
-    xfm.cmd_list.append(f"{res}")
+    xfm.opt("-applyisoxfm")
+    xfm.opt(f"{res}")
 
-    xfm.cmd_list.append("-out")
-    xfm.cmd_list.append(out.file)
+    xfm.opt("-out")
+    xfm.opt(out.file)
 
     interp: str = RegInterp(interp).name
-    xfm.cmd_list.append("-interp")
-    xfm.cmd_list.append(interp)
+    xfm.opt("-interp")
+    xfm.opt(interp)
 
     xfm.run(log=log)
     return out.file
@@ -674,12 +674,12 @@ def concatxfm(inmat1: str,
 
     concat: Command = Command("convert_xfm")
 
-    concat.cmd_list.append("-omat")
-    concat.cmd_list.append(outmat)
+    concat.opt("-omat")
+    concat.opt(outmat)
 
-    concat.cmd_list.append("-concat")
-    concat.cmd_list.append(inmat1.file)
-    concat.cmd_list.append(inmat2.file)
+    concat.opt("-concat")
+    concat.opt(inmat1.file)
+    concat.opt(inmat2.file)
 
     concat.run(log=log)
     return outmat
@@ -703,36 +703,36 @@ def invwarp(inwarp: str,
     inv: Command = Command("invwarp")
 
     # Required arguments
-    inv.cmd_list.append(f"--warp={inwarp.abs_path()}")
-    inv.cmd_list.append(f"--ref={ref.abs_path()}")
-    inv.cmd_list.append(f"--out={outwarp.file}")
+    inv.opt(f"--warp={inwarp.abs_path()}")
+    inv.opt(f"--ref={ref.abs_path()}")
+    inv.opt(f"--out={outwarp.file}")
 
     # Optional arguments
     if rel:
-        inv.cmd_list.append("--rel")
+        inv.opt("--rel")
     
     if abs:
-        inv.cmd_list.append("--abs")
+        inv.opt("--abs")
     
     if noconstraint:
-        inv.cmd_list.append("--noconstraint")
+        inv.opt("--noconstraint")
     
     if jmin:
-        inv.cmd_list.append(f"--jmin={jmin}")
+        inv.opt(f"--jmin={jmin}")
     
     if jmax:
-        inv.cmd_list.append(f"--jamx={jmax}")
+        inv.opt(f"--jamx={jmax}")
     
     if verbose:
-        inv.cmd_list.append("--verbose")
+        inv.opt("--verbose")
     
     inv.run(log=log)
     return outwarp.file
 
 def convertwarp(out: str,
                 ref: str,
-                warp1: str,
-                warp2: str,
+                warp1: Optional[str] = None,
+                warp2: Optional[str] = None,
                 premat: Optional[str] = None,
                 midmat: Optional[str] = None,
                 postmat: Optional[str] = None,
@@ -741,10 +741,80 @@ def convertwarp(out: str,
                 abs: bool = False,
                 absout: bool = False,
                 rel: bool = False,
-                relout: bool = False
-               ) -> None:
+                relout: bool = False,
+                log: Optional[LogFile] = None
+               ) -> str:
     """Convert ``FSL`` non-linear warps."""
-    pass
+    assert (warp1 or warp2 or premat or midmat or postmat), \
+        "either a warp (warp1 or warp2) or mat (premat, midmat, or " + \
+        "postmat) must be supplied"
+    
+    ref: NiiFile = NiiFile(file=ref, assert_exists=True, validate_nifti=True)
+    out: NiiFile = NiiFile(file=out)
+
+    warp1: NiiFile = NiiFile(file="", assert_exists=False, validate_nifti=False)
+    warp2: NiiFile = NiiFile(file="", assert_exists=False, validate_nifti=False)
+    shiftmap: NiiFile = NiiFile(file="", assert_exists=False, validate_nifti=False)
+
+    postmat: File = File(file="", assert_exists=False)
+    premat: File = File(file="", assert_exists=False)
+    midmat: File = File(file="", assert_exists=False)
+
+    cvwarp: Command = Command("convertwarp")
+    
+    cvwarp.opt(f"--ref={ref.file}")
+    cvwarp.opt(f"--out={out.file}")
+
+    if warp1:
+        warp1: NiiFile = NiiFile(file=warp1, assert_exists=True, validate_nifti=True)
+        cvwarp.opt(f"--warp1={warp1.file}")
+    
+    if warp2:
+        warp2: NiiFile = NiiFile(file=warp2, assert_exists=True, validate_nifti=True)
+        cvwarp.opt(f"--warp2={warp2.file}")
+    
+    if premat:
+        premat: File = File(file=premat, assert_exists=True)
+        cvwarp.opt(f"--premat={premat.file}")
+    
+    if midmat:
+        midmat: File = File(file=midmat, assert_exists=True)
+        cvwarp.opt(f"--midmat={midmat.file}")
+
+    if postmat:
+        postmat: File = File(file=postmat, assert_exists=True)
+        cvwarp.opt(f"--postmat={postmat.file}")
+
+    if shiftmap:
+        shiftmap: NiiFile = NiiFile(file=shiftmap, assert_exists=True, validate_nifti=True)
+        cvwarp.opt(f"--shiftmap={shiftmap.file}")
+
+    if (shiftdir == 'x' or 
+        shiftdir == 'x-' or 
+        shiftdir == 'y' or 
+        shiftdir == 'y-' or 
+        shiftdir == 'z' or 
+        shiftdir == 'z-'):
+        cvwarp.opt(f"--shiftdir={shiftdir}")
+    else:
+        raise FSLError(f"Invalid input: {shiftdir}. Valid inputs for 'shiftdir' option includes: x,y,z,x-,y-,z-")
+
+    if absout:
+        cvwarp.opt(f"--absout")
+
+    if relout:
+        cvwarp.opt(f"--relout")
+
+    if abs:
+        cvwarp.opt(f"--abs")
+
+    if rel:
+        cvwarp.opt(f"--rel")
+
+    cvwarp.run(log=log)
+
+    return out.file
+
 
 def fugue():
     """FMRIB's Utility for Geometric Unwarping of EPIs."""
@@ -753,8 +823,47 @@ def fugue():
 def flirt():
     pass
 
-def melodic():
-    pass
+def melodic(input: str,
+            outdir: str,
+            dim: Optional[int] = 0,
+            tr: Optional[float] = None,
+            mmthresh: Optional[float] = None,
+            report: bool = False,
+            prefix: Optional[str] = "",
+            nomask: bool = False,
+            updatemask: bool = False,
+            nobet: bool = False,
+            mask: Optional[str] = "",
+            Oall: bool = False,
+            verbose: bool = False,
+            log: Optional[LogFile] = None
+           ) -> str:
+    """Multivariate Exploratory Linear Optimised ICA."""
+    input: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
+
+    mel: Command = Command("melodic")
+
+    mel.opt(f"--in={input.file}")
+    mel.opt(f"--outdir={outdir}")
+
+    if mmthresh:
+        mel.opt(f"--mmthresh={mmthresh}")
+    
+    if dim:
+        mel.opt(f"--dim={dim}")
+    
+    if tr:
+        mel.opt(f"--tr={tr}")
+    
+    if report:
+        mel.opt(f"--report")
+    
+    if Oall:
+        mel.opt(f"--Oall")
+    
+    # if nomask:
+
+
 
 def fsl_regfilt():
     pass
@@ -781,64 +890,64 @@ class fslmaths:
 
         if dt:
             dt: str = FSLDataType(dt).name
-            self._maths.cmd_list.append("-dt")
-            self._maths.cmd_list.append(dt)
+            self._maths.opt("-dt")
+            self._maths.opt(dt)
         
-        self._maths.cmd_list.append(img.file)
+        self._maths.opt(img.file)
     
     def abs(self):
         """work"""
-        self._maths.cmd_list.append("-abs")
+        self._maths.opt("-abs")
         return self
     
     def bin(self):
         """work"""
-        self._maths.cmd_list.append("-bin")
+        self._maths.opt("-bin")
         return self
     
     def binv(self):
         """work"""
-        self._maths.cmd_list.append("-binv")
+        self._maths.opt("-binv")
         return self
     
     def recip(self):
         """work"""
-        self._maths.cmd_list.append("-recip")
+        self._maths.opt("-recip")
         return self
     
     def Tmean(self):
         """work"""
-        self._maths.cmd_list.append("-Tmean")
+        self._maths.opt("-Tmean")
         return self
     
     def Tstd(self):
         """work"""
-        self._maths.cmd_list.append("-Tstd")
+        self._maths.opt("-Tstd")
         return self
     
     def Tmin(self):
         """work"""
-        self._maths.cmd_list.append("-Tmin")
+        self._maths.opt("-Tmin")
         return self
     
     def Tmax(self):
         """work"""
-        self._maths.cmd_list.append("-Tmax")
+        self._maths.opt("-Tmax")
         return self
     
     def sqrt(self):
         """work"""
-        self._maths.cmd_list.append("-sqrt")
+        self._maths.opt("-sqrt")
         return self
     
     def sqr(self):
         """work"""
-        self._maths.cmd_list.append("-sqr")
+        self._maths.opt("-sqr")
         return self
     
     def fillh(self):
         """work"""
-        self._maths.cmd_list.append("-fillh")
+        self._maths.opt("-fillh")
         return self
     
     def ero(self,
@@ -846,7 +955,7 @@ class fslmaths:
            ):
         """work"""
         for _ in range(repeat):
-            self._maths.cmd_list.append("-ero")
+            self._maths.opt("-ero")
         return self
     
     def dilM(self,
@@ -854,7 +963,7 @@ class fslmaths:
             ):
         """work"""
         for _ in range(repeat):
-            self._maths.cmd_list.append("-dilM")
+            self._maths.opt("-dilM")
         return self
     
     def dilF(self,
@@ -862,59 +971,59 @@ class fslmaths:
             ):
         """work"""
         for _ in range(repeat):
-            self._maths.cmd_list.append("-dilF")
+            self._maths.opt("-dilF")
         return self
 
     def add(self,
             input: Union[int,str]
            ):
         """work"""
-        self._maths.cmd_list.append("-add")
+        self._maths.opt("-add")
 
         if isinstance(input,int):
-            self._maths.cmd_list.append(f"{input}")
+            self._maths.opt(f"{input}")
         elif isinstance(input,str):
             img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
-            self._maths.cmd_list.append(img.file)
+            self._maths.opt(img.file)
         return self
     
     def sub(self,
             input: Union[int,str]
            ):
         """work"""
-        self._maths.cmd_list.append("-sub")
+        self._maths.opt("-sub")
 
         if isinstance(input,int):
-            self._maths.cmd_list.append(f"{input}")
+            self._maths.opt(f"{input}")
         elif isinstance(input,str):
             img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
-            self._maths.cmd_list.append(img.file)
+            self._maths.opt(img.file)
         return self
     
     def mul(self,
             input: Union[int,str]
            ):
         """work"""
-        self._maths.cmd_list.append("-mul")
+        self._maths.opt("-mul")
 
         if isinstance(input,int):
-            self._maths.cmd_list.append(f"{input}")
+            self._maths.opt(f"{input}")
         elif isinstance(input,str):
             img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
-            self._maths.cmd_list.append(img.file)
+            self._maths.opt(img.file)
         return self
     
     def div(self,
             input: Union[int,str]
            ):
         """work"""
-        self._maths.cmd_list.append("-div")
+        self._maths.opt("-div")
 
         if isinstance(input,int):
-            self._maths.cmd_list.append(f"{input}")
+            self._maths.opt(f"{input}")
         elif isinstance(input,str):
             img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
-            self._maths.cmd_list.append(img.file)
+            self._maths.opt(img.file)
         return self
     
     def mas(self,
@@ -922,21 +1031,21 @@ class fslmaths:
            ):
         """work"""
         img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
-        self._maths.cmd_list.append("-mas")
-        self._maths.cmd_list.append(img.file)
+        self._maths.opt("-mas")
+        self._maths.opt(img.file)
         return self
 
     def rem(self,
             input: Union[int,str]
            ):
         """work"""
-        self._maths.cmd_list.append("-rem")
+        self._maths.opt("-rem")
 
         if isinstance(input,int):
-            self._maths.cmd_list.append(f"{input}")
+            self._maths.opt(f"{input}")
         elif isinstance(input,str):
             img: NiiFile = NiiFile(file=input, assert_exists=True, validate_nifti=True)
-            self._maths.cmd_list.append(img.file)
+            self._maths.opt(img.file)
         return self
     
     def thr(self,
@@ -944,8 +1053,8 @@ class fslmaths:
            ):
         """work"""
         if isinstance(num,int) or isinstance(num,float):
-            self._maths.cmd_list.append("-thr")
-            self._maths.cmd_list.append(f"{num}")
+            self._maths.opt("-thr")
+            self._maths.opt(f"{num}")
         else:
             raise TypeError(f"Input {num} is not a number.")
         return self
@@ -955,8 +1064,8 @@ class fslmaths:
             ):
         """work"""
         if isinstance(num,int) or isinstance(num,float):
-            self._maths.cmd_list.append("-uthr")
-            self._maths.cmd_list.append(f"{num}")
+            self._maths.opt("-uthr")
+            self._maths.opt(f"{num}")
         else:
             raise TypeError(f"Input {num} is not a number.")
         return self
@@ -966,8 +1075,8 @@ class fslmaths:
            ):
         """work"""
         if isinstance(num,int) or isinstance(num,float):
-            self._maths.cmd_list.append("-inm")
-            self._maths.cmd_list.append(f"{num}")
+            self._maths.opt("-inm")
+            self._maths.opt(f"{num}")
         else:
             raise TypeError(f"Input {num} is not a number.")
         return self
@@ -1037,9 +1146,9 @@ class fslmaths:
 
         if ((isinstance(high_pass,int) or isinstance(high_pass,float)) and
                 (isinstance(low_pass,int) or isinstance(low_pass,float))):
-            self._maths.cmd_list.append("-bptf")
-            self._maths.cmd_list.append(f"{high_pass}")
-            self._maths.cmd_list.append(f"{low_pass}")
+            self._maths.opt("-bptf")
+            self._maths.opt(f"{high_pass}")
+            self._maths.opt(f"{low_pass}")
         else:
             raise TypeError(f"Input high_pass: {high_pass} or low_pass: {low_pass} is not a number.")
         
@@ -1051,12 +1160,12 @@ class fslmaths:
             log: Optional[LogFile] = None
            ) -> str:
         """work"""
-        self._maths.cmd_list.append(out)
+        self._maths.opt(out)
 
         if odt:
             odt: str = FSLDataType(odt).name
-            self._maths.cmd_list.append("-odt")
-            self._maths.cmd_list.append(odt)
+            self._maths.opt("-odt")
+            self._maths.opt(odt)
             
         self._maths.run(log=log)
         return out

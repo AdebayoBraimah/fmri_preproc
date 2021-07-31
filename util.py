@@ -798,8 +798,8 @@ class Command:
     
     Usage example:
         >>> echo = Command("echo")
-        >>> echo.cmd_list.append("Hi!")
-        >>> echo.cmd_list.append("I have arrived!")
+        >>> echo.opt("Hi!")
+        >>> echo.opt("I have arrived!")
         >>>
         >>> echo
         echo Hi! I have arrived!
@@ -820,18 +820,18 @@ class Command:
 
     def __init__(self,
                  command: str
-                ) -> List[str]:
+                ) -> None:
         """Initialization method for the Command class. Initializes a command to be used on UNIX command line.
         The input argument is a command (string), and a mutable list is returned (, that can later
         be appended to).
         
         Usage example:
             >>> echo = Command("echo")
-            >>> echo.cmd_list.append("Hi!")
-            >>> echo.cmd_list.append("I have arrived!")
+            >>> echo.opt("Hi!")
+            >>> echo.opt("I have arrived!")
             >>>
             >>> echo
-            echo Hi! I have arrived!
+            echo 'Hi! I have arrived!'
             >>>
             >>> echo.run()
             Hi! I have arrived!
@@ -849,6 +849,27 @@ class Command:
     def __repr__(self):
         """NOTE: This returns a string represnted as a joined list of strings."""
         return ' '.join(self.cmd_list)
+    
+    def opt(self,
+            cmd: str
+           ) -> None:
+        """Appends a string or command-line option to an existing command list.
+
+        Usage example:
+            >>> echo = Command("echo")
+            >>> echo.opt(cmd="Hi!")
+            >>> echo.opt(cmd="I have arrived!")
+            >>>
+            >>> echo
+            echo 'Hi! I have arrived!'
+            >>>
+            >>> echo.run()
+            Hi! I have arrived!
+
+        Arguments:
+            cmd: The command or option to be appended to the command list.
+        """
+        return self.cmd_list.append(cmd)
         
     def check_dependency(self,
                          err_msg: Optional[str] = None,
@@ -909,8 +930,8 @@ class Command:
         Usage example:
             >>> # Create command and cmd_list
             >>> echo = Command("echo")
-            >>> echo.cmd_list.append("Hi!")
-            >>> echo.cmd_list.append("I have arrived!")
+            >>> echo.opt("Hi!")
+            >>> echo.opt("I have arrived!")
             >>>
             >>> # Run/execute command
             >>> echo.run()
