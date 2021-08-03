@@ -11,6 +11,8 @@ from typing import (
     Union
 )
 
+from enums import SliceAcqOrder
+
 def generate_bvals(num_frames: int,
                    out_file: str = 'file.bval'
                   ) -> str:
@@ -30,7 +32,7 @@ def generate_bvals(num_frames: int,
     Raises:
         TypeError: Exception that is raised when the input for ``num_frames`` is not an ``int``.
     """
-    if type(num_frames) != int:
+    if not isinstance(num_frames,int):
         raise TypeError(f"Input for num_frames: {num_frames} is not an integer.")
         
     np.savetxt(out_file,
@@ -62,7 +64,7 @@ def generate_bvecs(num_frames: int,
     Raises:
         TypeError: Exception that is raised when the input for ``num_frames`` is not an ``int``.
     """
-    if type(num_frames) != int:
+    if not isinstance(num_frames,int):
         raise TypeError(f"Input for num_frames: {num_frames} is not an integer.")
         
     np.savetxt(out_file,
@@ -98,7 +100,9 @@ def generate_acq_params(num_frames: int,
     Raises:
         TypeError: Exception that is raised when either ``num_frames`` is not an ``int`` OR when ``effective_echo_spacing`` is not a ``float``.
     """
-    if (type(num_frames) != int) or (type(effective_echo_spacing) != float):
+    if (not isinstance(effective_echo_spacing, int) or 
+        not isinstance(effective_echo_spacing, float) or
+        not isinstance(num_frames, int)):
         raise TypeError(f"Input for num_frames: {num_frames} is not an integer OR effective_echo_spacing: {effective_echo_spacing} is not a float.")
     
     # Generate distortion correction
@@ -142,7 +146,7 @@ def generate_index(num_frames: int,
     Raises:
         TypeError: Exception that is raised when the input for ``num_frames`` is not an ``int``.
     """
-    if type(num_frames) != int:
+    if not isinstance(num_frames, int):
         raise TypeError(f"Input for num_frames: {num_frames} is not an integer.")
     return np.savetxt(out_file, np.ones((1, num_frames)).T, fmt="%i")
 
@@ -175,7 +179,7 @@ def generate_slice_order(slices: int,
         slices: Number of slices in the acquisition direction.
         mb_factor: Multi-band factor.
         mode: Acquisition algorithm/method/scheme used to acquire the data. Valid options include:
-            * ``interleaved``: Optimal slice acquisition technique in which non-adjacent slices are acquired (best for diffusion MR images).
+            * ``interleaved``: Optimal slice acquisition technique in which non-adjacent slices are acquired (best for diffusion, and structural MR images).
             * ``single-shot``: Slice acquisition in which slices are acquired sequentially with an ascending slice order (best for functional MR images).
             * ``default``: Default acquisition order in which slices are acquired with an ascending slice order.
         out_file: Output file name.
@@ -186,23 +190,22 @@ def generate_slice_order(slices: int,
     
     Raises:
         TypeError: Exception that is raised in the case that either ``slices`` or ``mb_factor`` is not an ``int``.
-        ValueError: Exception that is raised in the case that neither ``interleaved``, ``single-shot``, or ``default`` is passed as an argument for ``mode``.
     """
     # Check input types
-    if (type(slices) != int) or (type(mb_factor) != int):
+    if not isinstance(slices, int) or not isinstance(mb_factor, int):
         raise TypeError(f"Input option slices: {slices} or mb_factor: {mb_factor} is not an integer.")
     
     # Locations (in the slices) divided by Multi-Band Factor
     locs: int = slices//mb_factor
+
+    mode: str = SliceAcqOrder(mode.lower()).name
     
     if mode == 'interleaved':
         step: int = int(np.round(np.sqrt(locs)))
     elif mode == 'default':
         step: int = 2
-    elif mode == 'single-shot':
+    elif mode == 'single_shot':
         step: int = 1
-    else:
-        raise ValueError(f"Option specified for mode: {mode} does not exist.")
     
     # Iterate through each MB acquisition to get slice ordering
     n: List[int] = []
