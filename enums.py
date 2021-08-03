@@ -79,3 +79,10 @@ class RegInterp(Enum):
     sinc:       str = "sinc"
     spline:     str = "spline"
     nearest:    str = "nearestneighbour"
+
+@unique
+class SliceAcqOrder(Enum):
+    """Slice acquisition order method."""
+    interleaved:    str = "interleaved"
+    default:        str = "default"
+    single_shot:    str = "single-shot"
