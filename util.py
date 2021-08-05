@@ -89,12 +89,17 @@ class File:
         """
         self.file: str = file
 
+        # if ext:
+        #     self.ext: str = ext
+        # elif self.file.endswith('.gz'):
+        #     self.ext: str = self.file[-(7):]
+        # else:
+        #     self.ext: str = self.file[-(4):]
+        
         if ext:
             self.ext: str = ext
-        elif self.file.endswith('.gz'):
-            self.ext: str = self.file[-(7):]
         else:
-            self.ext: str = self.file[-(4):]
+            _, self.ext = os.path.splitext(self.file)
         
         if assert_exists:
             assert os.path.exists(self.file), f"Input file {self.file} does not exist."
@@ -530,8 +535,6 @@ class NiiFile(File):
         >>> with NiiFile("file.nii") as nii:
         ...     print(nii.file_parts())
         ...
-        "abspath/to/file.nii"
-        "file"
         ("path/to/file", "file", ".nii")
         >>> 
         >>> # or

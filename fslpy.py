@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 """Wrappers functions for FSL executable binaries.
 """
+# TODO: 
+#   
+#   * Write doc-strings for each wrapper function
+#   * Add verbose options to all wrapper functions
+
 import glob
 import os
 
@@ -40,11 +45,42 @@ class FSLError(Exception):
     """Exception intended to be raised for FSL specific binaries and related wrapper functions."""
     pass
 
-# TODO: Add verbose options to all wrapper functions
-
-def fnirt():
+def fnirt(src, 
+          ref, 
+          aff: Optional[str] = None,
+          imprefm: Optional[int] = None, 
+          impinm: Optional[int] = None, 
+          applyrefmask=None,
+          applyinmask=None, 
+          subsamp=None, 
+          miter=None, 
+          infwhm=None,
+          reffwhm=None, 
+          lmbda=None, 
+          estint=None, 
+          warpres=None, 
+          ssqlambda=None,
+          regmod=None, 
+          intmod=None, 
+          intorder=None, 
+          biasres=None,
+          biaslambda=None, 
+          refderiv=None, 
+          cout=None, 
+          intout=None, 
+          refout=None,
+          iout=None, 
+          interp=None, 
+          inwarp=None, 
+          minmet=None, 
+          verbose=False,
+          intin=None, 
+          jout=None,
+          log: Optional[LogFile] = None
+         ) -> str:
     """work"""
     pass
+
 
 def eddy(img: str,
          out: str,
@@ -95,9 +131,6 @@ def eddy(img: str,
          log: Optional[LogFile] = None
         ) -> Tuple[str]:
     """work"""
-    # TODO:
-    #   * Get the corresponding output files for 
-    #       each eddy option.
     eddy_cmds: List[str] = [
         "eddy_cuda",
         "eddy_cuda7.5",
@@ -283,6 +316,10 @@ def eddy(img: str,
 
     cmd.run(log=log)
 
+    # TODO:
+    #   * Get the corresponding output files for 
+    #       each eddy option.
+
     return (out.file)
 
 def bet(img: str,
@@ -373,6 +410,10 @@ def topup(img: str,
         cmd.opt("--verbose")
     
     cmd.run(log=log)
+
+    # TODO:
+    #   * Get the corresponding output files for 
+    #       each topup options.
 
     return (out.file,
             field_img.file,
@@ -819,8 +860,129 @@ def fugue():
     """FMRIB's Utility for Geometric Unwarping of EPIs."""
     pass
 
-def flirt():
-    pass
+def flirt(src: str,
+          ref: str,
+          out: Optional[str] = None,
+          omat: Optional[str] = None,
+          dof: Optional[int] = None,
+          cost: Optional[str] = None,
+          wmseg: Optional[str] = None,
+          init: Optional[str] = None,
+          schedule: Optional[str] = None,
+          echospacing: Optional[float] = None,
+          pedir: Optional[str] = None,
+          fieldmap: Optional[str] = None,
+          fieldmapmask: Optional[str] = None,
+          bbrslope: Optional[float] = None,
+          bbrtype: Optional[str] = None,
+          interp: Optional[str] = None,
+          refweight: Optional[str] = None,
+          applyisoxfm: Optional[float] = None,
+          usesqform: bool = False,
+          nosearch: bool = False, 
+          verbose: Optional[int] = 0,
+          searchrx: Tuple[int,int] = None, 
+          searchry: Tuple[int,int] = None, 
+          searchrz: Tuple[int,int] = None,
+          log: Optional[LogFile] = None
+         ) -> Tuple[str]:
+    """work"""
+    src: NiiFile = NiiFile(file=src, assert_exists=True, validate_nifti=True)
+    ref: NiiFile = NiiFile(file=ref, assert_exists=True, validate_nifti=True)
+
+    cmd: Command = Command("flirt")
+    
+    cmd.opt("-in");  cmd.opt(f"{src.file}")
+    cmd.opt("-ref"); cmd.opt(f"{ref.file}")
+
+    if out:
+        cmd.opt("-out"); cmd.opt(f"{out}")
+    
+    if omat:
+        cmd.opt("-omat"); cmd.opt(f"{omat}")
+    
+    if dof:
+        cmd.opt("-dof"); cmd.opt(f"{dof}")
+    
+    if cost:
+        # TODO: set enum here
+        cmd.opt("-cost"); cmd.opt(f"{cost}")
+    
+    if wmseg:
+        wmseg: NiiFile = NiiFile(file=wmseg, assert_exists=True, validate_nifti=True)
+        cmd.opt("-wmseg"); cmd.opt(f"{wmseg.file}")
+    
+    if init:
+        init: File = File(file=init, assert_exists=True)
+        cmd.opt("-init"); cmd.opt(f"{init.file}")
+    
+    if schedule:
+        schedule: File = File(file=schedule, assert_exists=True)
+        cmd.opt("-schedule"); cmd.opt(f"{schedule.file}")
+    
+    if echospacing:
+        cmd.opt("-echospacing"); cmd.opt(f"{echospacing}")
+    
+    if pedir:
+        cmd.opt("-pedir"); cmd.opt(f"{pedir}")
+    
+    if fieldmap:
+        fieldmap: NiiFile = NiiFile(file=fieldmap, assert_exists=True, validate_nifti=True)
+        cmd.opt("-fieldmap"); cmd.opt(f"{fieldmap.file}")
+    
+    if fieldmapmask:
+        fieldmapmask: NiiFile = NiiFile(file=fieldmapmask, assert_exists=True, validate_nifti=True)
+        cmd.opt("-fieldmapmask"); cmd.opt(f"{fieldmapmask.file}")
+    
+    if bbrslope:
+        cmd.opt("-bbrslope"); cmd.opt(f"{bbrslope}")
+    
+    if bbrtype:
+        # TODO: set enum here
+        cmd.opt("-bbrtype"); cmd.opt(f"{bbrtype}")
+    
+    if interp:
+        # TODO: set enum here
+        cmd.opt("-interp"); cmd.opt(f"{interp}")
+    
+    if refweight:
+        refweight: NiiFile = NiiFile(file=refweight, assert_exists=True, validate_nifti=True)
+        cmd.opt("-refweight"); cmd.opt(f"{refweight.file}")
+    
+    if applyisoxfm:
+        cmd.opt("-applyisoxfm"); cmd.opt(f"{applyisoxfm}")
+    
+    if usesqform:
+        cmd.opt("-usesqform")
+    
+    if nosearch:
+        cmd.opt("-nosearch")
+    
+    if verbose:
+        cmd.opt("-verbose"); cmd.opt(f"{verbose}")
+    
+    if searchrx:
+        cmd.opt("-searchrx")
+        cmd.opt(f"{searchrx[0]}")
+        cmd.opt(f"{searchrx[1]}")
+    
+    if searchry:
+        cmd.opt("-searchry")
+        cmd.opt(f"{searchry[0]}")
+        cmd.opt(f"{searchry[1]}")
+    
+    if searchrz:
+        cmd.opt("-searchrz")
+        cmd.opt(f"{searchrz[0]}")
+        cmd.opt(f"{searchrz[1]}")
+    
+    cmd.run(log=log)
+
+    # TODO: set all possible output types here,
+    #   set, their defaults above.
+
+    return (out,
+            omat)
 
 def melodic(input: str,
             outdir: str,
@@ -877,6 +1039,10 @@ def melodic(input: str,
     
     cmd.run(log=log)
 
+    # TODO:
+    #   * Get the corresponding output files for 
+    #       each melodic options.
+
     return outdir
     
 def fsl_regfilt(infile: str,
@@ -914,6 +1080,10 @@ def fsl_regfilt(infile: str,
     cmd.opt(f"--filter={icstr}")
 
     cmd.run(log=log)
+
+    # TODO:
+    #   * Get the corresponding output files for 
+    #       each fsl_regfilt options.
 
     return outfile.file
 
@@ -988,7 +1158,6 @@ def cluster(infile: str,
            ):
     """Form clusters, report information about clusters and/or perform cluster-based inference.
     """
-    # TODO: Get number and types of output files.
     infile: NiiFile = NiiFile(file=infile, assert_exists=True, validate_nifti=True)
 
     cmd: Command = Command("cluster")
@@ -1005,11 +1174,17 @@ def cluster(infile: str,
     
     cmd.run(log=log)
 
+    # TODO:
+    #   * Get the corresponding output files for 
+    #       each cluster options.
+    #   * Get number and types of output files.
+
     return None
 
 
 class fslmaths:
     """``FSL`` wrapper class for the ``fslmaths`` utility executable.
+    Perform mathematical operations and/or manipulation of images.
     """
 
     def __init__(self,
