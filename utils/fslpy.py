@@ -24,12 +24,16 @@ from typing import (
     Union
 )
 
+from fileio import (
+    File,
+    NiiFile
+)
+
+from logutil import LogFile
+
 from util import (
     Command,
-    DependencyError,
-    File,
-    NiiFile,
-    LogFile
+    DependencyError
 )
 
 from enums import (
@@ -42,6 +46,9 @@ from enums import (
     FSLDataType,
     RegInterp
 )
+
+# # Global FSLDIR variable
+# FSLDIR: str = os.getenv('FSLDIR',None)
 
 class FSLError(Exception):
     """Exception intended to be raised for FSL specific binaries and related wrapper functions."""
