@@ -162,10 +162,11 @@ def generate_slice_order(slices: int,
     the z-direction), and m = multi-band factor.
     
     NOTE:
-        Links for details:
+        * Links for details:
             * Documentation: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/eddy/UsersGuide#A--slspec
             * Implementation: https://git.fmrib.ox.ac.uk/seanf/dhcp-neonatal-fmri-pipeline/-/blob/master/dhcp/resources/default_func.slorder
             * Implementation: https://git.fmrib.ox.ac.uk/matteob/dHCP_neo_dMRI_pipeline_release/-/blob/master/slorder.txt
+        * This wrapper function was written with help from Gregory Lee, PhD.
     
     Usage example:
         >>> sls_order = generate_slice_order(slices=44,
