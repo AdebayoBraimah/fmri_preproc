@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """File IO methods, functions and operations.
 """
 import os

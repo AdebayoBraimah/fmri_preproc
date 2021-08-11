@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Working directory module.
 """
 import os

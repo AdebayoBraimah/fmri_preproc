@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Temporary working directory and file module.
 """
 import os
