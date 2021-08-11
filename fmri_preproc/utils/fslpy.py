@@ -24,19 +24,19 @@ from typing import (
     Union
 )
 
-from fileio import (
+from fmri_preproc.utils.io import (
     File,
     NiiFile
 )
 
-from logutil import LogFile
+from fmri_preproc.utils.logutil import LogFile
 
-from util import (
+from fmri_preproc.utils.util import (
     Command,
     DependencyError
 )
 
-from enums import (
+from fmri_preproc.utils.enums import (
     ECModelFLM,
     ECModelSLM,
     MergeDim,

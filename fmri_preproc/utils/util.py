@@ -13,8 +13,8 @@ from typing import (
     Union
 )
 
-from fileio import File
-from logutil import LogFile
+from fmri_preproc.utils.io import File
+from fmri_preproc.utils.logutil import LogFile
 
 class DependencyError(Exception):
     """Exception intended for unment dependencies"""

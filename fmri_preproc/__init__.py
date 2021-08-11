@@ -21,4 +21,25 @@ It is split into the following sub-packages:
     fsl.func
     fsl.util
 """
-__version__ = "0.0.1a"
+import os
+name: str = "fmri_preproc"
+
+_version_file: str = os.path.abspath(
+    os.path.join('resources','version.txt')
+)
+
+with open(_version_file,'r') as f:
+    file_contents: str = f.read()
+    _version: str = file_contents.strip("\n")
+    f.close()
+
+__author__          = "Adebayo Braimah"
+__credits__         = ["Adebayo Braimah",
+                       "Cincinnati Children's Hospital Medical Center", 
+                       "Imaging Research Center", 
+                       "CCHMC Dept. of Radiology"]
+__license__         = "<LICENSE HERE>"
+__version__         = _version
+__maintainer__      = "Adebayo Braimah"
+__email__           = "adebayo.braimah@cchmc.org"
+__status__          = "Development"

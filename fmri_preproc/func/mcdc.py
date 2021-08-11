@@ -11,7 +11,7 @@ from typing import (
     Union
 )
 
-from enums import SliceAcqOrder
+from fmri_preproc.utils.enums import SliceAcqOrder
 
 def generate_bvals(num_frames: int,
                    out_file: str = 'file.bval'

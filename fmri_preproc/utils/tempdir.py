@@ -6,8 +6,9 @@ import random
 
 from typing import Optional
 
-from workdir import WorkDir
-from fileio import File
+from fmri_preproc.utils.workdir import WorkDir
+from fmri_preproc.utils.io import File
+
 class TmpDir(WorkDir):
     """Temporary directory class that creates (random) temporary directories and files given a parent directory. This class inherits methods from the ``WorkDir`` base class.
     
