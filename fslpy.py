@@ -5,6 +5,8 @@
 #   
 #   * Write doc-strings for each wrapper function
 #   * Add verbose options to all wrapper functions
+#   * Make FSLDIR global variable
+#       * Add the option prepend FSLDIR/bin to each command object
 
 import glob
 import os
@@ -50,36 +52,139 @@ def fnirt(src,
           aff: Optional[str] = None,
           imprefm: Optional[int] = None, 
           impinm: Optional[int] = None, 
-          applyrefmask=None,
-          applyinmask=None, 
-          subsamp=None, 
-          miter=None, 
-          infwhm=None,
-          reffwhm=None, 
-          lmbda=None, 
-          estint=None, 
-          warpres=None, 
-          ssqlambda=None,
-          regmod=None, 
-          intmod=None, 
-          intorder=None, 
-          biasres=None,
-          biaslambda=None, 
-          refderiv=None, 
-          cout=None, 
-          intout=None, 
-          refout=None,
-          iout=None, 
-          interp=None, 
-          inwarp=None, 
-          minmet=None, 
-          verbose=False,
-          intin=None, 
-          jout=None,
+          applyrefmask: Optional[str] = None,
+          applyinmask: Optional[str] = None,
+          subsamp: Optional[str] = None,
+          miter: Optional[str] = None, 
+          infwhm: Optional[str] = None,
+          reffwhm: Optional[str] = None, 
+          lmbda: Optional[str] = None, 
+          estint: Optional[str] = None, 
+          warpres: Optional[str] = None, 
+          ssqlambda: Optional[str] = None,
+          regmod: Optional[str] = None, 
+          intmod: Optional[str] = None, 
+          intorder: Optional[str] = None, 
+          biasres: Optional[str] = None,
+          biaslambda: Optional[str] = None, 
+          refderiv: Optional[str] = None, 
+          cout: Optional[str] = None, 
+          intout: Optional[str] = None, 
+          refout: Optional[str] = None,
+          iout: Optional[str] = None, 
+          interp: Optional[str] = None, 
+          inwarp: Optional[str] = None, 
+          minmet: Optional[str] = None, 
+          verbose: bool = False,
+          intin: Optional[str] = None, 
+          jout: Optional[str] = None,
           log: Optional[LogFile] = None
          ) -> str:
-    """work"""
-    pass
+    """Perform/compute non-linear image registrations."""
+    src: NiiFile = NiiFile(file=src, assert_exists=True, validate_nifti=True)
+    ref: NiiFile = NiiFile(file=ref, assert_exists=True, validate_nifti=True)
+
+    cmd: Command = Command("fnirt")
+
+    # TODO: Verify that input options are either:
+    #   * str
+    #   * int or float
+
+    if aff:
+        aff: File = File(file=aff, assert_exists=True)
+        cmd.opt(f"--aff={aff.file}")
+    
+    if imprefm:
+        imprefm: File = File(file=imprefm, assert_exists=True)
+        cmd.opt(f"--imprefm={imprefm.file}")
+
+    if impinm:
+        impinm: File = File(file=impinm, assert_exists=True)
+        cmd.opt(f"--impinm={impinm.file}")
+
+    if applyrefmask:
+        applyrefmask: File = File(file=applyrefmask, assert_exists=True)
+        cmd.opt(f"--applyrefmask={applyrefmask.file}")
+
+    if applyinmask:
+        applyinmask: File = File(file=applyinmask, assert_exists=True)
+        cmd.opt(f"--applyinmask={applyinmask.file}")
+
+    if subsamp:
+        pass
+
+    if miter:
+        pass
+
+    if infwhm:
+        pass
+
+    if reffwhm:
+        pass
+
+    if lmbda:
+        pass
+
+    if estint:
+        pass
+
+    if warpres:
+        pass
+
+    if ssqlambda:
+        pass
+
+    if regmod:
+        pass
+
+    if intmod:
+        pass
+
+    if intorder:
+        pass
+
+    if biasres:
+        pass
+
+    if biaslambda:
+        pass
+
+    if refderiv:
+        pass
+
+    if cout:
+        pass
+
+    if intout:
+        pass
+
+    if refout:
+        pass
+
+    if iout:
+        pass
+
+    if interp:
+        pass
+
+    if inwarp:
+        pass
+
+    if minmet:
+        pass
+
+    if verbose:
+        pass
+
+    if intin:
+        pass
+
+    if jout:
+        pass
+
+    cmd.run(log=log)
+
+    return None
 
 
 def eddy(img: str,
@@ -1087,8 +1192,44 @@ def fsl_regfilt(infile: str,
 
     return outfile.file
 
-def mcflirt():
-    pass
+def mcflirt(infile: str, 
+            outfile: str, 
+            reffile: Optional[str] = None, 
+            spline_final: bool = True, 
+            plots: bool = True,
+            mats: bool = True, 
+            refvol: Optional[str] = None,
+            log: Optional[LogFile] = None
+           ) -> str:
+    """Rigid-body motion correction using ``mcflirt``."""
+    infile: NiiFile = NiiFile(file=infile, assert_exists=True, validate_nifti=True)
+    outfile: NiiFile = NiiFile(file=outfile)
+
+    cmd: Command = Command("mcflirt")
+
+    cmd.opt("-in"); cmd.opt(f"{infile.file}")
+    cmd.opt("-out"); cmd.opt(f"{outfile.rm_ext()}")
+
+    if reffile:
+        reffile: File = File(file=reffile, assert_exists=True)
+        cmd.opt("-reffile"); cmd.opt(f"{reffile.file}")
+    
+    if spline_final:
+        cmd.opt("-spline_final")
+    
+    if plots:
+        cmd.opt("-plots")
+    
+    if mats:
+        cmd.opt("-mats")
+    
+    if refvol:
+        refvol: NiiFile = NiiFile(file=refvol, assert_exists=True, validate_nifti=True)
+        cmd.opt("-refvol"); cmd.opt(f"{refvol.file}")
+    
+    cmd.run(log=log)
+
+    return None
 
 def slicer(input: str,
            input2: Optional[str] = None,
