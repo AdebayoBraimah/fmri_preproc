@@ -15,7 +15,7 @@ import nibabel as nib
 
 from enums import NiiHeaderField
 
-from typing import(
+from typing import (
     Dict, 
     List, 
     Optional, 
@@ -131,8 +131,11 @@ class File:
             >>> file = File("file_name.txt")
             >>> file.touch()
         """
-        with open(self.file,'w') as _:
-            pass
+        if os.path.exists(self.file):
+            print(f"The file: {self.file} already exists.")
+        else:
+            with open(self.file,'w') as _:
+                pass
         return None
     
     def abs_path(self,
