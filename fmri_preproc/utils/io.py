@@ -4,7 +4,7 @@
 import os
 import nibabel as nib
 
-from enums import NiiHeaderField
+from fmri_preproc.utils.enums import NiiHeaderField
 
 from typing import (
     Optional,
