@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
+"""Performs motion correction and distortion correction of MR image data.
+
+NOTE:
+    * Check this resource pertaining to the odd number of slices: https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=fsl;28f6c983.1806
 """
 import os
 import numpy as np
