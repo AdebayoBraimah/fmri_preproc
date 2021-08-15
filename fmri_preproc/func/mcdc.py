@@ -4,17 +4,83 @@
 NOTE:
     * Check this resource pertaining to the odd number of slices: https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=fsl;28f6c983.1806
 """
+from math import inf
 import os
 import numpy as np
+import nibabel as nib
+from numpy.lib.npyio import load
+import pandas as pd
 
 from typing import (
     List,
-    Tuple,
     Optional,
     Union
 )
 
-from fmri_preproc.utils.enums import SliceAcqOrder
+from fmri_preproc.utils.logutil import LogFile
+from fmri_preproc.utils.workdir import WorkDir
+from fmri_preproc.func.fieldmap import _get_b0_conf
+
+from fmri_preproc.utils.fslpy import (
+    eddy,
+    mcflirt
+)
+
+from fmri_preproc.utils.io import (
+    File,
+    NiiFile
+)
+
+from fmri_preproc.utils.enums import (
+    MotionMetric,
+    SliceAcqOrder
+)
+
+def mcdc():
+    """doc-string
+    """
+    pass
+
+def mcflirt_mc(func: str,
+               func_mc: str,
+               ref: Optional[Union[int, str]] = None,
+               dc_warp: Optional[str] = None,
+               log: Optional[LogFile] = None
+              ) -> None:
+    """Performs MCFLIRT-based motion and distortion correction.
+    """
+    func: NiiFile = NiiFile(file=func, assert_exists=True, validate_nifti=True)
+    
+    with File(file=func_mc, assert_exists=False) as f:
+        outdir, _, _ = f.file_parts()
+        with WorkDir(work_dir=outdir) as d:
+            d.mkdir()
+
+    func_mc: File = File(file=func_mc, assert_exists=False)
+
+    if isinstance(ref, str):
+        with NiiFile(file=ref, assert_exists=True, validate_nifti=True) as f:
+            ref: str = f.abs_path()
+    
+    if dc_warp:
+        with NiiFile(file=dc_warp, assert_exists=True, validate_nifti=True) as f:
+            dc_warp: str = f.abs_path()
+    
+    ref_vol: Union[int, None] = ref if isinstance(ref, int) else None
+    ref_file: Union[str, None] = ref if isinstance(ref, str) else None
+
+    par_file, matsdir = mcflirt(infile=func.abs_path(),
+                                outfile=func_mc,
+                                reffile=ref_file,
+                                refvol=ref_vol,
+                                log=log)
+
+    return par_file, matsdir
+
+def eddy_mcdc():
+    """doc-string
+    """
+    pass
 
 def generate_bvals(num_frames: int,
                    out_file: str = 'file.bval'
@@ -78,17 +144,17 @@ def generate_bvecs(num_frames: int,
     out_file: str = os.path.abspath(out_file)
     return out_file
 
-def generate_acq_params(num_frames: int,
-                        effective_echo_spacing: float = 0.05,
-                        out_prefix: str = 'file'
-                       ) -> Tuple[str,str]:
+def write_func_acq_params(num_frames: int, 
+                          effective_echo_spacing: Optional[float] = 0.05, 
+                          out_prefix: Optional[str] = 'file'
+                         ) -> str:
     """Creates acquisition parameters files for fMRI acquisition provided the number of frames and the 
     effective echo spacing.
     
     Usage example:
-        >>> dist_acqp, func_acqp = generate_acq_params(num_frames=1200, 
-        ...                                            effective_echo_spacing=0.05,
-        ...                                            out_prefix="fmri")
+        >>> func_acqp = write_func_acq_params(num_frames=1200, 
+        ...                                   effective_echo_spacing=0.05,
+        ...                                   out_prefix="fmri")
         ...
         
     Arguments:
@@ -97,39 +163,26 @@ def generate_acq_params(num_frames: int,
         out_prefix: Output file prefix.
         
     Returns:
-        Tuple of strings that correspond to the acquisition parameter files (for both distortion correction and
-            eddy current correction).
+        String that corresponds to the acquisition parameter file for eddy current correction.
     
     Raises:
         TypeError: Exception that is raised when either ``num_frames`` is not an ``int`` OR when ``effective_echo_spacing`` is not a ``float``.
     """
-    if (not isinstance(effective_echo_spacing, int) or 
+    if (not isinstance(effective_echo_spacing, int) and 
         not isinstance(effective_echo_spacing, float) or
         not isinstance(num_frames, int)):
         raise TypeError(f"Input for num_frames: {num_frames} is not an integer OR effective_echo_spacing: {effective_echo_spacing} is not a float.")
     
-    # Generate distortion correction
-    out_dist: str = out_prefix + "_distortion_correction.acqp"
     out_func: str = out_prefix + "_functional.acqp"
     
-    # Write distortion correction acqp file
-    with open(out_dist,'w') as f:
-        f.write(f"0 1 0 {effective_echo_spacing}\n")
-        f.write(f"0 -1 0 {effective_echo_spacing}\n")
-        f.close()
-    
-    # Write functinoal acqp file
     with open(out_func,'w') as f:
-        for i in range(0,num_frames):
+        for _ in range(0,num_frames):
             f.write(f"0 1 0 {effective_echo_spacing}\n")
         f.close()
     
-    # Obtain absolute file paths
-    out_dist: str = os.path.abspath(out_dist)
     out_func: str = os.path.abspath(out_func)
     
-    return (out_dist, 
-            out_func)
+    return out_func
 
 def generate_index(num_frames: int,
                    out_file: str = 'file.idx'
@@ -231,3 +284,116 @@ def generate_slice_order(slices: int,
                slice_order, 
                fmt="%i")
     return out_file
+
+def _dvars(img: nib.Nifti1Header) -> np.array:
+    """Calculates DVARS.
+    """
+    dvars: np.array = np.square(np.diff(img, axis=3))
+    dvars: np.array = np.nanmean(dvars, axis=(0, 1, 2))
+    dvars: np.array = np.sqrt(dvars)
+    dvars: np.array = 1000 * (dvars / np.nanmedian(img))
+    dvars: np.array = np.concatenate(([0], dvars))
+    return dvars
+
+
+def _refrms(img: nib.Nifti1Header,
+            ref: Optional[nib.Nifti1Header] = None
+           ) -> np.array:
+    """Calculates REFRMS.
+    """
+    if ref:
+        pass
+    else:
+        ref: nib.Nifti1Header = img[:, :, :, int(np.round(img.shape[3] / 2))]
+
+    rms: nib.Nifti1Header = img
+    for i in range(0, rms.shape[3]):
+        rms[:, :, :, i] = (rms[:, :, :, i] - ref)
+
+    rms: np.array = rms / np.nanmedian(img)
+    rms: np.array = np.square(rms)
+    rms: np.array = np.nanmean(rms, axis=(0, 1, 2))
+    rms: np.array = np.sqrt(rms)
+    rms: np.array = np.abs(np.diff(rms))
+    rms: np.array = np.concatenate(([0], rms))
+    return rms
+
+
+def motion_outlier(func: str,
+                   metric_name: str,
+                   plot_name: str,
+                   metric: str = "dvars",
+                   ref: Optional[str] = None,
+                   thr: Optional[int] = None
+                  ) -> str:
+    """doc-string
+    """
+    func: NiiFile = NiiFile(file=func, assert_exists=True, validate_nifti=True)
+
+    img0: nib.Nifti1Header = nib.load(func)
+    image_data: np.array = img0.get_data().astype(float)
+
+    # Threshold image
+    thr2: float = np.nanpercentile(image_data, 2)
+    thr98: float = np.nanpercentile(image_data, 98)
+    robust_thr: float = thr2 + 0.1 * (thr98 - thr2)
+    image_data[image_data < robust_thr] = np.nan
+
+    # Calculate motion metric
+    dvars: np.array = _dvars(img=image_data)
+    refrms: np.array = _refrms(img=image_data, ref=ref)
+
+    metric: str = MotionMetric(metric).name
+
+    if metric is 'dvars':
+        metric_data: np.array = dvars
+    elif metric is 'refrms':
+        metric_data: np.array = refrms
+    
+    # Calculate outlier
+    if thr:
+        pass
+    else:
+        q75, q25 = np.percentile(metric_data, [75, 25])
+        iqr: Union[float,int] = q75 - q25
+        thr: Union[float,int] = q75 + (1.5 * iqr)
+
+    outlier: np.array = metric_data > thr
+
+    # Save metric values to file
+    pd.DataFrame(
+        np.stack((dvars, refrms, outlier), axis=1),
+        columns=['DVARS', 'RefRMS', 'Outlier' + metric.name.upper()],
+    ).to_csv(metric_name, sep='\t', index=None)
+
+    # Plot metric
+    if plot_name:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+
+        _, fname, _ = func.file_parts()
+
+        hfig: plt = plt.figure()
+        ax_hdl: plt = hfig.add_subplot(1, 1, 1)
+
+        outlier[0] = False
+        h: plt = ax_hdl.fill_between(
+                        range(outlier.shape[0]),
+                        outlier * np.amax(metric_data),
+                        0,
+                        color='red',
+                        label="outliers",
+                        interpolate=True)
+        plt.setp(h, alpha=0.25)
+
+        ax_hdl.plot(metric_data, label=metric.name)
+        ax_hdl.set_xlim(1, len(metric_data))
+        ax_hdl.set_ylim(0, np.nanmean(metric_data) + (4 * np.nanstd(metric_data)))
+        ax_hdl.set_ylabel(metric.name)
+        ax_hdl.set_title(fname)
+        ax_hdl.set_xlabel("time (volumes)")
+        plt.legend()
+        plt.savefig(plot_name)
+
+    return outlier, metric_data, thr
