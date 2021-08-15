@@ -4,12 +4,12 @@
 NOTE:
     * Check this resource pertaining to the odd number of slices: https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=fsl;28f6c983.1806
 """
-from math import inf
 import os
 import numpy as np
 import nibabel as nib
-from numpy.lib.npyio import load
 import pandas as pd
+
+from math import pi as PI
 
 from typing import (
     List,
@@ -19,10 +19,12 @@ from typing import (
 
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
-from fmri_preproc.func.fieldmap import _get_b0_conf
+from fmri_preproc.utils.util import rel_sym_link
 
 from fmri_preproc.utils.fslpy import (
     eddy,
+    FSLDIR,
+    fslmaths,
     mcflirt
 )
 
@@ -77,19 +79,180 @@ def mcflirt_mc(func: str,
 
     return par_file, matsdir
 
-def eddy_mcdc():
-    """doc-string
+def eddy_mcdc(func: str,
+              func_brainmask: str,
+              func_mcdc: str,
+              func_sliceorder: Optional[str] = None,
+              func_echospacing: Optional[float] = 0.05,
+              fmap: Optional[str] = None,
+              fmap2func_xfm: Optional[str] = None,
+              mb_factor: Optional[int] = 1,
+              mot_params: Optional[str] = None,
+              mbs: bool = False,
+              s2v_corr: bool = False,
+              log: Optional[LogFile] = None
+             ) -> None:
+    """Perform EDDY-based motion and distortion correction.
     """
-    pass
+    if log:
+        log.log("Performing EDDY-based motion and distortion correction.")
 
-def generate_bvals(num_frames: int,
-                   out_file: str = 'file.bval'
-                  ) -> str:
+    with NiiFile(file=func, assert_exists=True, validate_nifti=True) as fn:
+        with NiiFile(file=func_brainmask, assert_exists=True, validate_nifti=True) as fb:
+            with File(file=func_mcdc) as fmc:
+                func: str = fn.abs_path()
+                func_brainmask: str = fb.abs_path()
+
+                outdir, _, _ = fmc.file_parts()
+                eddy_dir: str = os.path.join(outdir,"eddy")
+                eddy_basename: str = os.path.join(eddy_dir,"eddy_corr")
+
+                with WorkDir(work_dir=eddy_dir) as d:
+                    if log:
+                        log.log("Creating eddy output directory.")
+                    d.mkdir()
+    
+    # Logic tests
+    _has_acqp = func_echospacing is not None
+    _has_fmap = fmap is not None
+
+    if _has_fmap and not _has_acqp:
+        raise RuntimeError('Cannot do DC without func_echospacing.')
+
+    if mbs and not _has_fmap:
+        raise RuntimeError('Cannot do MBS without fmap.')
+
+    if s2v_corr and log:
+        log.log(f'Performing slice-to-volume (S2V) motion correction')
+    elif log:
+        log.log(f'Performing rigid-body motion correction')
+
+    if _has_acqp and _has_fmap:
+        if mbs and log:
+            log.log(f'Performing motion-by-susceptibility distortion correction')
+        elif log:
+            log.log(f'Performing static distortion correction')
+    elif log:
+        log.log(f'NO distortion correction')
+
+    # Setup Eddy files
+    num_vols: int = nib.load(filename=func).shape[3]
+    slices: int = nib.load(filename=func).header.get('dim','')[3]
+
+    idx: str = write_index(num_frames=num_vols, out_file=eddy_basename + "_fmri_pre-mcdc.idx")
+    bvals: str = write_bvals(num_frames=num_vols, out_file=eddy_basename + "_fmri_pre-mcdc.bval")
+    bvecs: str = write_bvecs(num_frames=num_vols, out_file=eddy_basename + "_fmri_pre-mcdc.bvec")
+    acqp: str = write_func_acq_params(num_frames=num_vols, effective_echo_spacing=func_echospacing, out_prefix=eddy_basename + "_fmri_pre-mcdc.acqp")
+
+    # Set default Eddy parameters
+    niter: int = 10
+    fwhm: str = "10,10,5,5,0,0,0,0,0,0"
+    nvoxhp: int = 1000       # Not used for anything by eddy
+    cnr_maps: bool = False   # Turned off because not relevant for B0's
+    residuals: bool = False  # Turned off because not relevant for B0's
+
+    # Set default Eddy s2v parameters
+    s2v_niter:  Union[int, None] = None
+    s2v_fwhm:   Union[int, None] = None
+    s2v_lambda: Union[int, None] = None
+    s2v_interp: Union[str, None] = None
+    mporder:    Union[int, None] = None
+    mbs_niter:  Union[int, None] = None
+    mbs_lambda: Union[int, None] = None
+    mbs_ksp:    Union[int, None] = None
+
+    if s2v_corr:
+        if func_sliceorder:
+            with File(file=func_sliceorder, assert_exists=True) as f:
+                func_sliceorder: str = f.abs_path()
+        else:
+            func_sliceorder: str = write_slice_order(slices=slices, 
+                                                    mb_factor=mb_factor, 
+                                                    mode="single-shot",
+                                                    out_file=eddy_basename + "_fmri_pre-mcdc.slice.order",
+                                                    return_mat=False)
+
+        s2v_niter:  int = 10
+        s2v_fwhm:   int = 0
+        s2v_lambda: int = 1
+        s2v_interp: str = "trilinear"
+
+        # Set mporder to 16 or smallest (advised by Jesper Anderson and Sean Fitzgibbon)
+        mporder:int = np.loadtxt(func_sliceorder).shape[0] - 1
+        if mporder > 16:
+            mporder: int = 16
+        
+        if mbs:
+            mbs_niter:  int = 20
+            mbs_lambda: int = 5
+            mbs_ksp:    int = 5
+
+    # Prepare fieldmap transform
+    if fmap2func_xfm:
+        with File(file=fmap2func_xfm, assert_exists=True) as f:
+            fmap2func_xfm: str = f.abs_path()
+    else:
+        fmap2func_xfm: str = os.path.join(FSLDIR,'etc', 'flirtsch', 'ident.mat')
+    
+    # Prepare fieldmap
+    field_hz: Union[str, None] = None
+    if fmap:
+        with NiiFile(file=fmap, assert_exists=True, validate_nifti=True) as f:
+            _, fname, _ = f.file_parts()
+            field_hz: str = os.path.join(eddy_basename + fname + "_Hz")
+            field_hz: str = fslmaths(img=fmap).div(2 * PI).run(out=field_hz, log=log)
+        
+    # Perform Eddy-based mcdc
+    eddy(img=func,
+         out=eddy_basename,
+         mask=func_brainmask,
+         acqp=acqp,
+         bvecs=bvecs,
+         bvals=bvals,
+         index=idx,
+         very_verbose=True,
+         niter=niter,
+         fwhm=fwhm,
+         s2v_niter=s2v_niter,
+         mporder=mporder,
+         nvoxhp=nvoxhp,
+         slspec=func_sliceorder,
+         b0_only=True,
+         field=field_hz,
+         field_mat=fmap2func_xfm,
+         s2v_lambda=s2v_lambda,
+         s2v_fwhm=s2v_fwhm,
+         dont_mask_output=True,
+         s2v_interp=s2v_interp,
+         data_is_shelled=True,
+         estimate_move_by_susceptibility=mbs,
+         mbs_niter=mbs_niter,
+         mbs_lambda=mbs_lambda,
+         mbs_ksp=mbs_ksp,
+         cnr_maps=cnr_maps,
+         residuals=residuals)
+
+    # if mot_params:
+    #     rel_sym_link(target=)
+    
+    # Re-write TR in output NIFTI file header
+    func: nib.load(func)
+
+    nib.Nifti1Image(nib.load(func_mcdc).get_fdata(),
+                    header=func.header,
+                    affine=func.affine
+                    ).to_filename(func_mcdc)
+
+    return
+
+def write_bvals(num_frames: int,
+                out_file: str = 'file.bval'
+               ) -> str:
     """Creates/generates an arbitrary number b=0 b-values for a fMRI acquisition
     provided the number of dynamics/temporal frames.
     
     Usage example:
-        >>> bval_file = generate_bvals(num_frames=1200, out_file="fmri.bval")
+        >>> bval_file = write_bvals(num_frames=1200, out_file="fmri.bval")
         
     Arguments:
         num_frames: Number of temporal frames/dynamics.
@@ -114,14 +277,14 @@ def generate_bvals(num_frames: int,
     out_file: str = os.path.abspath(out_file)
     return out_file
 
-def generate_bvecs(num_frames: int,
-                   out_file: str = 'file.bvec'
-                  ) -> str:
+def write_bvecs(num_frames: int,
+                out_file: str = 'file.bvec'
+               ) -> str:
     """Creates/generates an arbitrary number of x,y,z b-vectors for a fMRI acquisition
     provided the number of dynamics/temporal frames.
     
     Usage example:
-        >>> bval_file = generate_bvecs(num_frames=1200, out_file="fmri.bvec")
+        >>> bval_file = write_bvecs(num_frames=1200, out_file="fmri.bvec")
         
     Arguments:
         num_frames: Number of temporal frames/dynamics.
@@ -184,13 +347,13 @@ def write_func_acq_params(num_frames: int,
     
     return out_func
 
-def generate_index(num_frames: int,
-                   out_file: str = 'file.idx'
-                  ) -> str:
+def write_index(num_frames: int,
+                out_file: str = 'file.idx'
+               ) -> str:
     """Creates index files for use with FSL's ``eddy``.
     
     Usage example:
-        >>> func_idx = generate_index(num_frames=1200, out_file="fmri.idx")
+        >>> func_idx = write_index(num_frames=1200, out_file="fmri.idx")
         
     Arguments:
         num_frames: Number of temporal frames/dynamics.
@@ -206,12 +369,12 @@ def generate_index(num_frames: int,
         raise TypeError(f"Input for num_frames: {num_frames} is not an integer.")
     return np.savetxt(out_file, np.ones((1, num_frames)).T, fmt="%i")
 
-def generate_slice_order(slices: int,
-                         mb_factor: int = 1,
-                         mode: str = 'interleaved',
-                         out_file: str = 'file.slice.order',
-                         return_mat: Optional[bool] = False
-                        ) -> Union[str,np.array]:
+def write_slice_order(slices: int,
+                      mb_factor: int = 1,
+                      mode: str = 'interleaved',
+                      out_file: str = 'file.slice.order',
+                      return_mat: Optional[bool] = False
+                     ) -> Union[str,np.array]:
     """Generates the slice acquisition order file for use with ``eddy's`` slice-to-volume motion correction method.
     
     The file generated consists of an (N/m) x m matrix | N = number of slices in the acquisition direction (assumed to be
@@ -225,11 +388,11 @@ def generate_slice_order(slices: int,
         * This wrapper function was written with help from Gregory Lee, PhD.
     
     Usage example:
-        >>> sls_order = generate_slice_order(slices=44,
-        ...                                  mb_factor=6,
-        ...                                  mode='single-shot',
-        ...                                  out_file='file.slice.order',
-        ...                                  return_mat=False)
+        >>> sls_order = write_slice_order(slices=44,
+        ...                               mb_factor=6,
+        ...                               mode='single-shot',
+        ...                               out_file='file.slice.order',
+        ...                               return_mat=False)
         ...
         
     Arguments:
