@@ -1211,7 +1211,7 @@ def mcflirt(infile: str,
             mats: bool = True, 
             refvol: Optional[int] = None,
             log: Optional[LogFile] = None
-           ) -> str:
+           ) -> Tuple[str,str]:
     """Rigid-body motion correction using ``mcflirt``."""
     infile: NiiFile = NiiFile(file=infile, assert_exists=True, validate_nifti=True)
     outfile: File = File(file=outfile)
