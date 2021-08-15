@@ -5,7 +5,11 @@ import os
 import nibabel as nib
 
 from math import pi as PI
-from typing import Optional
+
+from typing import (
+    Optional,
+    Tuple
+)
 
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
@@ -33,23 +37,20 @@ def fieldmap(outdir: str,
              config: Optional[str] = None,
              verbose: bool = False,
              log: Optional[LogFile] = None
-            ) -> None:
+            ) -> Tuple[str, str, str]:
     """Prepare fieldmaps.
     """
     if log:
         log.log("Preparing fieldmaps")
 
-    with WorkDir(work_dir=outdir) as d:
-        if log:
-            log.log(f"Making fieldmap directory: {d.abs_path()}.")
-        
-        d.mkdir()
-        topup_dir: str = os.path.join(d.abs_path(), "topup")
-
-        if os.path.exists(topup_dir):
-            pass
-        else:
-            os.makedirs(topup_dir)
+    with WorkDir(work_dir=outdir) as od:
+        topup_dir: str = os.path.join(od.abs_path(), "topup")
+        with WorkDir(work_dir=topup_dir) as td:
+            if log:
+                log.log(f"Making fieldmap directory: {od.abs_path()}.")
+            td.mkdir()
+            outdir: str = od.abs_path()
+            topup_dir: str = td.abs_path()
 
     if spinecho:
         if log:
@@ -79,8 +80,7 @@ def fieldmap(outdir: str,
     else:
         raise AttributeError("Neither of the 'spinecho' OR 'ap_dir' and 'pa_dir' options were specified.")
 
-    se: nib.Nifti1Header = nib.load(filename=spinecho.abs_path())
-    slices: int = se.header.get('dim','')[3]
+    slices: int = nib.load(filename=spinecho.abs_path()).header.get('dim','')[3]
 
     if config:
         pass
