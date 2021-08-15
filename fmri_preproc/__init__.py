@@ -25,7 +25,7 @@ import os
 name: str = "fmri_preproc"
 
 _version_file: str = os.path.abspath(
-    os.path.join('resources','version.txt')
+    os.path.join('fmri_preproc','resources','version.txt')
 )
 
 with open(_version_file,'r') as f:
