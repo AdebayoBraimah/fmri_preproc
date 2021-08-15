@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Enums modules for ``fmri_preproc``.
+"""Enums module for ``fmri_preproc``.
 """
 from enum import (
     Enum,
@@ -86,3 +86,9 @@ class SliceAcqOrder(Enum):
     interleaved:    str = "interleaved"
     default:        str = "default"
     single_shot:    str = "single-shot"
+
+@unique
+class MotionMetric(Enum):
+    """Motion metric calculation methods."""
+    dvars:  str = "dvars"
+    refrms: str = "refrms"
