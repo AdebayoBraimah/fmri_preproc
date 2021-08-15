@@ -72,16 +72,11 @@ class File:
             assert_exists: Asserts that the specified input file must exist. 
         """
         self.file: str = file
-
-        # if ext:
-        #     self.ext: str = ext
-        # elif self.file.endswith('.gz'):
-        #     self.ext: str = self.file[-(7):]
-        # else:
-        #     self.ext: str = self.file[-(4):]
         
         if ext:
             self.ext: str = ext
+        elif self.file.endswith('.gz'):
+            self.ext: str = self.file[-7:]
         else:
             _, self.ext = os.path.splitext(self.file)
         
@@ -146,13 +141,8 @@ class File:
         """
         if follow_sym_links and os.path.exists(self.file):
             return os.path.abspath(os.path.realpath(self.file))
-        elif os.path.exists(self.file):
-            return os.path.abspath(self.file)
         else:
-            self.touch()
-            file_path: str = os.path.abspath(self.file)
-            os.remove(self.file)
-            return file_path
+            return os.path.abspath(self.file)
     
     def rm_ext(self,
                ext: str = "") -> str:
@@ -245,19 +235,19 @@ class File:
                 * File extension.
         """
         file: File = self.file
-        file: str = self.abs_path()
+        file: str = os.path.abspath(file)
         
         path, _filename = os.path.split(file)
         
         if ext:
             ext_num: int = len(ext)
             _filename: str = _filename[:-(ext_num)]
-            [filename, _ext] = os.path.splitext(_filename)
+            [filename, _] = os.path.splitext(_filename)
         elif self.ext:
             ext: str = self.ext
             ext_num: int = len(ext)
             _filename: str = _filename[:-(ext_num)]
-            [filename, _ext] = os.path.splitext(_filename)
+            [filename, _] = os.path.splitext(_filename)
         else:
             [filename, ext] = os.path.splitext(_filename)
         
@@ -335,7 +325,8 @@ class NiiFile(File):
             InvalidNiftiFileError: Exception that is raised in the case **IF** the specified NIFTI file exists, but is an invalid NIFTI file.
         """
         self.file: str = file
-        
+        super(NiiFile, self).__init__(self.file)
+
         if self.file.endswith(".nii.gz"):
             self.ext: str = ".nii.gz"
         elif self.file.endswith(".nii"):
@@ -343,8 +334,6 @@ class NiiFile(File):
         else:
             self.ext: str = ".nii.gz"
             self.file: str = self.file + self.ext
-        
-        super(NiiFile, self).__init__(self.file)
 
         if assert_exists:
             assert os.path.exists(self.file), f"Input file {self.file} does not exist."
@@ -353,8 +342,8 @@ class NiiFile(File):
             try:
                 _: nib.Nifti1Header = nib.load(filename=self.file)
             except Exception as e:
-                print(e)
-                raise InvalidNiftiFileError(f"The NIFTI file {self.file} is not a valid NIFTI file.")
+                # print(e)
+                raise InvalidNiftiFileError(f"The NIFTI file {self.file} is not a valid NIFTI file and raised the error {e}.")
         
     # Overwrite several File base class methods
     def touch(self) -> None:
