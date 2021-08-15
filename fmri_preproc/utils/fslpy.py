@@ -47,8 +47,8 @@ from fmri_preproc.utils.enums import (
     RegInterp
 )
 
-# # Global FSLDIR variable
-# FSLDIR: str = os.getenv('FSLDIR',None)
+# Global FSLDIR variable
+FSLDIR: str = os.getenv('FSLDIR',None)
 
 class FSLError(Exception):
     """Exception intended to be raised for FSL specific binaries and related wrapper functions."""
@@ -442,7 +442,7 @@ def bet(img: str,
         frac_int: Optional[int] = None,
         verbose: bool = False,
         log: Optional[LogFile] = None
-       ) -> Tuple[str]:
+       ) -> Tuple[str,str]:
     """work"""
     img: NiiFile = NiiFile(file=img, assert_exists=True, validate_nifti=True)
     out: NiiFile = NiiFile(file=out, assert_exists=False, validate_nifti=False)
@@ -483,6 +483,7 @@ def topup(img: str,
           config: Optional[str] = None,
           fout: bool = False,
           iout: bool = False,
+          subsamp: Optional[str] = None,
           scale: int = 1,
           verbose: bool = False,
           log: Optional[LogFile] = None
@@ -517,6 +518,9 @@ def topup(img: str,
     else:
         unwarped_img: str = ""
         unwarped_img: File = File(file=unwarped_img)
+    
+    if subsamp:
+        cmd.opt(f"--subsamp={subsamp}")
 
     if verbose:
         cmd.opt("--verbose")
@@ -1205,12 +1209,13 @@ def mcflirt(infile: str,
             spline_final: bool = True, 
             plots: bool = True,
             mats: bool = True, 
-            refvol: Optional[str] = None,
+            refvol: Optional[int] = None,
             log: Optional[LogFile] = None
            ) -> str:
     """Rigid-body motion correction using ``mcflirt``."""
     infile: NiiFile = NiiFile(file=infile, assert_exists=True, validate_nifti=True)
-    outfile: NiiFile = NiiFile(file=outfile)
+    outfile: File = File(file=outfile)
+    matsdir: str = ""
 
     cmd: Command = Command("mcflirt")
 
@@ -1228,15 +1233,16 @@ def mcflirt(infile: str,
         cmd.opt("-plots")
     
     if mats:
+        matsdir: str = outfile.rm_ext() + '.mat'
         cmd.opt("-mats")
     
     if refvol:
-        refvol: NiiFile = NiiFile(file=refvol, assert_exists=True, validate_nifti=True)
+        assert isinstance(refvol, int) , f"'refvol' option requires integers, refvol input: {refvol}"
         cmd.opt("-refvol"); cmd.opt(f"{refvol.file}")
     
     cmd.run(log=log)
 
-    return None
+    return outfile.file, matsdir 
 
 def slicer(input: str,
            input2: Optional[str] = None,
@@ -1616,7 +1622,8 @@ class fslmaths:
             log: Optional[LogFile] = None
            ) -> str:
         """work"""
-        self._cmds.opt(out)
+        out: NiiFile = NiiFile(file=out)
+        self._cmds.opt(out.file)
 
         if odt:
             odt: str = FSLDataType(odt).name
@@ -1624,4 +1631,4 @@ class fslmaths:
             self._cmds.opt(odt)
             
         self._cmds.run(log=log)
-        return out
+        return out.file
