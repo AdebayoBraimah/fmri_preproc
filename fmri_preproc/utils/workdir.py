@@ -3,6 +3,7 @@
 """
 import os
 import shutil
+from typing import Union
 
 class WorkDir:
     """Working directory base class that instantiates ``WorkDir`` objects that creates and manipulates working directories.
@@ -135,4 +136,31 @@ class WorkDir:
             return shutil.rmtree(self.work_dir,ignore_errors=True)
         else:
             print("Working directory does not exist.")
+            return None
+    
+    def abs_path(self) -> Union[str,None]:
+        """Returns the absolute path of the working directory.
+
+        Usage example:
+            Usage example:
+            >>> # Using class object as context manager
+            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            ...     work.mkdir()
+            ...     print(work.abs_path())
+            ...
+            /abs/path/to/working_directory
+            >>> # or
+            >>>
+            >>> work = TmpDir(work_dir="/path/to/working_directory", 
+            ...               use_cwd=False)
+            >>> work.mkdir()
+            >>> work.work.abs_path()
+            /abs/path/to/working_directory
+        
+        Returns:
+            String that represents the absolute path of the working directory or ``None`` if the directory does not exist.
+        """
+        if os.path.exists(self.work_dir):
+            return os.path.abspath(self.work_dir)
+        else:
             return None
