@@ -20,6 +20,10 @@ class DependencyError(Exception):
     """Exception intended for unment dependencies"""
     pass
 
+class SymLinkWarning(Warning):
+    """Warning intended for symlinking files with an existing link of the same name."""
+    pass
+
 class Command:
     """Creates a command and an empty command list for UNIX command line programs/applications. Primary use and
     use-cases are intended for the subprocess module and its associated classes (i.e. Popen/call/run).
@@ -234,7 +238,8 @@ class Command:
         # Write std output/error files
         if stdout:
             stderr: str = os.path.splitext(stdout)[0] + ".err"
-                
+            
+            # TODO: use context manager here, return str, not File obj
             stdout: File = File(stdout)
             stderr: File = File(stderr)
             
@@ -268,3 +273,48 @@ class Command:
         return (p.returncode, 
                 stdout, 
                 stderr)
+
+def rel_sym_link(target: str,
+                 linkname: str,
+                 log: Optional[LogFile] = None
+                ) -> str:
+    """Creates a symlink with a relative path.
+
+    Usage example:
+        >>> linked_file = rel_sym_link(target="/home/.zprofile",
+        ...                            linkname="/home/my_zprofile")
+        ...
+        >>> linked_file
+        "/home/my_zprofile"
+        
+    Arguments:
+        target: Input target file.
+        linkname: Output name of symlinked file.
+        log: LogFile object for logging purposes.
+
+    Returns:
+        String that corresponds to symlinked file.
+
+    Raises:
+        SymLinkWarning: Warning that arises if the symlinked file already exists.
+    """
+    with File(file=target, assert_exists=True) as src:
+        with File(file=linkname, assert_exists=False) as lnk:
+            target: str = src.abs_path(follow_sym_links=True)
+            linkname: str = lnk.abs_path()
+    
+    if os.path.exists(linkname):
+        os.remove(linkname)
+        raise SymLinkWarning(f"Symlinked file of the name {linkname} already exists. It is being replaced.")
+    
+    target: str = os.path.relpath(target, linkname)
+
+    cmd: Command = Command("ln")
+    cmd.opt("-s")
+    cmd.opt(f"{target}")
+    cmd.opt(f"{linkname}")
+    cmd.run(log=log)
+
+    return linkname
+
+    
