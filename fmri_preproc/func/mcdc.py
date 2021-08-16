@@ -143,6 +143,7 @@ def mcdc(func: str,
         mcf.to_csv(func_mot, sep='\t', index=None)
     
     # Calculate post-mc motion outliers
+    # TODO: Pick up from here: https://git.fmrib.ox.ac.uk/seanf/dhcp-neonatal-fmri-pipeline/-/blob/master/dhcp/func/mcdc.py
     pass
 
 def mcflirt_mc(func: str,
