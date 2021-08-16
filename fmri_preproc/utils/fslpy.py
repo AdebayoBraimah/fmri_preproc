@@ -242,8 +242,12 @@ def eddy(img: str,
          verbose: bool = False,
          very_verbose: bool = False,
          log: Optional[LogFile] = None
-        ) -> Tuple[str]:
-    """work"""
+        ) -> Tuple[str,str,str]:
+    """Performs eddy current and distortion correction of 4D MR images.
+
+    NOTE: 
+        The function return files are not exhaustive (i.e. not all of eddy's files are returned, just the necessary ones).
+    """
     eddy_cmds: List[str] = []
 
     if use_gpu:
@@ -271,11 +275,6 @@ def eddy(img: str,
                 break
         except (DependencyError, FileNotFoundError):
             continue
-    
-    # if out.endswith('.nii.gz'):
-    #     out: str = out[:-7]
-    # elif out.endswith('.nii'):
-    #     out: str = out[:-4]
     
     # Required eddy current correction options
     img:    NiiFile = NiiFile(file=img, assert_exists=True, validate_nifti=True)
@@ -424,18 +423,22 @@ def eddy(img: str,
         if s2v_interp: 
             s2v_interp: str = ECInterp(s2v_interp).name
             cmd.opt(f"--s2v_interp={s2v_interp}")
-
+    
     cmd.run(log=log)
 
-    # out: str = out.file + '.nii.gz'
-    # out: NiiFile = NiiFile(file=out, assert_exists=True, validate_nifti=True)
-    # print(out.file)
+    with NiiFile(file=out.file, assert_exists=True, validate_nifti=True) as of:
+        outdir, fname, ext = of.file_parts()
+        eddy_mask: str = os.path.join(outdir,f"{fname}.eddy_output_mask{ext}")
+        eddy_motion_par: str = os.path.join(outdir,f"{fname}.eddy_parameters")
+        with NiiFile(file=eddy_mask, assert_exists=True, validate_nifti=True) as em:
+            with File(file=eddy_motion_par, assert_exists=True) as emp:
+                out: str = of.abs_path()
+                eddy_mask: str = em.abs_path()
+                eddy_motion_par: str = emp.abs_path()
 
-    # TODO:
-    #   * Get the corresponding output files for 
-    #       each eddy option.
-
-    return (out.file)
+    return (out,
+            eddy_motion_par,
+            eddy_mask)
 
 def bet(img: str,
         out: str,
@@ -1214,11 +1217,12 @@ def mcflirt(infile: str,
             mats: bool = True, 
             refvol: Optional[int] = None,
             log: Optional[LogFile] = None
-           ) -> Tuple[str,str]:
+           ) -> Tuple[str,str,str]:
     """Rigid-body motion correction using ``mcflirt``."""
     infile: NiiFile = NiiFile(file=infile, assert_exists=True, validate_nifti=True)
     outfile: File = File(file=outfile)
     matsdir: str = ""
+    parfile: str = outfile.rm_ext() + '.par'
 
     cmd: Command = Command("mcflirt")
 
@@ -1241,11 +1245,13 @@ def mcflirt(infile: str,
     
     if refvol:
         assert isinstance(refvol, int) , f"'refvol' option requires integers, refvol input: {refvol}"
-        cmd.opt("-refvol"); cmd.opt(f"{refvol.file}")
+        cmd.opt("-refvol"); cmd.opt(f"{refvol}")
     
     cmd.run(log=log)
 
-    return outfile.file, matsdir 
+    return (outfile.file, 
+            parfile, 
+            matsdir)
 
 def slicer(input: str,
            input2: Optional[str] = None,
