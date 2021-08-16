@@ -24,8 +24,10 @@ It is split into the following sub-packages:
 import os
 name: str = "fmri_preproc"
 
+_cwd: str = os.path.dirname(os.path.abspath(__file__))
+
 _version_file: str = os.path.abspath(
-    os.path.join('fmri_preproc','resources','version.txt')
+    os.path.join(_cwd,'resources','version.txt')
 )
 
 with open(_version_file,'r') as f:
