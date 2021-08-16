@@ -10,6 +10,7 @@ import nibabel as nib
 import pandas as pd
 
 from math import pi as PI
+from shutil import copy
 
 from typing import (
     List,
@@ -20,12 +21,15 @@ from typing import (
 
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
+from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.util import rel_sym_link
 
 from fmri_preproc.utils.fslpy import (
+    applywarp,
     eddy,
     FSLDIR,
     fslmaths,
+    fslroi,
     mcflirt
 )
 
@@ -39,9 +43,106 @@ from fmri_preproc.utils.enums import (
     SliceAcqOrder
 )
 
-def mcdc():
-    """doc-string
+def mcdc(func: str,
+         outdir: str,
+         func_echospacing: Optional[float] = 0.1,
+         func_brainmask: Optional[str] = None,
+         func_slorder: Optional[str] = None,
+         fmap: Optional[str] = None,
+         fmap2func_affine: Optional[str] = None,
+         mb_factor: Optional[int] = None,
+         dc: bool = False,
+         s2v: bool = False,
+         mbs: bool = False,
+         use_mcflirt: bool = False,
+         use_gpu: bool = False,
+         ref: Union[str,int] = 0,
+         log: Optional[LogFile] = None
+        ) -> None:
+    """Perform motion and distortion correction stage of ``fmri_preproc``.
     """
+
+    # Logic tests
+    _has_fmap = fmap is not None
+    _has_slorder = (mb_factor is not None) or (func_slorder is not None)
+    _has_acqp = func_echospacing is not None
+
+    if dc:
+        pass
+    else:
+        dc: bool = _has_fmap
+    
+    if mbs:
+        pass
+    else:
+        mbs: bool = (_has_fmap & _has_acqp & dc)
+
+    if s2v:
+        pass
+    else:
+        s2v: bool = _has_slorder
+    
+    if use_mcflirt:
+        pass
+    else:
+        use_mcflirt: bool = (not dc) & (not s2v) & (not mbs)
+
+    # Check argument combinations
+    if (dc & use_mcflirt) | (s2v & use_mcflirt) | (mbs & use_mcflirt):
+        raise RuntimeError('Cannot use MCFLIRT with dc, s2v and/or mbs.')
+
+    if dc and not (_has_fmap & _has_acqp):
+        raise RuntimeError('fmap, fmap2func_affine, func_pedir, and func_echospacing are required for DC.')
+
+    if mbs and not (_has_fmap & _has_acqp):
+        raise RuntimeError('fmap, fmap2func_affine, func_pedir, and func_echospacing are required for mbs.')
+
+    if mbs and not dc:
+        raise RuntimeError('Cannot mbs without dc as they are both distortion corrections.')
+
+    if (not use_mcflirt) & (func_brainmask is None):
+        raise RuntimeError('func_brainmask is required to use EDDY')
+    
+    # Define output files
+    mcdir: str = os.path.join(outdir,"mc")
+    func_mcdc: str = os.path.join(mcdir,"prefiltered_func_data.nii.gz")
+    motfile: str = os.path.join(mcdir,"prefiltered_func_data.par")
+    func_mot: str = os.path.join(mcdir,"func_mcdc_motion.tsv")
+
+    # Perform MCDC
+    if use_mcflirt:
+        (func_mcdc, 
+         motfile, 
+         matsdir) = mcflirt_mc(func=func,
+                               func_mc=func_mcdc,
+                               ref=ref,
+                               log=log)
+
+        mcf: np.array = np.loadtxt(motfile)
+        mcf: pd.DataFrame = pd.DataFrame(mcf, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
+        mcf.to_csv(func_mot, sep='\t', index=None)
+    else:
+        (func_mcdc,
+         motfile,
+         eddy_mask) = eddy_mcdc(func=func,
+                                func_brainmask=func_brainmask,
+                                func_mcdc=func_mcdc,
+                                func_sliceorder=func_slorder,
+                                func_echospacing=func_echospacing,
+                                fmap=fmap,
+                                fmap2func_xfm=fmap2func_affine,
+                                mb_factor=mb_factor,
+                                mot_params=motfile,
+                                mbs=mbs,
+                                s2v_corr=s2v,
+                                use_gpu=use_gpu,
+                                log=log)
+
+        mcf: np.array = np.loadtxt(motfile)
+        mcf: pd.DataFrame = pd.DataFrame(mcf, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
+        mcf.to_csv(func_mot, sep='\t', index=None)
+    
+    # Calculate post-mc motion outliers
     pass
 
 def mcflirt_mc(func: str,
@@ -49,11 +150,14 @@ def mcflirt_mc(func: str,
                ref: Optional[Union[int, str]] = None,
                dc_warp: Optional[str] = None,
                log: Optional[LogFile] = None
-              ) -> Tuple[str, str]:
+              ) -> Tuple[str,str,str]:
     """Performs MCFLIRT-based motion and distortion correction.
     """
     func: NiiFile = NiiFile(file=func, assert_exists=True, validate_nifti=True)
     
+    if log:
+        log.log("Performing motion correction using MCFLIRT.")
+
     with File(file=func_mc, assert_exists=False) as f:
         outdir, _, _ = f.file_parts()
         with WorkDir(work_dir=outdir) as d:
@@ -72,18 +176,29 @@ def mcflirt_mc(func: str,
     ref_vol: Union[int, None] = ref if isinstance(ref, int) else None
     ref_file: Union[str, None] = ref if isinstance(ref, str) else None
 
-    par_file, matsdir = mcflirt(infile=func.abs_path(),
-                                outfile=func_mc.file,
-                                reffile=ref_file,
-                                refvol=ref_vol,
-                                log=log)
+    (func_mc,
+     parfile, 
+     matsdir) = mcflirt(infile=func.abs_path(),
+                        outfile=func_mc.file,
+                        reffile=ref_file,
+                        refvol=ref_vol,
+                        log=log)
 
-    # TODO: 
-    #   * Set mcflirt returns to add par file
-    #       * currently, nifti file and mat dir is returned.
-    #   * Apply dc_warp to first dynamic of func_mcdc
-
-    return par_file, matsdir
+    if dc_warp:
+        with TmpDir(tmp_dir=outdir) as tmp:
+            tmp.mkdir()
+            func_ref: str = fslroi(img=func_mc,
+                                   out=os.path.join(tmp.abs_path(),"func0_ref.nii.gz"),
+                                   tmin=0,
+                                   tsize=1)
+            func_mc: str = applywarp(src=func_mc,
+                                     ref=func_ref,
+                                     out=func_mc,
+                                     warp=dc_warp,
+                                     interp='spline')
+    return (func_mc, 
+            parfile, 
+            matsdir)
 
 def eddy_mcdc(func: str,
               func_brainmask: str,
@@ -98,7 +213,7 @@ def eddy_mcdc(func: str,
               s2v_corr: bool = False,
               use_gpu: bool = False,
               log: Optional[LogFile] = None
-             ) -> None:
+             ) -> Tuple[str,str,str]:
     """Perform EDDY-based motion and distortion correction.
 
     NOTE: Input ``fmri`` is **ASSUMED** to be in the PA phase encoding direction.
@@ -214,40 +329,41 @@ def eddy_mcdc(func: str,
             field_hz: str = fslmaths(img=fmap).div(2 * PI).run(out=field_hz, log=log)
         
     # Perform Eddy-based mcdc
-    eddy(img=func,
-         out=eddy_basename,
-         mask=func_brainmask,
-         use_gpu=use_gpu,
-         acqp=acqp,
-         bvecs=bvecs,
-         bvals=bvals,
-         idx=idx,
-         very_verbose=True,
-         niter=niter,
-         fwhm=fwhm,
-         s2v_niter=s2v_niter,
-         mporder=mporder,
-         nvoxhp=nvoxhp,
-         slspec=func_sliceorder,
-         b0_only=True,
-         field=field_hz,
-         field_mat=fmap2func_xfm,
-         s2v_lambda=s2v_lambda,
-         s2v_fwhm=s2v_fwhm,
-         dont_mask_output=True,
-         s2v_interp=s2v_interp,
-         data_is_shelled=True,
-         estimate_move_by_susceptibility=mbs,
-         mbs_niter=mbs_niter,
-         mbs_lambda=mbs_lambda,
-         mbs_ksp=mbs_ksp,
-         cnr_maps=cnr_maps,
-         residuals=residuals)
-
-    # TODO: 
-    #   * Get eddy output parameters
+    (eddy_corr,
+     eddy_motion_par,
+     eddy_mask) = eddy(img=func,
+                       out=eddy_basename,
+                       mask=func_brainmask,
+                       use_gpu=use_gpu,
+                       acqp=acqp,
+                       bvecs=bvecs,
+                       bvals=bvals,
+                       idx=idx,
+                       very_verbose=True,
+                       niter=niter,
+                       fwhm=fwhm,
+                       s2v_niter=s2v_niter,
+                       mporder=mporder,
+                       nvoxhp=nvoxhp,
+                       slspec=func_sliceorder,
+                       b0_only=True,
+                       field=field_hz,
+                       field_mat=fmap2func_xfm,
+                       s2v_lambda=s2v_lambda,
+                       s2v_fwhm=s2v_fwhm,
+                       dont_mask_output=True,
+                       s2v_interp=s2v_interp,
+                       data_is_shelled=True,
+                       estimate_move_by_susceptibility=mbs,
+                       mbs_niter=mbs_niter,
+                       mbs_lambda=mbs_lambda,
+                       mbs_ksp=mbs_ksp,
+                       cnr_maps=cnr_maps,
+                       residuals=residuals,
+                       log=log)
 
     # NOTE: Eddy output files
+    # 
     # eddy_corr.eddy_command_txt                    eddy_corr.eddy_values_of_all_input_parameters
     # eddy_corr.eddy_mbs_first_order_fields.nii.gz  eddy_corr_fmap_Hz_pre-mcdc.nii.gz
     # eddy_corr.eddy_movement_over_time             eddy_corr_fmri_pre-mcdc.acqp_functional.acqp
@@ -257,8 +373,11 @@ def eddy_mcdc(func: str,
     # eddy_corr.eddy_restricted_movement_rms        eddy_corr_fmri_pre-mcdc.slice.order
     # eddy_corr.eddy_rotated_bvecs                  eddy_corr.nii.gz
 
-    # if mot_params:
-    #     rel_sym_link(target=)
+    # Necessary eddy output files
+    func_mcdc: str = copy(eddy_corr, func_mcdc)
+
+    if mot_params:
+        rel_sym_link(target=eddy_motion_par, linkname=mot_params)
     
     # Re-write TR in output NIFTI file header
     func: nib.load(func)
@@ -268,7 +387,9 @@ def eddy_mcdc(func: str,
                     affine=func.affine
                     ).to_filename(func_mcdc)
 
-    return
+    return (func_mcdc,
+            eddy_mask,
+            mot_params)
 
 def write_bvals(num_frames: int,
                 out_file: str = 'file.bval'
@@ -588,3 +709,36 @@ def motion_outlier(func: str,
         plt.savefig(plot_name)
 
     return outlier, metric_data, thr
+
+# This function should be used elsewhere, perhaps outside of this
+#   package.
+# 
+# def _find_optimal_mb_factor_for_eddy_s2v(slices: int,
+#                                          mb_factor: int,
+#                                          attempts: Optional[int] = None,
+#                                          reported_mb: Optional[int] = None,
+#                                         ) -> int:
+#     """Helper function that finds the optimal multi-band factor to best
+#     create/reconstruct the slice order file.
+#     """
+#     if attempts:
+#         pass
+#     else:
+#         attempts: int = 1
+#         reported_mb: int = mb_factor
+#     
+#     if attempts == 10:
+#         possible_mbs: List[int] = list(range(reported_mb-2,13))
+# 
+#         for mb in possible_mbs:
+#             if (slices % mb) == 0:
+#                 return mb
+#             else:
+#                 return reported_mb
+#     
+#     if (slices % mb_factor) == 0:
+#         return mb_factor
+#     elif (slices % mb_factor) >= 5:
+#         return _find_optimal_mb_factor_for_eddy_s2v(slices, mb_factor-1, attempts+1, reported_mb)
+#     elif (slices % mb_factor) <= 5:
+#         return _find_optimal_mb_factor_for_eddy_s2v(slices, mb_factor+1, attempts+1, reported_mb)
