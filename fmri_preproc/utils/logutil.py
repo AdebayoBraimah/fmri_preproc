@@ -3,7 +3,7 @@
 """
 import logging
 
-from fmri_preproc.utils.io import File
+from fmri_preproc.utils.fileio import File
 
 class LogFile(File):
     """Convenience class that creates a log file object for logging purposes. Due to how this class is constructed - its 
