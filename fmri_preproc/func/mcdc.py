@@ -210,7 +210,7 @@ def eddy_mcdc(func: str,
     if fmap:
         with NiiFile(file=fmap, assert_exists=True, validate_nifti=True) as f:
             _, fname, _ = f.file_parts()
-            field_hz: str = os.path.join(eddy_basename + "_" + fname + "_Hz")
+            field_hz: str = os.path.join(eddy_basename + "_" + fname + "_Hz_pre-mcdc")
             field_hz: str = fslmaths(img=fmap).div(2 * PI).run(out=field_hz, log=log)
         
     # Perform Eddy-based mcdc
@@ -246,6 +246,16 @@ def eddy_mcdc(func: str,
 
     # TODO: 
     #   * Get eddy output parameters
+
+    # NOTE: Eddy output files
+    # eddy_corr.eddy_command_txt                    eddy_corr.eddy_values_of_all_input_parameters
+    # eddy_corr.eddy_mbs_first_order_fields.nii.gz  eddy_corr_fmap_Hz.nii.gz
+    # eddy_corr.eddy_movement_over_time             eddy_corr_fmri_pre-mcdc.acqp_functional.acqp
+    # eddy_corr.eddy_movement_rms                   eddy_corr_fmri_pre-mcdc.bval
+    # eddy_corr.eddy_output_mask.nii.gz             eddy_corr_fmri_pre-mcdc.bvec
+    # eddy_corr.eddy_parameters                     eddy_corr_fmri_pre-mcdc.idx
+    # eddy_corr.eddy_restricted_movement_rms        eddy_corr_fmri_pre-mcdc.slice.order
+    # eddy_corr.eddy_rotated_bvecs                  eddy_corr.nii.gz
 
     # if mot_params:
     #     rel_sym_link(target=)
