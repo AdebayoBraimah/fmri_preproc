@@ -201,6 +201,7 @@ def eddy(img: str,
          acqp: str,
          bvecs: str,
          bvals: str,
+         use_gpu: bool = False,
          slspec: Optional[str] = "",
          json_file: Optional[str] = "",
          mporder: int = 0,
@@ -243,14 +244,15 @@ def eddy(img: str,
          log: Optional[LogFile] = None
         ) -> Tuple[str]:
     """work"""
-    eddy_cmds: List[str] = [
-        "eddy_cuda",
-        "eddy_cuda7.5",
-        "eddy_cuda8.0",
-        "eddy_cuda9.1",
-        "eddy_openmp",
-        "eddy"
-    ]
+    eddy_cmds: List[str] = []
+
+    if use_gpu:
+        eddy_cmds.extend(["eddy_cuda",
+                         "eddy_cuda7.5",
+                         "eddy_cuda8.0",
+                         "eddy_cuda9.1"])
+
+    eddy_cmds.extend(["eddy_openmp", "eddy"])
 
     # Select for most optimal implementation of eddy.
     #   Look for GPU implementations first, followed 
@@ -270,10 +272,10 @@ def eddy(img: str,
         except (DependencyError, FileNotFoundError):
             continue
     
-    if out.endswith('.nii.gz'):
-        out: str = out[:-7]
-    elif out.endswith('.nii'):
-        out: str = out[:-4]
+    # if out.endswith('.nii.gz'):
+    #     out: str = out[:-7]
+    # elif out.endswith('.nii'):
+    #     out: str = out[:-4]
     
     # Required eddy current correction options
     img:    NiiFile = NiiFile(file=img, assert_exists=True, validate_nifti=True)
@@ -290,7 +292,7 @@ def eddy(img: str,
     cmd.opt(f"--acqp={acqp.file}")
     cmd.opt(f"--bvecs={bvecs.file}")
     cmd.opt(f"--bvals={bvals.file}")
-    cmd.opt(f"--out={out.file}")
+    cmd.opt(f"--out={out.rm_ext()}")
 
     # Conventional eddy current correction options
     if topup:
@@ -299,7 +301,7 @@ def eddy(img: str,
     
     if field:
         field: NiiFile = NiiFile(file=field, assert_exists=True, validate_nifti=True)
-        cmd.opt(f"--field={field.file}")
+        cmd.opt(f"--field={field.rm_ext()}")
     
     if field_mat:
         field_mat: File = File(file=field_mat, assert_exists=True)
@@ -410,23 +412,24 @@ def eddy(img: str,
         else:
             raise FSLError("Either the 'slspec' or the 'json' option must be specified with the 'mporder' option.")
         
-    if s2v_lambda:
-        cmd.opt(f"--s2v_lambda={s2v_lambda}")
-    
-    if s2v_fwhm:
-        cmd.opt(f"--s2v_fwhm={s2v_fwhm}")
-    
-    if s2v_niter:
-        cmd.opt(f"--s2v_niter={s2v_niter}")
-    
-    if s2v_interp: 
-        s2v_interp: str = ECInterp(s2v_interp).name
-        cmd.opt(f"--s2v_interp={s2v_interp}")
-    
-    out: str = out.file + '.nii.gz'
-    out: NiiFile = NiiFile(file=out, assert_exists=True, validate_nifti=True)
+        if s2v_lambda:
+            cmd.opt(f"--s2v_lambda={s2v_lambda}")
+        
+        if s2v_fwhm:
+            cmd.opt(f"--s2v_fwhm={s2v_fwhm}")
+        
+        if s2v_niter:
+            cmd.opt(f"--s2v_niter={s2v_niter}")
+        
+        if s2v_interp: 
+            s2v_interp: str = ECInterp(s2v_interp).name
+            cmd.opt(f"--s2v_interp={s2v_interp}")
 
     cmd.run(log=log)
+
+    # out: str = out.file + '.nii.gz'
+    # out: NiiFile = NiiFile(file=out, assert_exists=True, validate_nifti=True)
+    # print(out.file)
 
     # TODO:
     #   * Get the corresponding output files for 

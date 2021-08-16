@@ -14,6 +14,7 @@ from math import pi as PI
 from typing import (
     List,
     Optional,
+    Tuple,
     Union
 )
 
@@ -48,7 +49,7 @@ def mcflirt_mc(func: str,
                ref: Optional[Union[int, str]] = None,
                dc_warp: Optional[str] = None,
                log: Optional[LogFile] = None
-              ) -> None:
+              ) -> Tuple[str, str]:
     """Performs MCFLIRT-based motion and distortion correction.
     """
     func: NiiFile = NiiFile(file=func, assert_exists=True, validate_nifti=True)
@@ -58,7 +59,7 @@ def mcflirt_mc(func: str,
         with WorkDir(work_dir=outdir) as d:
             d.mkdir()
 
-    func_mc: File = File(file=func_mc, assert_exists=False)
+    func_mc: NiiFile = NiiFile(file=func_mc, assert_exists=False)
 
     if isinstance(ref, str):
         with NiiFile(file=ref, assert_exists=True, validate_nifti=True) as f:
@@ -72,10 +73,15 @@ def mcflirt_mc(func: str,
     ref_file: Union[str, None] = ref if isinstance(ref, str) else None
 
     par_file, matsdir = mcflirt(infile=func.abs_path(),
-                                outfile=func_mc,
+                                outfile=func_mc.file,
                                 reffile=ref_file,
                                 refvol=ref_vol,
                                 log=log)
+
+    # TODO: 
+    #   * Set mcflirt returns to add par file
+    #       * currently, nifti file and mat dir is returned.
+    #   * Apply dc_warp to first dynamic of func_mcdc
 
     return par_file, matsdir
 
@@ -90,9 +96,12 @@ def eddy_mcdc(func: str,
               mot_params: Optional[str] = None,
               mbs: bool = False,
               s2v_corr: bool = False,
+              use_gpu: bool = False,
               log: Optional[LogFile] = None
              ) -> None:
     """Perform EDDY-based motion and distortion correction.
+
+    NOTE: Input ``fmri`` is **ASSUMED** to be in the PA phase encoding direction.
     """
     if log:
         log.log("Performing EDDY-based motion and distortion correction.")
@@ -122,7 +131,8 @@ def eddy_mcdc(func: str,
     if mbs and not _has_fmap:
         raise RuntimeError('Cannot do MBS without fmap.')
 
-    if s2v_corr and log:
+    # if s2v_corr and log:
+    if s2v_corr and log and use_gpu:
         log.log(f'Performing slice-to-volume (S2V) motion correction')
     elif log:
         log.log(f'Performing rigid-body motion correction')
@@ -161,7 +171,8 @@ def eddy_mcdc(func: str,
     mbs_lambda: Union[int, None] = None
     mbs_ksp:    Union[int, None] = None
 
-    if s2v_corr:
+    # if s2v_corr:
+    if s2v_corr and use_gpu:
         if func_sliceorder:
             with File(file=func_sliceorder, assert_exists=True) as f:
                 func_sliceorder: str = f.abs_path()
@@ -199,17 +210,18 @@ def eddy_mcdc(func: str,
     if fmap:
         with NiiFile(file=fmap, assert_exists=True, validate_nifti=True) as f:
             _, fname, _ = f.file_parts()
-            field_hz: str = os.path.join(eddy_basename + fname + "_Hz")
+            field_hz: str = os.path.join(eddy_basename + "_" + fname + "_Hz")
             field_hz: str = fslmaths(img=fmap).div(2 * PI).run(out=field_hz, log=log)
         
     # Perform Eddy-based mcdc
     eddy(img=func,
          out=eddy_basename,
          mask=func_brainmask,
+         use_gpu=use_gpu,
          acqp=acqp,
          bvecs=bvecs,
          bvals=bvals,
-         index=idx,
+         idx=idx,
          very_verbose=True,
          niter=niter,
          fwhm=fwhm,
@@ -231,6 +243,9 @@ def eddy_mcdc(func: str,
          mbs_ksp=mbs_ksp,
          cnr_maps=cnr_maps,
          residuals=residuals)
+
+    # TODO: 
+    #   * Get eddy output parameters
 
     # if mot_params:
     #     rel_sym_link(target=)
@@ -367,7 +382,9 @@ def write_index(num_frames: int,
     """
     if not isinstance(num_frames, int):
         raise TypeError(f"Input for num_frames: {num_frames} is not an integer.")
-    return np.savetxt(out_file, np.ones((1, num_frames)).T, fmt="%i")
+    np.savetxt(out_file, np.ones((1, num_frames)).T, fmt="%i")
+    out_file: str = os.path.abspath(out_file)
+    return out_file
 
 def write_slice_order(slices: int,
                       mb_factor: int = 1,
@@ -412,7 +429,7 @@ def write_slice_order(slices: int,
         TypeError: Exception that is raised in the case that either ``slices`` or ``mb_factor`` is not an ``int``.
     """
     # Check input types
-    if not isinstance(slices, int) or not isinstance(mb_factor, int):
+    if not isinstance(slices, int) and not isinstance(mb_factor, int):
         raise TypeError(f"Input option slices: {slices} or mb_factor: {mb_factor} is not an integer.")
     
     # Locations (in the slices) divided by Multi-Band Factor
@@ -446,6 +463,7 @@ def write_slice_order(slices: int,
     np.savetxt(out_file,
                slice_order, 
                fmt="%i")
+    out_file: str = os.path.abspath(out_file)
     return out_file
 
 def _dvars(img: nib.Nifti1Header) -> np.array:
@@ -508,9 +526,9 @@ def motion_outlier(func: str,
 
     metric: str = MotionMetric(metric).name
 
-    if metric is 'dvars':
+    if metric == 'dvars':
         metric_data: np.array = dvars
-    elif metric is 'refrms':
+    elif metric == 'refrms':
         metric_data: np.array = refrms
     
     # Calculate outlier
