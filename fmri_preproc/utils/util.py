@@ -238,13 +238,13 @@ class Command:
         # Write std output/error files
         if stdout:
             stderr: str = os.path.splitext(stdout)[0] + ".err"
-            
-            # TODO: use context manager here, return str, not File obj
-            stdout: File = File(stdout)
-            stderr: File = File(stderr)
-            
-            stdout.write_txt(out)
-            stderr.write_txt(err)
+
+            with File(file=stdout) as stout:
+                with File(file=stderr) as sterr:
+                    stout.write_txt(out)
+                    sterr.write_txt(err)
+                    stdout: str = stout.abs_path()
+                    stderr: str = sterr.abs_path()
         else:
             stdout: None = None
             stderr: None = None
@@ -286,7 +286,7 @@ def rel_sym_link(target: str,
         ...
         >>> linked_file
         "/home/my_zprofile"
-        
+
     Arguments:
         target: Input target file.
         linkname: Output name of symlinked file.
