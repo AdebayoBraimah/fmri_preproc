@@ -249,7 +249,7 @@ def eddy_mcdc(func: str,
 
     # NOTE: Eddy output files
     # eddy_corr.eddy_command_txt                    eddy_corr.eddy_values_of_all_input_parameters
-    # eddy_corr.eddy_mbs_first_order_fields.nii.gz  eddy_corr_fmap_Hz.nii.gz
+    # eddy_corr.eddy_mbs_first_order_fields.nii.gz  eddy_corr_fmap_Hz_pre-mcdc.nii.gz
     # eddy_corr.eddy_movement_over_time             eddy_corr_fmri_pre-mcdc.acqp_functional.acqp
     # eddy_corr.eddy_movement_rms                   eddy_corr_fmri_pre-mcdc.bval
     # eddy_corr.eddy_output_mask.nii.gz             eddy_corr_fmri_pre-mcdc.bvec
