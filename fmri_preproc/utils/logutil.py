@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Logging utility.
+"""Logging utility module.
 """
 import logging
-
 from fmri_preproc.utils.fileio import File
 
 class LogFile(File):
@@ -59,7 +58,7 @@ class LogFile(File):
         super(LogFile, self).__init__(self.log_file)
         
     def info(self,
-            msg: str = "") -> None:
+             msg: str = "") -> None:
         """Writes information to log file.
         
         Usage examples:
@@ -72,7 +71,7 @@ class LogFile(File):
         self.logger.info(msg)
         
     def debug(self,
-            msg: str = "") -> None:
+              msg: str = "") -> None:
         """Writes debug information to file.
         
         Usage examples:
@@ -85,7 +84,7 @@ class LogFile(File):
         self.logger.debug(msg)
         
     def error(self,
-            msg: str = "") -> None:
+              msg: str = "") -> None:
         """Writes error information to file.
         
         Usage examples:
@@ -98,7 +97,7 @@ class LogFile(File):
         self.logger.error(msg)
         
     def warning(self,
-            msg: str = "") -> None:
+                msg: str = "") -> None:
         """Writes warnings to file.
         
         Usage examples:

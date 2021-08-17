@@ -142,6 +142,34 @@ class File(IOBaseObj):
             String that reprents the sym linked file path.
         """
         return super().sym_link(dst, relative)
+    
+    def copy(self,
+             dst: str
+            ) -> str:
+        """Copies file to some source destination.
+
+        Usage example:
+            >>> # Using class object as context manager
+            >>> with File("file_name.txt") as file:
+            ...     new_file: str = file.copy("file2.txt")
+            ...
+            >>> new_file
+            "/abs/path/to/file2.txt"
+            >>>
+            >>> # or
+            >>> 
+            >>> file = File("file_name.txt")
+            >>> file.copy("file2.txt")
+            "/abs/path/to/file2.txt"
+
+        Arguments:
+            dst: Destination file path.
+            relative: Symbolically link the file using a relative path.
+
+        Returns:
+            String that corresponds to the copied file.
+        """
+        return super().copy(dst)
 
     def touch(self) -> None:
         """Creates an empty file.

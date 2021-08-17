@@ -5,40 +5,42 @@ import os
 import shutil
 from typing import Union
 
-class WorkDir:
+from fmri_preproc.utils.io import IOBaseObj
+
+class WorkDir(IOBaseObj):
     """Working directory base class that instantiates ``WorkDir`` objects that creates and manipulates working directories.
 
     Attributes:
-        work_dir: Input working directory.
+        src: Input working directory.
         parent_dir: Parent directory.
 
     Usage example:
             >>> # Using class object as context manager
             >>> ## Create work directory , then clean-up (remove it)
-            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            >>> with WorkDir(src="/path/to/working_directory", use_cwd=False) as work:
             ...     work.mkdir()
             ...     work.rmdir(rm_parent=False)
             ...
             >>> # or
             >>>
-            >>> work = TmpDir(work_dir="/path/to/working_directory", 
-            ...               use_cwd=False)
+            >>> work = WorkDir(src="/path/to/working_directory", 
+            ...                use_cwd=False)
             >>> work.mkdir()
             >>> work
             "/path/to/working_directory"
             >>> work.rmdir(rm_parent=False)
 
     Arguments:
-        work_dir: Working directory name/path. This directory need not exist at runtime.
+        src: Working directory name/path. This directory need not exist at runtime.
         use_cwd: Use current working directory as the parent directory.
     """
     __slots__ = [ 
-                    "work_dir", 
+                    "src", 
                     "parent_dir"
                 ]
 
     def __init__(self, 
-                 work_dir: str,
+                 src: str,
                  use_cwd: bool = False
                 ) -> None:
         """Initialization method for the ``WorkDir`` base class.
@@ -46,42 +48,31 @@ class WorkDir:
         Usage example:
             >>> # Using class object as context manager
             >>> ## Create work directory , then clean-up (remove it)
-            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            >>> with WorkDir(src="/path/to/working_directory", use_cwd=False) as work:
             ...     work.mkdir()
             ...     work.rmdir(rm_parent=False)
             ...
             >>> # or
             >>>
-            >>> work = TmpDir(work_dir="/path/to/working_directory", 
-            ...               use_cwd=False)
+            >>> work = WorkDir(src="/path/to/working_directory", 
+            ...                use_cwd=False)
             >>> work.mkdir()
             >>> work
             "/path/to/working_directory"
             >>> work.rmdir(rm_parent=False)
         
         Arguments:
-            work_dir: Working directory name/path. This directory need not exist at runtime.
+            src: Working directory name/path. This directory need not exist at runtime.
             use_cwd: Use current working directory as the parent directory.
         """
-        self.work_dir: str = work_dir
-        self.parent_dir: str = os.path.dirname(self.work_dir)
+        self.src: str = src
+        self.parent_dir: str = os.path.dirname(self.src)
+        super(WorkDir, self).__init__(src)
 
         if use_cwd:
             _cwd: str = os.getcwd()
-            self.work_dir: str = os.path.join(_cwd,self.work_dir)
-            self.parent_dir: str = os.path.dirname(self.work_dir)
-
-    def __enter__(self):
-        """Context manager entrance method."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, traceback):
-        """Context manager exit method."""
-        return False
-    
-    def __repr__(self):
-        """Representation request method."""
-        return self.work_dir
+            self.src: str = os.path.join(_cwd, self.src)
+            self.parent_dir: str = os.path.dirname(self.src)
     
     def mkdir(self) -> None:
         """Makes/creates the working directory.
@@ -90,19 +81,19 @@ class WorkDir:
 
         Usage example:
             >>> # Using class object as context manager
-            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            >>> with WorkDir(src="/path/to/working_directory", use_cwd=False) as work:
             ...     work.mkdir()
             ...
             >>> # or
             >>>
-            >>> work = TmpDir(work_dir="/path/to/working_directory", 
-            ...               use_cwd=False)
+            >>> work = WorkDir(src="/path/to/working_directory", 
+            ...                use_cwd=False)
             >>> work.mkdir()
             >>> work
             "/path/to/working_directory"
         """
-        if not os.path.exists(self.work_dir):
-            return os.makedirs(self.work_dir)
+        if not os.path.exists(self.src):
+            return os.makedirs(self.src)
         else:
             print("Working directory already exists.")
             return None
@@ -116,14 +107,14 @@ class WorkDir:
 
         Usage example:
             >>> # Using class object as context manager
-            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            >>> with WorkDir(src="/path/to/working_directory", use_cwd=False) as work:
             ...     work.mkdir()
             ...     work.rmdir(rm_parent=False)
             ...
             >>> # or
             >>>
-            >>> work = TmpDir(work_dir="/path/to/working_directory", 
-            ...               use_cwd=False)
+            >>> work = WorkDir(src="/path/to/working_directory", 
+            ...                use_cwd=False)
             >>> work.mkdir()
             >>> work.rmdir(rm_parent=False)
 
@@ -131,36 +122,93 @@ class WorkDir:
             rm_parent: Removes parent directory as well.
         """
         if rm_parent and os.path.exists(self.parent_dir):
-            return shutil.rmtree(self.parent_dir,ignore_errors=True)
-        elif os.path.exists(self.work_dir):
-            return shutil.rmtree(self.work_dir,ignore_errors=True)
+            return shutil.rmtree(self.parent_dir, ignore_errors=True)
+        elif os.path.exists(self.src):
+            return shutil.rmtree(self.src, ignore_errors=True)
         else:
             print("Working directory does not exist.")
             return None
     
-    def abs_path(self) -> Union[str,None]:
+    def abspath(self,
+                follow_sym_links: bool = False
+               ) -> Union[str,None]:
         """Returns the absolute path of the working directory.
 
         Usage example:
-            Usage example:
             >>> # Using class object as context manager
-            >>> with WorkDir(work_dir="/path/to/working_directory", use_cwd=False) as work:
+            >>> with WorkDir(src="/path/to/working_directory", use_cwd=False) as work:
             ...     work.mkdir()
-            ...     print(work.abs_path())
+            ...     print(work.abspath())
             ...
             /abs/path/to/working_directory
             >>> # or
             >>>
-            >>> work = TmpDir(work_dir="/path/to/working_directory", 
-            ...               use_cwd=False)
+            >>> work = WorkDir(src="/path/to/working_directory", 
+            ...                use_cwd=False)
             >>> work.mkdir()
-            >>> work.work.abs_path()
+            >>> work.work.abspath()
             /abs/path/to/working_directory
+        
+        Arguments:
+            follow_sym_links: If set to true, the absolute path of the symlinked file is returned.
         
         Returns:
             String that represents the absolute path of the working directory or ``None`` if the directory does not exist.
         """
-        if os.path.exists(self.work_dir):
-            return os.path.abspath(self.work_dir)
-        else:
-            return None
+        return super().abspath(follow_sym_links)
+    
+    def sym_link(self, 
+                 dst: str, 
+                 relative: bool = False
+                ) -> str:
+        """Creates a symbolic link with an absolute or relative file path.
+
+        Usage example:
+            >>> # Using class object as context manager
+            >>> with WorkDir("/path/to/working_directory") as file:
+            ...     work: str = work.sym_link("/path/to/new/directory")
+            ...
+            >>> work
+            "/path/to/new/directory"
+            >>>
+            >>> # or
+            >>> 
+            >>> work = WorkDir("/path/to/working_directory")
+            >>> work.sym_link("/path/to/new/directory")
+            "/path/to/new/directory"
+
+        Arguments:
+            dst: Destination file path.
+            relative: Symbolically link the file using a relative path.
+
+        Returns:
+            String that reprents the sym linked file path.
+        """
+        return super().sym_link(dst, relative)
+    
+    def copy(self,
+             dst: str
+            ) -> str:
+        """Copies a directory to some source destination.
+
+        Usage example:
+            >>> # Using class object as context manager
+            >>> with WorkDir("/path/to/working_directory") as file:
+            ...     work: str = work.copy("/path/to/new/directory")
+            ...
+            >>> work
+            "/path/to/new/directory"
+            >>>
+            >>> # or
+            >>> 
+            >>> work = WorkDir("/path/to/working_directory")
+            >>> work.copy("/path/to/new/directory")
+            "/path/to/new/directory"
+
+        Arguments:
+            dst: Destination file path.
+
+        Returns:
+            String that corresponds to the copied work.
+        """
+        return super().copy(dst)
