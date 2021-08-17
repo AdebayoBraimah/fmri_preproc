@@ -193,7 +193,7 @@ class File(IOBaseObj):
                 pass
         return None
     
-    def rm_ext(self,
+    def rmdir(self,
                ext: str = "") -> str:
         """Removes file extension from the file.
         
@@ -201,14 +201,14 @@ class File(IOBaseObj):
             >>> # Using class object as context manager
             >>> with File("file_name.txt") as file:
             ...     file.touch()
-            ...     print(file.rm_ext())
+            ...     print(file.rmdir())
             ...
             "file_name"
             >>> 
             >>> # or
             >>> 
             >>> file = File("file_name.txt")
-            >>> file.rm_ext()
+            >>> file.rmdir()
             "file_name"
         
         Arguments:
@@ -326,7 +326,7 @@ class NiiFile(File):
         >>> nii.abs_path()
         "abspath/to/file.nii"
         >>> 
-        >>> nii.rm_ext()
+        >>> nii.rmdir()
         "file"
         >>>
         >>> nii.file_parts()
@@ -365,7 +365,7 @@ class NiiFile(File):
             >>> nii.abs_path()
             "abspath/to/file.nii"
             >>> 
-            >>> nii.rm_ext()
+            >>> nii.rmdir()
             "file"
             >>>
             >>> nii.file_parts()

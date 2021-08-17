@@ -565,7 +565,7 @@ def fslreorient2std(img: str,
     
     if out:
         cmd.opt(f"{out.src}")
-    
+
     cmd.run(log=log)
 
     return (img.src, 
