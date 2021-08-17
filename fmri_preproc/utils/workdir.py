@@ -189,7 +189,7 @@ class WorkDir(IOBaseObj):
     def copy(self,
              dst: str
             ) -> str:
-        """Copies a directory to some source destination.
+        """Recursively copies a directory to some destination.
 
         Usage example:
             >>> # Using class object as context manager
