@@ -108,7 +108,7 @@ class IOBaseObj(ABC):
             >>>
             >>> # OR
             >>> file = SomeFileClass("file_name.txt")
-            >>> file.abs_path()
+            >>> file.abspath()
             "abspath/to/file_namt.txt"
         
         Arguments:
@@ -229,7 +229,8 @@ class IOBaseObj(ABC):
         Return:
             String that corresponds to the copied file or directory.
         """
-        if os.path.isfile(self.abspath(follow_sym_links=True)):
-            return os.path.abspath(copy(src=self.abspath(follow_sym_links=True), dst=dst))
-        elif os.path.isdir(self.abspath(follow_sym_links=True)):
-            return os.path.abspath(copytree(src=self.abspath(follow_sym_links=True), dst=dst))
+        src: str = self.abspath(follow_sym_links=True)
+        if os.path.isfile(src):
+            return os.path.abspath(copy(src=src, dst=dst))
+        elif os.path.isdir(src):
+            return os.path.abspath(copytree(src=src, dst=dst))
