@@ -248,30 +248,31 @@ def eddy(img: str,
     NOTE: 
         The function return files are not exhaustive (i.e. not all of eddy's files are returned, just the necessary ones).
     """
-    eddy_cmds: List[str] = []
-
-    if use_gpu:
-        eddy_cmds.extend(["eddy_cuda",
-                         "eddy_cuda7.5",
-                         "eddy_cuda8.0",
-                         "eddy_cuda9.1"])
-
-    eddy_cmds.extend(["eddy_openmp", "eddy"])
+    eddy_cmds: List[str] = [ 
+                            "eddy_cuda", 
+                            "eddy_cuda9.1",
+                            "eddy_cuda8.0",
+                            "eddy_cuda7.5",
+                            "eddy_openmp",
+                            "eddy"
+                           ]
 
     # Select for most optimal implementation of eddy.
     #   Look for GPU implementations first, followed 
     #   by openmp, then eddy.
     for eddy_cmd in eddy_cmds:
         try:
-            cmd: Command = Command(eddy_cmd)
+            if 'cuda' in eddy_cmd:
+                cuda_cmd: str = "nvcc"
+            else:
+                cuda_cmd: str = "echo"
             
-            (return_code, 
-             _, 
-             _) = cmd.run(log=log)
+            cmd1: Command = Command(eddy_cmd)
+            cmd2: Command = Command(cuda_cmd)
             
-            # Check if the dependency is met and if the return code
-            #   of an empty command options list returns 1.
-            if (cmd.check_dependency()) and (return_code == 1):
+            # Check if both of the dependencies are met.
+            if (cmd1.check_dependency()) and (cmd2.check_dependency()):
+                cmd: Command = cmd1
                 break
         except (DependencyError, FileNotFoundError):
             continue
