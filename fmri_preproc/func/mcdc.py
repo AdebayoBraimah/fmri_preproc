@@ -22,7 +22,6 @@ from typing import (
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
-from fmri_preproc.utils.util import rel_sym_link
 
 from fmri_preproc.utils.fslpy import (
     applywarp,
@@ -33,7 +32,7 @@ from fmri_preproc.utils.fslpy import (
     mcflirt
 )
 
-from fmri_preproc.utils.io import (
+from fmri_preproc.utils.fileio import (
     File,
     NiiFile
 )
@@ -378,7 +377,8 @@ def eddy_mcdc(func: str,
     func_mcdc: str = copy(eddy_corr, func_mcdc)
 
     if mot_params:
-        rel_sym_link(target=eddy_motion_par, linkname=mot_params)
+        with File(src=eddy_motion_par) as f:
+            mot_params: str = f.sym_link(mot_params)
     
     # Re-write TR in output NIFTI file header
     func: nib.load(func)

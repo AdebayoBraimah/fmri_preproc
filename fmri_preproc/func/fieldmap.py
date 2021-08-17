@@ -24,7 +24,7 @@ from fmri_preproc.utils.fslpy import (
     fslmaths
 )
 
-from fmri_preproc.utils.io import (
+from fmri_preproc.utils.fileio import (
     File,
     NiiFile
 )
@@ -43,44 +43,44 @@ def fieldmap(outdir: str,
     if log:
         log.log("Preparing fieldmaps")
 
-    with WorkDir(work_dir=outdir) as od:
-        topup_dir: str = os.path.join(od.work_dir, "topup")
-        with WorkDir(work_dir=topup_dir) as td:
+    with WorkDir(src=outdir) as od:
+        topup_dir: str = os.path.join(od.src, "topup")
+        with WorkDir(src=topup_dir) as td:
             if log:
-                log.log(f"Making fieldmap directory: {od.work_dir}.")
+                log.log(f"Making fieldmap directory: {od.src}.")
             td.mkdir()
-            outdir: str = od.abs_path()
-            topup_dir: str = td.abs_path()
+            outdir: str = od.abspath()
+            topup_dir: str = td.abspath()
 
     if spinecho:
         if log:
             log.log(f"Input spinecho fieldmap/sbref: {spinecho}.")
 
-        spinecho: NiiFile = NiiFile(file=spinecho, assert_exists=True, validate_nifti=True)
-        _, spinecho, _ = fslreorient2std(img=spinecho.file, out=os.path.join(outdir,f"spinecho{spinecho.ext}"))
-        spinecho: NiiFile = NiiFile(file=spinecho)
+        spinecho: NiiFile = NiiFile(src=spinecho, assert_exists=True, validate_nifti=True)
+        _, spinecho, _ = fslreorient2std(img=spinecho.src, out=os.path.join(outdir,f"spinecho{spinecho.ext}"))
+        spinecho: NiiFile = NiiFile(src=spinecho)
 
     elif ap_dir and pa_dir:
         if log:
             log.log(f"Input AP fieldmap/sbref: {ap_dir}.")
             log.log(f"Input PA fieldmap/sbref: {pa_dir}.")
 
-        ap_dir: NiiFile = NiiFile(file=ap_dir, assert_exists=True, validate_nifti=True)
-        pa_dir: NiiFile = NiiFile(file=pa_dir, assert_exists=True, validate_nifti=True)
-        _, ap_dir, _ = fslreorient2std(img=ap_dir.file, out=os.path.join(outdir,f"sbref_ap{ap_dir.ext}"))
-        _, pa_dir, _ = fslreorient2std(img=pa_dir.file, out=os.path.join(outdir,f"sbref_pa{pa_dir.ext}"))
+        ap_dir: NiiFile = NiiFile(src=ap_dir, assert_exists=True, validate_nifti=True)
+        pa_dir: NiiFile = NiiFile(src=pa_dir, assert_exists=True, validate_nifti=True)
+        _, ap_dir, _ = fslreorient2std(img=ap_dir.src, out=os.path.join(outdir,f"sbref_ap{ap_dir.ext}"))
+        _, pa_dir, _ = fslreorient2std(img=pa_dir.src, out=os.path.join(outdir,f"sbref_pa{pa_dir.ext}"))
 
         spinecho: str = _merge_rpe(ap_dir=ap_dir,
                                    pa_dir=pa_dir,
                                    out=os.path.join(outdir,"spinecho"),
                                    log=log)
         
-        spinecho: NiiFile = NiiFile(file=spinecho, assert_exists=True, validate_nifti=True)
+        spinecho: NiiFile = NiiFile(src=spinecho, assert_exists=True, validate_nifti=True)
 
     else:
         raise AttributeError("Neither of the 'spinecho' OR 'ap_dir' and 'pa_dir' options were specified.")
 
-    slices: int = nib.load(filename=spinecho.abs_path()).header.get('dim','')[3]
+    slices: int = nib.load(filename=spinecho.abspath()).header.get('dim','')[3]
 
     if config:
         pass
@@ -96,7 +96,7 @@ def fieldmap(outdir: str,
 
     (_,
      field_img,
-     mag_img) = topup(img=spinecho.file, 
+     mag_img) = topup(img=spinecho.src, 
                       param=dist_acqp, 
                       out=os.path.join(topup_dir, "topup_dist_corr"),
                       config=config,
@@ -119,15 +119,14 @@ def fieldmap(outdir: str,
 
     with TmpDir(tmp_dir=os.path.join(topup_dir)) as tmp:
         tmp.mkdir()
-        brain: str = os.path.join(tmp.work_dir,"brain")
+        brain: str = os.path.join(tmp.src,"brain")
         fmap_brain, _ = bet(img=fmap,
                             out=brain,
                             mask=False,
                             robust=True,
                             log=log)
         fmap_mask: str = fslmaths(img=fmap_brain).bin().run(out=os.path.join(outdir,"fmap_brainmask"),log=log)
-        tmp.rmdir
-
+        tmp.rmdir()
     return (fmap,
             mag,
             fmap_mask)
@@ -141,21 +140,21 @@ def _get_b0_conf(slices: int,
 
     if ((slices % 2) == 0) and default:
         config: str = os.path.join(config_parent_dir,'b02b0.cnf')
-        config: File = File(file=config, assert_exists=True)
-        return config.abs_path()
+        config: File = File(src=config, assert_exists=True)
+        return config.abspath()
 
     if (slices % 4) == 0:
         config: str = os.path.join(config_parent_dir,'b02b0_4.cnf')
-        config: File = File(file=config, assert_exists=True)
-        return config.abs_path()
+        config: File = File(src=config, assert_exists=True)
+        return config.abspath()
     elif (slices % 2) == 0:
         config: str = os.path.join(config_parent_dir,'b02b0_2.cnf')
-        config: File = File(file=config, assert_exists=True)
-        return config.abs_path()
+        config: File = File(src=config, assert_exists=True)
+        return config.abspath()
     else:
         config: str = os.path.join(config_parent_dir,'b02b0_1.cnf')
-        config: File = File(file=config, assert_exists=True)
-        return config.abs_path()
+        config: File = File(src=config, assert_exists=True)
+        return config.abspath()
 
 def write_fieldmap_acq_params(effective_echo_spacing: Optional[float] = 0.05, 
                               out_prefix: Optional[str] = 'file'
@@ -200,7 +199,6 @@ def write_fieldmap_acq_params(effective_echo_spacing: Optional[float] = 0.05,
     
     # Obtain absolute file paths
     out_dist: str = os.path.abspath(out_dist)
-    
     return out_dist
 
 def _merge_rpe(ap_dir: str,
@@ -210,13 +208,13 @@ def _merge_rpe(ap_dir: str,
               ) -> str:
     """Merges reverse phase-encoded (rPE) fieldmaps or single band references (sbrefs).
     """
-    ap_dir: NiiFile = NiiFile(file=ap_dir, assert_exists=True, validate_nifti=True)
-    pa_dir: NiiFile = NiiFile(file=pa_dir, assert_exists=True, validate_nifti=True)
+    ap_dir: NiiFile = NiiFile(src=ap_dir, assert_exists=True, validate_nifti=True)
+    pa_dir: NiiFile = NiiFile(src=pa_dir, assert_exists=True, validate_nifti=True)
 
     fslmerge(out,
              "t",
              None,
              log,
-             pa_dir.abs_path(),
-             ap_dir.abs_path())
+             pa_dir.abspath(),
+             ap_dir.abspath())
     return out
