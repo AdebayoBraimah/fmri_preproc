@@ -323,7 +323,7 @@ class NiiFile(File):
         >>> nii = NiiFile("file.nii")
         >>> nii
         "file.nii"
-        >>> nii.abs_path()
+        >>> nii.abspath()
         "abspath/to/file.nii"
         >>> 
         >>> nii.rm_ext()
@@ -349,7 +349,7 @@ class NiiFile(File):
         Usage example:
             >>> # Using class object as context manager
             >>> with NiiFile("file.nii") as nii:
-            ...     print(nii.abs_path())
+            ...     print(nii.abspath())
             ...     print(nii.src)
             ...     print(nii.file_parts())
             ...
@@ -362,7 +362,7 @@ class NiiFile(File):
             >>> nii = NiiFile("file.nii")
             >>> nii
             "file.nii"
-            >>> nii.abs_path()
+            >>> nii.abspath()
             "abspath/to/file.nii"
             >>> 
             >>> nii.rm_ext()
