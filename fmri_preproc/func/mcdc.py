@@ -160,35 +160,35 @@ def mcflirt_mc(func: str,
 
     with File(file=func_mc, assert_exists=False) as f:
         outdir, _, _ = f.file_parts()
-        with WorkDir(work_dir=outdir) as d:
+        with WorkDir(src=outdir) as d:
             d.mkdir()
 
     func_mc: NiiFile = NiiFile(file=func_mc, assert_exists=False)
 
     if isinstance(ref, str):
         with NiiFile(file=ref, assert_exists=True, validate_nifti=True) as f:
-            ref: str = f.abs_path()
+            ref: str = f.abspath()
     
     if dc_warp:
         with NiiFile(file=dc_warp, assert_exists=True, validate_nifti=True) as f:
-            dc_warp: str = f.abs_path()
+            dc_warp: str = f.abspath()
     
     ref_vol: Union[int, None] = ref if isinstance(ref, int) else None
     ref_file: Union[str, None] = ref if isinstance(ref, str) else None
 
     (func_mc,
      parfile, 
-     matsdir) = mcflirt(infile=func.abs_path(),
+     matsdir) = mcflirt(infile=func.abspath(),
                         outfile=func_mc.file,
                         reffile=ref_file,
                         refvol=ref_vol,
                         log=log)
 
     if dc_warp:
-        with TmpDir(tmp_dir=outdir) as tmp:
+        with TmpDir(src=outdir) as tmp:
             tmp.mkdir()
             func_ref: str = fslroi(img=func_mc,
-                                   out=os.path.join(tmp.abs_path(),"func0_ref.nii.gz"),
+                                   out=os.path.join(tmp.abspath(),"func0_ref.nii.gz"),
                                    tmin=0,
                                    tsize=1)
             func_mc: str = applywarp(src=func_mc,
@@ -224,14 +224,14 @@ def eddy_mcdc(func: str,
     with NiiFile(file=func, assert_exists=True, validate_nifti=True) as fn:
         with NiiFile(file=func_brainmask, assert_exists=True, validate_nifti=True) as fb:
             with File(file=func_mcdc) as fmc:
-                func: str = fn.abs_path()
-                func_brainmask: str = fb.abs_path()
+                func: str = fn.abspath()
+                func_brainmask: str = fb.abspath()
 
                 outdir, _, _ = fmc.file_parts()
                 eddy_dir: str = os.path.join(outdir,"eddy")
                 eddy_basename: str = os.path.join(eddy_dir,"eddy_corr")
 
-                with WorkDir(work_dir=eddy_dir) as d:
+                with WorkDir(src=eddy_dir) as d:
                     if log:
                         log.log("Creating eddy output directory.")
                     d.mkdir()
@@ -290,7 +290,7 @@ def eddy_mcdc(func: str,
     if s2v_corr and use_gpu:
         if func_sliceorder:
             with File(file=func_sliceorder, assert_exists=True) as f:
-                func_sliceorder: str = f.abs_path()
+                func_sliceorder: str = f.abspath()
         else:
             func_sliceorder: str = write_slice_order(slices=slices, 
                                                     mb_factor=mb_factor, 
@@ -316,7 +316,7 @@ def eddy_mcdc(func: str,
     # Prepare fieldmap transform
     if fmap2func_xfm:
         with File(file=fmap2func_xfm, assert_exists=True) as f:
-            fmap2func_xfm: str = f.abs_path()
+            fmap2func_xfm: str = f.abspath()
     else:
         fmap2func_xfm: str = os.path.join(FSLDIR,'etc', 'flirtsch', 'ident.mat')
     

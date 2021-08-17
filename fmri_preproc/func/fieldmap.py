@@ -117,7 +117,7 @@ def fieldmap(outdir: str,
     if log:
         log.log("Creating fieldmap brain mask.")
 
-    with TmpDir(tmp_dir=os.path.join(topup_dir)) as tmp:
+    with TmpDir(src=os.path.join(topup_dir)) as tmp:
         tmp.mkdir()
         brain: str = os.path.join(tmp.src,"brain")
         fmap_brain, _ = bet(img=fmap,
