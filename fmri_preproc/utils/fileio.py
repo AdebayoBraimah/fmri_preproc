@@ -193,7 +193,7 @@ class File(IOBaseObj):
                 pass
         return None
     
-    def rmdir(self,
+    def rm_ext(self,
                ext: str = "") -> str:
         """Removes file extension from the file.
         
@@ -201,14 +201,14 @@ class File(IOBaseObj):
             >>> # Using class object as context manager
             >>> with File("file_name.txt") as file:
             ...     file.touch()
-            ...     print(file.rmdir())
+            ...     print(file.rm_ext())
             ...
             "file_name"
             >>> 
             >>> # or
             >>> 
             >>> file = File("file_name.txt")
-            >>> file.rmdir()
+            >>> file.rm_ext()
             "file_name"
         
         Arguments:
@@ -326,7 +326,7 @@ class NiiFile(File):
         >>> nii.abs_path()
         "abspath/to/file.nii"
         >>> 
-        >>> nii.rmdir()
+        >>> nii.rm_ext()
         "file"
         >>>
         >>> nii.file_parts()
@@ -365,7 +365,7 @@ class NiiFile(File):
             >>> nii.abs_path()
             "abspath/to/file.nii"
             >>> 
-            >>> nii.rmdir()
+            >>> nii.rm_ext()
             "file"
             >>>
             >>> nii.file_parts()
@@ -438,10 +438,10 @@ class NiiFile(File):
 
         if header_field == 'descrip':
             if len(txt) >= 24:
-                warn(f"The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field}' header field.")
+                warn(f"WARNING: The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field}' header field.")
             img.header['descrip'] = txt
         elif header_field == 'intent_name':
             if len(txt) >= 16:
-                warn(f"The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field}' header field.")
+                warn(f"WARNING: The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field}' header field.")
             img.header['intent_name'] = txt
         return None
