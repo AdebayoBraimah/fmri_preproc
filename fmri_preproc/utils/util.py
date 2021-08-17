@@ -142,8 +142,6 @@ class Command:
         if not shutil.which(self.command):
             if err_msg:
                 print(f"\n \t {err_msg} \n")
-            else:
-                print(f"\n \t The required dependency {self.command} is not installed or in the system path. \n")
             raise DependencyError(f"Command executable not found in system path: {self.command}.")
         else:
             return True
@@ -242,8 +240,8 @@ class Command:
                     stdout: str = stout.abspath()
                     stderr: str = sterr.abspath()
         else:
-            stdout: None = None
-            stderr: None = None
+            stdout: str = None
+            stderr: str = None
 
         if p.returncode != 0:
             if log:
