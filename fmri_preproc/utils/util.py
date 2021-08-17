@@ -20,10 +20,6 @@ class DependencyError(Exception):
     """Exception intended for unment dependencies"""
     pass
 
-class SymLinkWarning(Warning):
-    """Warning intended for symlinking files with an existing link of the same name."""
-    pass
-
 class Command:
     """Creates a command and an empty command list for UNIX command line programs/applications. Primary use and
     use-cases are intended for the subprocess module and its associated classes (i.e. Popen/call/run).
@@ -241,10 +237,10 @@ class Command:
 
             with File(file=stdout) as stout:
                 with File(file=stderr) as sterr:
-                    stout.write_txt(out)
-                    sterr.write_txt(err)
-                    stdout: str = stout.abs_path()
-                    stderr: str = sterr.abs_path()
+                    stout.write(out)
+                    sterr.write(err)
+                    stdout: str = stout.abspath()
+                    stderr: str = sterr.abspath()
         else:
             stdout: None = None
             stderr: None = None
