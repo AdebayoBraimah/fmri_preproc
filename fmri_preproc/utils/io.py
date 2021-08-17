@@ -192,7 +192,7 @@ class IOBaseObj(ABC):
     def copy(self, 
              dst: str
             ) -> str:
-        """Copies file or directory to some source destination.
+        """Copies file or recursively copies a directory to some destination.
 
         Usage example:
             >>> # Initialize child class and inherit 
