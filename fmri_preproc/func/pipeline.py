@@ -15,6 +15,9 @@
 #   a. meldic
 # 5. Denoise
 #   a. FIX
+# 6. Post-processing
+#   a. Spatial smooting
+#   b. intensity norm
 # 6. QC
 #   a. PENDING
 
