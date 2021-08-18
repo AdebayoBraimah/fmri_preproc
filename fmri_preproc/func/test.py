@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import sys
-import os
 _mod_path: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc"
 sys.path.append(_mod_path)
 
