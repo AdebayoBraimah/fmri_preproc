@@ -54,7 +54,6 @@ def mcdc(func: str,
          s2v: bool = False,
          mbs: bool = False,
          use_mcflirt: bool = False,
-         use_gpu: bool = False,
          ref: Union[str,int] = 0,
          log: Optional[LogFile] = None
         ) -> None:
@@ -62,9 +61,8 @@ def mcdc(func: str,
     """
     # TODO: remove use_gpu bool from eddy and all dependencies
     # Logic tests
-    _has_fmap = fmap is not None
-    _has_slorder = (mb_factor is not None) or (func_slorder is not None)
-    _has_acqp = func_echospacing is not None
+    _has_fmap: bool = fmap is not None
+    _has_acqp: bool = func_echospacing is not None
 
     if dc:
         pass
@@ -78,11 +76,10 @@ def mcdc(func: str,
 
     if s2v:
         pass
-    else:
-        s2v: bool = _has_slorder
     
     if use_mcflirt:
-        pass
+        _has_fmap: bool = False
+        _has_acqp: bool = False
     else:
         use_mcflirt: bool = (not dc) & (not s2v) & (not mbs)
 
