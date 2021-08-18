@@ -57,7 +57,9 @@ def mcdc(func: str,
         ) -> None:
     """Perform motion and distortion correction stage of ``fmri_preproc``.
     """
-    # TODO: remove use_gpu bool from eddy and all dependencies
+    if log:
+        log.log("Performing Motion correction")
+
     # Logic tests
     _has_fmap: bool = fmap is not None
     _has_acqp: bool = func_echospacing is not None
@@ -83,19 +85,29 @@ def mcdc(func: str,
 
     # Check argument combinations
     if (dc & use_mcflirt) | (s2v & use_mcflirt) | (mbs & use_mcflirt):
+        if log:
+            log.error("RuntimeError: Cannot use MCFLIRT with dc, s2v and/or mbs.")
         raise RuntimeError('Cannot use MCFLIRT with dc, s2v and/or mbs.')
 
     if dc and not (_has_fmap & _has_acqp):
+        if log:
+            log.error("RuntimeError: fmap, fmap2func_affine, func_pedir, and func_echospacing are required for DC.")
         raise RuntimeError('fmap, fmap2func_affine, func_pedir, and func_echospacing are required for DC.')
 
     if mbs and not (_has_fmap & _has_acqp):
+        if log:
+            log.error("RuntimeError: fmap, fmap2func_affine, func_pedir, and func_echospacing are required for mbs.")
         raise RuntimeError('fmap, fmap2func_affine, func_pedir, and func_echospacing are required for mbs.')
 
     if mbs and not dc:
+        if log:
+            log.error("RuntimeError: Cannot mbs without dc as they are both distortion corrections.")
         raise RuntimeError('Cannot mbs without dc as they are both distortion corrections.')
 
     if (not use_mcflirt) & (func_brainmask is None):
-        raise RuntimeError('func_brainmask is required to use EDDY')
+        if log:
+            log.error("RuntimeError: func_brainmask is required to use EDDY.")
+        raise RuntimeError('func_brainmask is required to use EDDY.')
     
     # Define output files
     if use_mcflirt:
