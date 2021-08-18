@@ -10,9 +10,9 @@ import nibabel as nib
 import pandas as pd
 
 from math import pi as PI
-from shutil import copy
 
 from typing import (
+    Dict,
     List,
     Optional,
     Tuple,
@@ -25,6 +25,7 @@ from fmri_preproc.utils.tempdir import TmpDir
 
 from fmri_preproc.utils.fslpy import (
     applywarp,
+    bet,
     eddy,
     FSLDIR,
     fslmaths,
@@ -100,46 +101,112 @@ def mcdc(func: str,
         raise RuntimeError('func_brainmask is required to use EDDY')
     
     # Define output files
-    mcdir: str = os.path.join(outdir,"mc")
-    func_mcdc: str = os.path.join(mcdir,"prefiltered_func_data.nii.gz")
-    motfile: str = os.path.join(mcdir,"prefiltered_func_data.par")
-    func_mot: str = os.path.join(mcdir,"func_mcdc_motion.tsv")
+    if use_mcflirt:
+        mcdir: str = os.path.join(outdir,"mc")
+        outputs: Dict[str,str] = {
+                                    "func_mcdc": os.path.join(mcdir,"func_mc.nii.gz"),
+                                    "func_mot": os.path.join(mcdir,"func_mc_motion.tsv"),
+                                    "func_metrics": os.path.join(mcdir,"func_mc_regressors.tsv"),
+                                    "func_out_plot": os.path.join(mcdir,"func_mc_outliers.png"),
+                                    "mcdc_mean": os.path.join(mcdir,"func_mc_mean.nii.gz"),
+                                    "mcdc_std": os.path.join(mcdir,"func_mc_std.nii.gz"),
+                                    "mcdc_tsnr": os.path.join(mcdir,"func_mc_tsnr.nii.gz"),
+                                    "mcdc_brainmask": os.path.join(mcdir,"func_mc_brainmask.nii.gz"),
+                                    "func_mcdc_fovmask": os.path.join(mcdir,"func_mc_fovmask.nii.gz"),
+                                    "func_mcdc_fovpercent": os.path.join(mcdir,"func_mc_fovpercent.nii.gz")
+                                }
+    else:
+        mcdir: str = os.path.join(outdir,"mcdc")
+        outputs: Dict[str,str] = {
+                                    "func_mcdc": os.path.join(mcdir,"func_mcdc.nii.gz"),
+                                    "func_mot": os.path.join(mcdir,"func_mcdc_motion.tsv"),
+                                    "func_metrics": os.path.join(mcdir,"func_mcdc_regressors.tsv"),
+                                    "func_out_plot": os.path.join(mcdir,"func_mcdc_outliers.png"),
+                                    "mcdc_mean": os.path.join(mcdir,"func_mcdc_mean.nii.gz"),
+                                    "mcdc_std": os.path.join(mcdir,"func_mcdc_std.nii.gz"),
+                                    "mcdc_tsnr": os.path.join(mcdir,"func_mcdc_tsnr.nii.gz"),
+                                    "mcdc_brainmask": os.path.join(mcdir,"func_mcdc_brainmask.nii.gz"),
+                                    "func_mcdc_fovmask": os.path.join(mcdir,"func_mcdc_fovmask.nii.gz"),
+                                    "func_mcdc_fovpercent": os.path.join(mcdir,"func_mcdc_fovpercent.nii.gz")
+                                }
 
     # Perform MCDC
     if use_mcflirt:
         (func_mcdc, 
          motfile, 
-         matsdir) = mcflirt_mc(func=func,
-                               func_mc=func_mcdc,
-                               ref=ref,
-                               log=log)
+         _) = mcflirt_mc(func=func,
+                         func_mc=outputs.get('func_mcdc'),
+                         ref=ref,
+                         log=log)
 
         mcf: np.array = np.loadtxt(motfile)
         mcf: pd.DataFrame = pd.DataFrame(mcf, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
-        mcf.to_csv(func_mot, sep='\t', index=None)
+        mcf.to_csv(outputs.get('func_mot'), sep='\t', index=None)
+        mcf: str = outputs.get('func_mot')
     else:
         (func_mcdc,
          motfile,
-         eddy_mask) = eddy_mcdc(func=func,
-                                func_brainmask=func_brainmask,
-                                func_mcdc=func_mcdc,
-                                func_sliceorder=func_slorder,
-                                func_echospacing=func_echospacing,
-                                fmap=fmap,
-                                fmap2func_xfm=fmap2func_affine,
-                                mb_factor=mb_factor,
-                                mot_params=motfile,
-                                mbs=mbs,
-                                s2v_corr=s2v,
-                                log=log)
+         eddy_output_mask) = eddy_mcdc(func=func,
+                                       func_brainmask=func_brainmask,
+                                       func_mcdc=outputs.get('func_mcdc'),
+                                       func_sliceorder=func_slorder,
+                                       func_echospacing=func_echospacing,
+                                       fmap=fmap,
+                                       fmap2func_xfm=fmap2func_affine,
+                                       mb_factor=mb_factor,
+                                       mot_params=outputs.get('motfile'),
+                                       mbs=mbs,
+                                       s2v_corr=s2v,
+                                       log=log)
 
         mcf: np.array = np.loadtxt(motfile)
         mcf: pd.DataFrame = pd.DataFrame(mcf, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
-        mcf.to_csv(func_mot, sep='\t', index=None)
+        mcf.to_csv(outputs.get('func_mot'), sep='\t', index=None)
+        mcf: str = outputs.get('func_mot')
     
     # Calculate post-mc motion outliers
-    # TODO: Pick up from here: https://git.fmrib.ox.ac.uk/seanf/dhcp-neonatal-fmri-pipeline/-/blob/master/dhcp/func/mcdc.py
-    pass
+    _: Tuple[str,int] = motion_outlier(func=func_mcdc,
+                                       metric_name=outputs.get('func_metrics'),
+                                       plot_name=outputs.get('func_out_plot'))
+
+    # Brain extract mcdc images
+    mcdc: str = func_mcdc
+    mcdc_mean: str = outputs.get('func_mcdc_mean')
+    mcdc_std: str = outputs.get('func_mcdc_std')
+    mcdc_tsnr: str = outputs.get('func_mcdc_tsnr')
+    mcdc_brainmask: str = outputs.get('mcdc_brainmask')
+
+    mcdc_mean: str = fslmaths(img=mcdc).Tmean().run(out=mcdc_mean, log=log)
+    mcdc_std: str = fslmaths(img=mcdc).Tmean().run(out=mcdc_std, log=log)
+    mcdc_tsnr: str = fslmaths(img=mcdc).Tmean().run(out=mcdc_tsnr, log=log)
+
+    with TmpDir(src=mcdir) as tmp:
+        tmp.mkdir()
+        brain: str = os.path.join(tmp.src,'brain.nii.gz')
+        brain, _ = bet(img=mcdc_mean, out=brain, mask=False, frac_int=0.4, robust=True, log=log)
+        mcdc_brainmask: str = fslmaths(img=brain).bin().run(out=mcdc_brainmask, log=log)
+        tmp.rmdir()
+    
+    # Create out-of-FOV masks (for EDDY)
+    if os.path.exists(eddy_output_mask):
+        fov_mask: str = outputs.get('func_mcdc_fovmask')
+        fov_percent: str = outputs.get('func_mcdc_fovpercent')
+
+        fov_mask: str = fslmaths(img=mcdc_brainmask).sub(eddy_output_mask).bin().run(out=fov_mask, log=log)
+        fov_percent: str = fslmaths(img=fov_mask).Tmean().mul(100).run(out=fov_percent, log=log)
+    else:
+        fov_mask: str = None
+        fov_percent: str = None
+    
+    return (func_mcdc,
+            mcf,
+            mcdc,
+            mcdc_mean,
+            mcdc_std,
+            mcdc_tsnr,
+            mcdc_brainmask,
+            fov_mask,
+            fov_percent)
 
 def mcflirt_mc(func: str,
                func_mc: str,
@@ -159,8 +226,6 @@ def mcflirt_mc(func: str,
         func_mc: str = f.abspath()
         with WorkDir(src=outdir) as d:
             d.mkdir()
-
-    # func_mc: NiiFile = NiiFile(src=func_mc, assert_exists=False)
 
     if isinstance(ref, str):
         with NiiFile(src=ref, assert_exists=True, validate_nifti=True) as f:
@@ -201,7 +266,7 @@ def eddy_mcdc(func: str,
               func_brainmask: str,
               func_mcdc: str,
               func_sliceorder: Optional[str] = None,
-              func_echospacing: Optional[float] = 0.05,
+              func_echospacing: Optional[float] = 0.1,
               fmap: Optional[str] = None,
               fmap2func_xfm: Optional[str] = None,
               mb_factor: Optional[int] = 1,
@@ -232,6 +297,16 @@ def eddy_mcdc(func: str,
                         log.log("Creating eddy output directory.")
                     d.mkdir()
     
+    # Define output files
+    outputs: Dict[str,str] = {
+                                "idx": eddy_basename + "_fmri_pre-mcdc.idx",
+                                "bvals": eddy_basename + "_fmri_pre-mcdc.bval",
+                                "bvecs": eddy_basename + "_fmri_pre-mcdc.bvec",
+                                "acqp": eddy_basename + "_fmri_pre-mcdc.acqp",
+                                "slice_order": eddy_basename + "_fmri_pre-mcdc.slice.order",
+                                "ident_matrix": os.path.join(FSLDIR,'etc', 'flirtsch', 'ident.mat')
+                             }
+
     # Logic tests
     _has_acqp = func_echospacing is not None
     _has_fmap = fmap is not None
@@ -259,10 +334,12 @@ def eddy_mcdc(func: str,
     num_vols: int = nib.load(filename=func).shape[3]
     slices: int = nib.load(filename=func).header.get('dim','')[3]
 
-    idx: str = write_index(num_frames=num_vols, out_file=eddy_basename + "_fmri_pre-mcdc.idx")
-    bvals: str = write_bvals(num_frames=num_vols, out_file=eddy_basename + "_fmri_pre-mcdc.bval")
-    bvecs: str = write_bvecs(num_frames=num_vols, out_file=eddy_basename + "_fmri_pre-mcdc.bvec")
-    acqp: str = write_func_acq_params(num_frames=num_vols, effective_echo_spacing=func_echospacing, out_prefix=eddy_basename + "_fmri_pre-mcdc.acqp")
+    idx: str = write_index(num_frames=num_vols, out_file=outputs.get('idx'))
+    bvals: str = write_bvals(num_frames=num_vols, out_file=outputs.get('bvals'))
+    bvecs: str = write_bvecs(num_frames=num_vols, out_file=outputs.get('bvecs'))
+    acqp: str = write_func_acq_params(num_frames=num_vols, 
+                                      effective_echo_spacing=func_echospacing, 
+                                      out_prefix=outputs.get('acqp'))
 
     # Set default Eddy parameters
     niter: int = 10
@@ -287,10 +364,10 @@ def eddy_mcdc(func: str,
                 func_sliceorder: str = f.abspath()
         else:
             func_sliceorder: str = write_slice_order(slices=slices, 
-                                                    mb_factor=mb_factor, 
-                                                    mode="single-shot",
-                                                    out_file=eddy_basename + "_fmri_pre-mcdc.slice.order",
-                                                    return_mat=False)
+                                                     mb_factor=mb_factor, 
+                                                     mode="single-shot",
+                                                     out_file=outputs.get('slice_order'),
+                                                     return_mat=False)
 
         s2v_niter:  int = 10
         s2v_fwhm:   int = 0
@@ -312,9 +389,9 @@ def eddy_mcdc(func: str,
         with File(src=fmap2func_xfm, assert_exists=True) as f:
             fmap2func_xfm: str = f.abspath()
     else:
-        fmap2func_xfm: str = os.path.join(FSLDIR,'etc', 'flirtsch', 'ident.mat')
+        fmap2func_xfm: str = outputs.get('ident_matrix')
     
-    # Prepare fieldmap
+    # Prepare fieldmap by converting fieldmap from rad/s -> Hz
     field_hz: Union[str, None] = None
     if fmap:
         with NiiFile(src=fmap, assert_exists=True, validate_nifti=True) as f:
@@ -355,19 +432,9 @@ def eddy_mcdc(func: str,
                        residuals=residuals,
                        log=log)
 
-    # NOTE: Eddy output files
-    # 
-    # eddy_corr.eddy_command_txt                    eddy_corr.eddy_values_of_all_input_parameters
-    # eddy_corr.eddy_mbs_first_order_fields.nii.gz  eddy_corr_fmap_Hz_pre-mcdc.nii.gz
-    # eddy_corr.eddy_movement_over_time             eddy_corr_fmri_pre-mcdc.acqp_functional.acqp
-    # eddy_corr.eddy_movement_rms                   eddy_corr_fmri_pre-mcdc.bval
-    # eddy_corr.eddy_output_mask.nii.gz             eddy_corr_fmri_pre-mcdc.bvec
-    # eddy_corr.eddy_parameters                     eddy_corr_fmri_pre-mcdc.idx
-    # eddy_corr.eddy_restricted_movement_rms        eddy_corr_fmri_pre-mcdc.slice.order
-    # eddy_corr.eddy_rotated_bvecs                  eddy_corr.nii.gz
-
     # Necessary eddy output files
-    func_mcdc: str = copy(eddy_corr, func_mcdc)
+    with NiiFile(src=eddy_corr, assert_exists=True, validate_nifti=True) as f:
+        func_mcdc: str = f.copy(dst=func_mcdc)
 
     if mot_params:
         with File(src=eddy_motion_par) as f:
@@ -382,8 +449,8 @@ def eddy_mcdc(func: str,
                     ).to_filename(func_mcdc)
 
     return (func_mcdc,
-            eddy_mask,
-            mot_params)
+            mot_params,
+            eddy_mask)
 
 def write_bvals(num_frames: int,
                 out_file: str = 'file.bval'
@@ -476,7 +543,8 @@ def write_func_acq_params(num_frames: int,
         not isinstance(num_frames, int)):
         raise TypeError(f"Input for num_frames: {num_frames} is not an integer OR effective_echo_spacing: {effective_echo_spacing} is not a float.")
     
-    out_func: str = out_prefix + "_functional.acqp"
+    with File(src=out_prefix) as op:
+        out_func: str = op.rm_ext() + '.acqp'
     
     with open(out_func,'w') as f:
         for _ in range(0,num_frames):
@@ -626,13 +694,13 @@ def _refrms(img: nib.Nifti1Header,
 
 
 def motion_outlier(func: str,
-                   metric_name: str,
-                   plot_name: str,
+                   metric_name: Optional[str] = None,
+                   plot_name: Optional[str] = None,
                    metric: str = "dvars",
                    ref: Optional[str] = None,
                    thr: Optional[int] = None
-                  ) -> str:
-    """doc-string
+                  ) -> Tuple[str,int,Union[str,None]]:
+    """ Estimate motion in 4D volume.
     """
     func: NiiFile = NiiFile(src=func, assert_exists=True, validate_nifti=True)
 
@@ -667,10 +735,11 @@ def motion_outlier(func: str,
     outlier: np.array = metric_data > thr
 
     # Save metric values to file
-    pd.DataFrame(
-        np.stack((dvars, refrms, outlier), axis=1),
-        columns=['DVARS', 'RefRMS', 'Outlier' + metric.name.upper()],
-    ).to_csv(metric_name, sep='\t', index=None)
+    if metric_name:
+        pd.DataFrame(
+            np.stack((dvars, refrms, outlier), axis=1),
+            columns=['DVARS', 'RefRMS', 'Outlier' + metric.name.upper()],
+        ).to_csv(metric_name, sep='\t', index=None)
 
     # Plot metric
     if plot_name:
@@ -702,7 +771,7 @@ def motion_outlier(func: str,
         plt.legend()
         plt.savefig(plot_name)
 
-    return outlier, metric_data, thr
+    return outlier, metric_data, thr, metric_name, plot_name
 
 # This function should be used elsewhere, perhaps outside of this
 #   package.
