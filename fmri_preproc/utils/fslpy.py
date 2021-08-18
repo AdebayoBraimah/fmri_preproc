@@ -450,7 +450,7 @@ def bet(img: str,
         verbose: bool = False,
         log: Optional[LogFile] = None
        ) -> Tuple[str,str]:
-    """work"""
+    """Performs brain extraction."""
     img: NiiFile = NiiFile(src=img, assert_exists=True, validate_nifti=True)
     out: NiiFile = NiiFile(src=out, assert_exists=False, validate_nifti=False)
 
@@ -495,7 +495,7 @@ def topup(img: str,
           verbose: bool = False,
           log: Optional[LogFile] = None
          ) -> Tuple[str,str,str]:
-    """work"""
+    """Performs field map estimation from reversed phase encoded fieldmaps or single-band references (e.g. b0s)."""
     img:    NiiFile = NiiFile(src=img, assert_exists=True, validate_nifti=True)
     out:    NiiFile = NiiFile(src=out, assert_exists=False, validate_nifti=False)
     param:  File = File(src=param, assert_exists=True)
@@ -543,7 +543,7 @@ def fslreorient2std(img: str,
                     out_mat: bool = False,
                     log: Optional[LogFile] = None
                    ) -> Tuple[str,str,str]:
-    """work"""
+    """Reorients input image to MNI 152 orientation."""
     img: NiiFile = NiiFile(src=img, assert_exists=True, validate_nifti=True)
     cmd: Command = Command("fslreorient2std")
 
