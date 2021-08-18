@@ -201,7 +201,6 @@ def eddy(img: str,
          acqp: str,
          bvecs: str,
          bvals: str,
-         use_gpu: bool = False,
          slspec: Optional[str] = "",
          json_file: Optional[str] = "",
          mporder: int = 0,
@@ -428,7 +427,7 @@ def eddy(img: str,
     cmd.run(log=log)
 
     with NiiFile(src=out.src, assert_exists=True, validate_nifti=True) as of:
-        outdir, fname, ext = of.src_parts()
+        outdir, fname, ext = of.file_parts()
         eddy_mask: str = os.path.join(outdir,f"{fname}.eddy_output_mask{ext}")
         eddy_motion_par: str = os.path.join(outdir,f"{fname}.eddy_parameters")
         with NiiFile(src=eddy_mask, assert_exists=True, validate_nifti=True) as em:
