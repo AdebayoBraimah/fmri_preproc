@@ -60,7 +60,7 @@ def mcdc(func: str,
         ) -> None:
     """Perform motion and distortion correction stage of ``fmri_preproc``.
     """
-
+    # TODO: remove use_gpu bool from eddy and all dependencies
     # Logic tests
     _has_fmap = fmap is not None
     _has_slorder = (mb_factor is not None) or (func_slorder is not None)
@@ -153,24 +153,25 @@ def mcflirt_mc(func: str,
               ) -> Tuple[str,str,str]:
     """Performs MCFLIRT-based motion and distortion correction.
     """
-    func: NiiFile = NiiFile(file=func, assert_exists=True, validate_nifti=True)
+    func: NiiFile = NiiFile(src=func, assert_exists=True, validate_nifti=True)
     
     if log:
         log.log("Performing motion correction using MCFLIRT.")
 
-    with File(file=func_mc, assert_exists=False) as f:
+    with File(src=func_mc, assert_exists=False) as f:
         outdir, _, _ = f.file_parts()
+        func_mc: str = f.abspath()
         with WorkDir(src=outdir) as d:
             d.mkdir()
 
-    func_mc: NiiFile = NiiFile(file=func_mc, assert_exists=False)
+    # func_mc: NiiFile = NiiFile(src=func_mc, assert_exists=False)
 
     if isinstance(ref, str):
-        with NiiFile(file=ref, assert_exists=True, validate_nifti=True) as f:
+        with NiiFile(src=ref, assert_exists=True, validate_nifti=True) as f:
             ref: str = f.abspath()
     
     if dc_warp:
-        with NiiFile(file=dc_warp, assert_exists=True, validate_nifti=True) as f:
+        with NiiFile(src=dc_warp, assert_exists=True, validate_nifti=True) as f:
             dc_warp: str = f.abspath()
     
     ref_vol: Union[int, None] = ref if isinstance(ref, int) else None
@@ -179,7 +180,7 @@ def mcflirt_mc(func: str,
     (func_mc,
      parfile, 
      matsdir) = mcflirt(infile=func.abspath(),
-                        outfile=func_mc.file,
+                        outfile=func_mc,
                         reffile=ref_file,
                         refvol=ref_vol,
                         log=log)
@@ -221,9 +222,9 @@ def eddy_mcdc(func: str,
     if log:
         log.log("Performing EDDY-based motion and distortion correction.")
 
-    with NiiFile(file=func, assert_exists=True, validate_nifti=True) as fn:
-        with NiiFile(file=func_brainmask, assert_exists=True, validate_nifti=True) as fb:
-            with File(file=func_mcdc) as fmc:
+    with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
+        with NiiFile(src=func_brainmask, assert_exists=True, validate_nifti=True) as fb:
+            with File(src=func_mcdc) as fmc:
                 func: str = fn.abspath()
                 func_brainmask: str = fb.abspath()
 
@@ -289,7 +290,7 @@ def eddy_mcdc(func: str,
     # if s2v_corr:
     if s2v_corr and use_gpu:
         if func_sliceorder:
-            with File(file=func_sliceorder, assert_exists=True) as f:
+            with File(src=func_sliceorder, assert_exists=True) as f:
                 func_sliceorder: str = f.abspath()
         else:
             func_sliceorder: str = write_slice_order(slices=slices, 
@@ -315,7 +316,7 @@ def eddy_mcdc(func: str,
 
     # Prepare fieldmap transform
     if fmap2func_xfm:
-        with File(file=fmap2func_xfm, assert_exists=True) as f:
+        with File(src=fmap2func_xfm, assert_exists=True) as f:
             fmap2func_xfm: str = f.abspath()
     else:
         fmap2func_xfm: str = os.path.join(FSLDIR,'etc', 'flirtsch', 'ident.mat')
@@ -323,7 +324,7 @@ def eddy_mcdc(func: str,
     # Prepare fieldmap
     field_hz: Union[str, None] = None
     if fmap:
-        with NiiFile(file=fmap, assert_exists=True, validate_nifti=True) as f:
+        with NiiFile(src=fmap, assert_exists=True, validate_nifti=True) as f:
             _, fname, _ = f.file_parts()
             field_hz: str = os.path.join(eddy_basename + "_" + fname + "_Hz_pre-mcdc")
             field_hz: str = fslmaths(img=fmap).div(2 * PI).run(out=field_hz, log=log)
@@ -641,7 +642,7 @@ def motion_outlier(func: str,
                   ) -> str:
     """doc-string
     """
-    func: NiiFile = NiiFile(file=func, assert_exists=True, validate_nifti=True)
+    func: NiiFile = NiiFile(src=func, assert_exists=True, validate_nifti=True)
 
     img0: nib.Nifti1Header = nib.load(func)
     image_data: np.array = img0.get_data().astype(float)
