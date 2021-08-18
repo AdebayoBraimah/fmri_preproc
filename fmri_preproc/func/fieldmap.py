@@ -7,6 +7,7 @@ import nibabel as nib
 from math import pi as PI
 
 from typing import (
+    Dict,
     Optional,
     Tuple
 )
@@ -51,6 +52,14 @@ def fieldmap(outdir: str,
             td.mkdir()
             outdir: str = od.abspath()
             topup_dir: str = td.abspath()
+    
+    # Define output files
+    outputs: Dict[str,str] = {
+                                "fmap": os.path.join(outdir,"fieldmap.nii.gz"),
+                                "fmap_mag": os.path.join(outdir,"fieldmap_magnitude.nii.gz"),
+                                "fmap_mask": os.path.join(outdir,"fieldmap_magnitude.nii.gz"),
+                                "topup_out": os.path.join(topup_dir, "topup_dist_corr"),
+                             }
 
     if spinecho:
         if log:
@@ -98,7 +107,7 @@ def fieldmap(outdir: str,
      field_img,
      mag_img) = topup(img=spinecho.src, 
                       param=dist_acqp, 
-                      out=os.path.join(topup_dir, "topup_dist_corr"),
+                      out=outputs.get('topup_out'),
                       config=config,
                       fout=True,
                       iout=True,
@@ -110,8 +119,8 @@ def fieldmap(outdir: str,
     if log:
         log.log("Computing fieldmaps.")
 
-    fmap: str = fslmaths(img=field_img).mul(2 * PI).run(out=os.path.join(outdir,"fmap"), log=log)
-    mag: str = fslmaths(img=mag_img).Tmean().run(out=os.path.join(outdir,"fmap_magnitude"), log=log)
+    fmap: str = fslmaths(img=field_img).mul(2 * PI).run(out=outputs.get('fmap'), log=log)
+    mag: str = fslmaths(img=mag_img).Tmean().run(out=outputs.get('fmap_mag'), log=log)
 
     # Create brain mask
     if log:
@@ -125,7 +134,7 @@ def fieldmap(outdir: str,
                             mask=False,
                             robust=True,
                             log=log)
-        fmap_mask: str = fslmaths(img=fmap_brain).bin().run(out=os.path.join(outdir,"fmap_brainmask"),log=log)
+        fmap_mask: str = fslmaths(img=fmap_brain).bin().run(out=outputs.get('fmap_mask'),log=log)
         tmp.rmdir()
     return (fmap,
             mag,
