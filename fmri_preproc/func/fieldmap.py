@@ -40,10 +40,14 @@ def fieldmap(outdir: str,
              log: Optional[LogFile] = None
             ) -> Tuple[str, str, str]:
     """Prepare fieldmaps.
+
+    NOTE: 
+        Input directory should be parent FEAT/processing directory path.
     """
     if log:
         log.log("Preparing fieldmaps")
 
+    outdir: str = os.path.join(outdir,"fmap")
     with WorkDir(src=outdir) as od:
         topup_dir: str = os.path.join(od.src, "topup")
         with WorkDir(src=topup_dir) as td:
