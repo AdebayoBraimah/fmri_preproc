@@ -131,7 +131,6 @@ def mcdc(func: str,
                                 mot_params=motfile,
                                 mbs=mbs,
                                 s2v_corr=s2v,
-                                use_gpu=use_gpu,
                                 log=log)
 
         mcf: np.array = np.loadtxt(motfile)
@@ -209,7 +208,6 @@ def eddy_mcdc(func: str,
               mot_params: Optional[str] = None,
               mbs: bool = False,
               s2v_corr: bool = False,
-              use_gpu: bool = False,
               log: Optional[LogFile] = None
              ) -> Tuple[str,str,str]:
     """Perform EDDY-based motion and distortion correction.
@@ -244,8 +242,7 @@ def eddy_mcdc(func: str,
     if mbs and not _has_fmap:
         raise RuntimeError('Cannot do MBS without fmap.')
 
-    # if s2v_corr and log:
-    if s2v_corr and log and use_gpu:
+    if s2v_corr and log:
         log.log(f'Performing slice-to-volume (S2V) motion correction')
     elif log:
         log.log(f'Performing rigid-body motion correction')
@@ -284,8 +281,7 @@ def eddy_mcdc(func: str,
     mbs_lambda: Union[int, None] = None
     mbs_ksp:    Union[int, None] = None
 
-    # if s2v_corr:
-    if s2v_corr and use_gpu:
+    if s2v_corr:
         if func_sliceorder:
             with File(src=func_sliceorder, assert_exists=True) as f:
                 func_sliceorder: str = f.abspath()
@@ -332,7 +328,6 @@ def eddy_mcdc(func: str,
      eddy_mask) = eddy(img=func,
                        out=eddy_basename,
                        mask=func_brainmask,
-                       use_gpu=use_gpu,
                        acqp=acqp,
                        bvecs=bvecs,
                        bvals=bvals,
