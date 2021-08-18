@@ -233,8 +233,8 @@ class Command:
         if stdout:
             stderr: str = os.path.splitext(stdout)[0] + ".err"
 
-            with File(file=stdout) as stout:
-                with File(file=stderr) as sterr:
+            with File(src=stdout) as stout:
+                with File(src=stderr) as sterr:
                     stout.write(out)
                     sterr.write(err)
                     stdout: str = stout.abspath()
