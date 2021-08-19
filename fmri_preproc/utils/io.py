@@ -101,9 +101,16 @@ class IOBaseObj(ABC):
             dst: Destination file path.
 
         Returns:
-            String that reprents the relative file path of the object to the destination file or directory.
+            String that reprents the relative file path of the object from the destination file or directory.
         """
-        return os.path.relpath(dst, self.abspath())
+        if os.path.isfile(self.src):
+            return (os.path.join(
+                os.path.relpath(
+                    os.path.dirname(self.abspath()),
+                    os.path.dirname(dst)),
+                    os.path.basename(self.src)))
+        else:
+            return os.path.relpath(dst, self.abspath())
 
     def abspath(self,
                 follow_sym_links: bool = False
@@ -149,6 +156,8 @@ class IOBaseObj(ABC):
                 ) -> str:
         """Creates a symbolic link with an absolute or relative file path.
 
+        NOTE: If a directory is the used as the input object, then the linked destination is returned.
+
         Usage example:
             >>> # Initialize child class and inherit 
             >>> #   from IOBaseObj ABC
@@ -177,24 +186,28 @@ class IOBaseObj(ABC):
             relative: Symbolically link the file using a relative path.
 
         Returns:
-            String that reprents the sym linked file path.
+            String that reprents the absolute path of the sym linked file path.
         """
-        src: str = self.src
         src: str = self.abspath(follow_sym_links=True)
 
-        if os.path.exists(dst):
+        # Create command list
+        cmd: List[str] = [ "ln", "-s" ]
+        
+        if relative and os.path.isdir(dst):
+            dst: str = os.path.relpath(dst, src)
+        elif relative:
+            src: str = self.relpath(dst=dst)
+        else:
+            src: str = self.abspath(follow_sym_links=True)
+        
+        if os.path.exists(dst) and os.path.isfile(dst):
             warn(f"WARNING: Symlinked file of the name {dst} already exists. It is being replaced.")
             os.remove(dst)
-        
-        if relative:
-            src: str = self.relpath(dst=dst)
-        
-        # Create command list
-        cmd: List[str] = [ "ln", 
-                           "-s",
-                           f"{src}",
-                           f"{dst}"
-                         ]
+            cmd.extend([f"{src}",f"{dst}"])
+        elif os.path.isdir(src):
+            cmd.extend([f"{dst}",f"{src}"])
+        else:
+            cmd.extend([f"{src}",f"{dst}"])
         
         # Execute command
         p: subprocess.Popen = subprocess.Popen(cmd)
@@ -271,7 +284,7 @@ class IOBaseObj(ABC):
         Returns:
             String that represents the basename of the file or directory.
         """
-        return os.path.basename(self)
+        return os.path.basename(self.src)
 
     def dirname(self) -> str:
         """Retrieves file or directory basename.
