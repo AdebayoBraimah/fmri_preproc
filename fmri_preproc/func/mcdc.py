@@ -54,7 +54,7 @@ def mcdc(func: str,
          use_mcflirt: bool = False,
          ref: Union[str,int] = 0,
          log: Optional[LogFile] = None
-        ) -> None:
+        ) -> Tuple[str]:
     """Perform motion and distortion correction stage of ``fmri_preproc``.
     """
     if log:
