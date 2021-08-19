@@ -41,6 +41,7 @@ class File(IOBaseObj):
     Arguments:
         src: Input file (need not exist at runtime/instantiated).
         ext: File extension of input file. If no extension is provided, it is inferred.
+        assert_exists: Asserts that the specified input file must exist. 
     """
     __slots__ = [ 
                     "src", 
@@ -75,7 +76,10 @@ class File(IOBaseObj):
             assert_exists: Asserts that the specified input file must exist. 
         """
         self.src: str = src
-        self.ext: str = None
+        if ext:
+            self.ext: str = ext
+        else:
+            self.ext: str = None
         super(File, self).__init__(src)
         
         if ext:
@@ -87,61 +91,6 @@ class File(IOBaseObj):
         
         if assert_exists:
             assert os.path.exists(self.src), f"Input file {self.src} does not exist."
-    
-    def abspath(self,
-                follow_sym_links: bool = False
-               ) -> Union[str,None]:
-        """Returns the absolute file path.
-        
-        Usage example:
-            >>> # Using class object as context manager
-            >>> with File("file_name.txt") as file:
-            ...     print(file.abspath())
-            ...
-            /abs/path/to/file_name.txt
-            >>>
-            >>> # or
-            >>> 
-            >>> file = File("file_name.txt")
-            >>> file.abspath()
-            "/abs/path/to/file_name.txt"
-        
-        Arguments:
-            follow_sym_links: If set to true, the absolute path of the symlinked file is returned.
-        
-        Returns:
-            String that represents the absolute file path if it exists, otherwise ``None`` is returned.
-        """
-        return super().abspath(follow_sym_links)
-    
-    def sym_link(self, 
-                 dst: str, 
-                 relative: bool = False
-                ) -> str:
-        """Creates a symbolic link with an absolute or relative file path.
-
-        Usage example:
-            >>> # Using class object as context manager
-            >>> with File("file_name.txt") as file:
-            ...     new_file: str = file.sym_link("file2.txt")
-            ...
-            >>> new_file
-            "/abs/path/to/file2.txt"
-            >>>
-            >>> # or
-            >>> 
-            >>> file = File("file_name.txt")
-            >>> file.sym_link("file2.txt")
-            "/abs/path/to/file2.txt"
-
-        Arguments:
-            dst: Destination file path.
-            relative: Symbolically link the file using a relative path.
-
-        Returns:
-            String that reprents the sym linked file path.
-        """
-        return super().sym_link(dst, relative)
     
     def copy(self,
              dst: str
@@ -303,6 +252,22 @@ class File(IOBaseObj):
         return (path, 
                 filename, 
                 ext)
+
+    def remove(self) -> None:
+        """Removes file.
+
+        Usage example:
+            >>> # Using class object as context manager
+            >>> with File("file_name.txt") as file:
+            ...     file.remove()
+            ...
+            >>> 
+            >>> # or
+            >>> 
+            >>> file = File("file_name.txt")
+            >>> file.remove()
+        """
+        return os.remove(self.abspath())
 
 class NiiFile(File):
     """NIFTI file class specific for NIFTI files which inherits class methods from the ``File`` base class.
