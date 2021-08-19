@@ -137,11 +137,6 @@ def mcdc(func: str,
                          func_mc=outputs.get('func_mcdc'),
                          ref=ref,
                          log=log)
-
-        mcf: np.array = np.loadtxt(motfile)
-        mcf: pd.DataFrame = pd.DataFrame(mcf, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
-        mcf.to_csv(outputs.get('func_mot'), sep='\t', index=None)
-        mcf: str = outputs.get('func_mot')
     else:
         (func_mcdc,
          motfile,
@@ -158,15 +153,19 @@ def mcdc(func: str,
                                        s2v_corr=s2v,
                                        log=log)
 
-        mcf: np.array = np.loadtxt(motfile)
-        mcf: pd.DataFrame = pd.DataFrame(mcf, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
-        mcf.to_csv(outputs.get('func_mot'), sep='\t', index=None)
-        mcf: str = outputs.get('func_mot')
+    # Write motion regressors
+    mcf: np.array = np.loadtxt(motfile)
+    mcf: pd.DataFrame = pd.DataFrame(mcf, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
+    mcf.to_csv(outputs.get('func_mot'), sep='\t', index=None)
+    mcf: str = outputs.get('func_mot')
     
     # Calculate post-mc motion outliers
     _: Tuple[str,int] = motion_outlier(func=func_mcdc,
                                        metric_name=outputs.get('func_metrics'),
                                        plot_name=outputs.get('func_out_plot'))
+    
+    with File(src=outputs.get('func_metrics'), assert_exists=True) as fnm:
+        func_metrics: str = fnm.abspath()
 
     # Brain extract mcdc images
     mcdc: str = func_mcdc
@@ -199,7 +198,7 @@ def mcdc(func: str,
     
     return (func_mcdc,
             mcf,
-            mcdc,
+            func_metrics,
             mcdc_mean,
             mcdc_std,
             mcdc_tsnr,
