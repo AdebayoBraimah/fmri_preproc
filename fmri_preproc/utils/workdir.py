@@ -3,7 +3,6 @@
 """
 import os
 import shutil
-from typing import Union
 
 from fmri_preproc.utils.io import IOBaseObj
 
@@ -129,63 +128,6 @@ class WorkDir(IOBaseObj):
             print("Working directory does not exist.")
             return None
     
-    def abspath(self,
-                follow_sym_links: bool = False
-               ) -> Union[str,None]:
-        """Returns the absolute path of the working directory.
-
-        Usage example:
-            >>> # Using class object as context manager
-            >>> with WorkDir(src="/path/to/working_directory", use_cwd=False) as work:
-            ...     work.mkdir()
-            ...     print(work.abspath())
-            ...
-            /abs/path/to/working_directory
-            >>> # or
-            >>>
-            >>> work = WorkDir(src="/path/to/working_directory", 
-            ...                use_cwd=False)
-            >>> work.mkdir()
-            >>> work.work.abspath()
-            /abs/path/to/working_directory
-        
-        Arguments:
-            follow_sym_links: If set to true, the absolute path of the symlinked file is returned.
-        
-        Returns:
-            String that represents the absolute path of the working directory or ``None`` if the directory does not exist.
-        """
-        return super().abspath(follow_sym_links)
-    
-    def sym_link(self, 
-                 dst: str, 
-                 relative: bool = False
-                ) -> str:
-        """Creates a symbolic link with an absolute or relative file path.
-
-        Usage example:
-            >>> # Using class object as context manager
-            >>> with WorkDir("/path/to/working_directory") as file:
-            ...     work: str = work.sym_link("/path/to/new/directory")
-            ...
-            >>> work
-            "/path/to/new/directory"
-            >>>
-            >>> # or
-            >>> 
-            >>> work = WorkDir("/path/to/working_directory")
-            >>> work.sym_link("/path/to/new/directory")
-            "/path/to/new/directory"
-
-        Arguments:
-            dst: Destination file path.
-            relative: Symbolically link the file using a relative path.
-
-        Returns:
-            String that reprents the sym linked file path.
-        """
-        return super().sym_link(dst, relative)
-    
     def copy(self,
              dst: str
             ) -> str:
@@ -193,8 +135,8 @@ class WorkDir(IOBaseObj):
 
         Usage example:
             >>> # Using class object as context manager
-            >>> with WorkDir("/path/to/working_directory") as file:
-            ...     work: str = work.copy("/path/to/new/directory")
+            >>> with WorkDir("/path/to/working_directory") as work_dir:
+            ...     work: str = work_dir.copy("/path/to/new/directory")
             ...
             >>> work
             "/path/to/new/directory"
@@ -212,3 +154,29 @@ class WorkDir(IOBaseObj):
             String that corresponds to the copied work.
         """
         return super().copy(dst)
+    
+    def exists(self) -> bool:
+        """Tests if a directory exists.
+
+        Usage example:
+            >>> # Using class object as context manager
+            >>> with WorkDir("/path/to/working_directory") as work_dir:
+            ...     print(work_dir.exists())
+            ...
+            False
+            >>>
+            >>> # or
+            >>> 
+            >>> work = WorkDir("/path/to/working_directory")
+            >>> work.exists()
+            False
+
+        Returns:
+            Returns ``True`` if the directory exists and ``False`` otherwise.
+        """
+        src: str = self.abspath()
+        if os.path.isdir(src) and os.path.exists(src):
+            return True
+        else:
+            return False
+
