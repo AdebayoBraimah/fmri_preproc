@@ -10,12 +10,7 @@
 
 import glob
 import os
-
-from math import (
-    e as EULER_CONST,
-    log,
-    sqrt
-)
+import numpy as np
 
 from typing import (
     List,
@@ -1570,12 +1565,12 @@ class fslmaths:
             try:
                 return 1/sec
             except ZeroDivisionError:
-                return 0.0
+                return -1.0
             
         def _compute_sigma(tr: Union[int,float],
                            hz: Union[int,float],
                            compute_low_pass: bool = False
-                          ):
+                          ) -> float:
             """
             relevant links: 
                 * https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=fsl;fc5b33c5.1205
@@ -1585,14 +1580,17 @@ class fslmaths:
                     (isinstance(hz,int) or isinstance(hz,float))):
 
                 if compute_low_pass:
-                    fwhm_kernel: float = 18.0
+                    fwhm_kernel: float = float(18)
                 else:
-                    fwhm_kernel: float = sqrt(8*log(2,EULER_CONST))
+                    fwhm_kernel: float = float(2)
+                
+                if hz < 0:
+                    return -1.0
                 
                 try:
-                    sigma_vol:   float = 1/(fwhm_kernel * tr * hz)
+                    sigma_vol: float = np.round(1/(fwhm_kernel * tr * hz))
                 except ZeroDivisionError:
-                    sigma_vol: float = 0.0
+                    sigma_vol: float = -1.0
                 return sigma_vol
 
             else:
