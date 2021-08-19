@@ -8,7 +8,7 @@ NOTE:
             * Can download pre-compiled binaries: https://sourceforge.net/projects/c3d/files/c3d/
 """
 import os
-from fmri_preproc.utils.workdir import WorkDir
+
 from typing import (
     Dict,
     List,
@@ -17,12 +17,20 @@ from typing import (
     Union
 )
 
+from fmri_preproc.utils.workdir import WorkDir
+from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.util import Command
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
+
 from fmri_preproc.utils.fileio import (
     File,
     NiiFile
+)
+
+from fmri_preproc.utils.fslpy import (
+    flirt,
+    fslmaths
 )
 
 
@@ -30,19 +38,28 @@ def fmap_to_struct(outdir: str,
                    fmap: str,
                    fmap_magnitude: str,
                    fmap_brainmask: str,
+                   ref_space: str,
                    struct: str,
                    struct_brainmask: str,
                    struct_boundarymask: Optional[str] = None,
-                   bbr: bool = True,
+                   bbr: bool = False,
                    bbr_slope: float = 0.5,
                    bbr_type: Optional[str] = None, # This SHOULD be an enum
+                   src_space: str = 'native',
                    log: Optional[LogFile] = None
                   ) -> None:
     """Perform (rigid-body) fieldmap to structural image registration, with optional BBR.
     """
+    # TODO: 
+    #   Need to set 'src_space' and 'ref_space' variables
+
     with WorkDir(src=outdir) as od:
-        regdir: str = os.path.join(od.abspath(),'reg') # This might change as src_to_ref space directories need to be specififed.
-        outdir: str = od.abspath()
+        regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+        with WorkDir(src=regdir) as rd:
+            rd.mkdir()
+            outdir: str = od.abspath()
+            regdir: str = rd.abspath()
+            regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
 
     # Check and validate input fmap associated NIFTI files
     with NiiFile(src=fmap, assert_exists=True, validate_nifti=True) as fmp:
@@ -68,7 +85,51 @@ def fmap_to_struct(outdir: str,
                 log.error("RuntimeError: struct_boundarymask is required for BBR")
             raise RuntimeError('struct_boundarymask is required for BBR')
 
-    pass
+        if isinstance(bbr_slope, float) or isinstance(bbr_slope, int):
+            pass
+        else:
+            raise TypeError(f"Input 'bbr_slope': {bbr_slope} is not an 'int' or 'float'.")
+    
+    # Define output files
+    outputs: Dict[str,str] = {
+                                "resampled_image": regname + "_img.nii.gz",
+                                "affine": regname + "_affine.mat",
+                                "inv_affine": regname + "_invaffine.mat",
+                                "init_affine": regname + "_init_affine.mat",
+                                "resampled_image_init": regname + "_init_img.nii.gz"
+                             }
+    with TmpDir(src=regdir) as tmp:
+        tmp.mkdir()
+
+        # Brain extraction
+        struct_brain: str = os.path.join(tmp.src, 'struct_brain.nii.gz')
+        struct_brain: str = fslmaths(img=struct).mas(img=struct_brainmask).run(out=struct_brain, log=log)
+
+        fmap_brain: str = os.path.join(tmp.src, 'fmap_brain.nii.gz')
+        fmap_brain: str = fslmaths(img=fmap_magnitude).mas(img=fmap_brainmask).run(out=fmap_brain, log=log)
+
+        # Perform registration
+        kwargs: Dict[str,str] = { 
+                                    "src": fmap_brain,
+                                    "ref": struct_brain,
+                                    "affine": outputs.get('affine'),
+                                    "inv_affine": outputs.get('inv_affine'),
+                                    "src2ref": outputs.get('resampled_image')
+                                }
+        if bbr:
+            kwargs: Dict[str,str] = {
+                                        **kwargs,
+                                        'ref_boundarymask': struct_boundarymask,
+                                        'bbrslope': bbr_slope,
+                                        'bbrtype': bbr_type,
+                                        'init_affine': outputs.get('init_affine')
+                                    }
+
+        # TODO: Get outputs of epireg
+        out: str = epireg(**kwargs)
+
+        tmp.rmdir()
+    return out
 
 def func_to_sbref():
     """doc-string"""
