@@ -7,7 +7,8 @@ from warnings import warn
 
 from shutil import (
     copy,
-    copytree
+    copytree,
+    move
 )
 
 from typing import (
@@ -26,31 +27,24 @@ class IOBaseObj(ABC):
     """IO abstract base class (``ABC``) object that encapsulates methods related to file and directory manipulation. 
 
     This ``ABC`` cannot be directly instantiated, and **MUST** used by a child/sub-class that inherits from this class. 
-    Additionally, several class methods (shown in abstract methods) **MUST** be overwritten when inheriting from this class. 
+    Additionally, the ``copy`` class method (shown in abstract methods) **MUST** be overwritten when inheriting from this class. 
 
     Attributes:
         src: Input string that represents a file or directory.
     
     Abstract methods:
-        abspath: Returns the absolute file path.
-        sym_link: Creates a symbolic link with an absolute or relative file path.
-        copy: Copies a file or recursively copies a directory.
+        copy: Copies a file or recursively copies a directory using ``copy`` and ``copytree`` from ``shutil``. 
+            This method may need to be implemented differently should other aspects of the data need to be preserved (i.e. needing to copy the file metadata with the file).
     
     Usage example:
         >>> # Initialize child class and inherit 
         >>> #   from IOBaseObj ABC
         >>> class SomeFileClass(IOBaseObj):
-        ...     def __init__(self, src):
+        ...     def __init__(self, src: str):
         ...         super().__init__(src)
-        ...     
-        ...     # Overwrite IOBaseObj ABC methods
-        ...     def abspath(self, follow_sym_links):
-        ...         return super().abspath(follow_sym_links)
         ...
-        ...     def sym_link(self, dst, relative):
-        ...         return super().sym_link(dst, relative)
-        ...     
-        ...     def copy(self, dst):
+        ...     # Overwrite IOBaseObj ABC method
+        ...     def copy(self, dst: str):
         ...         return super().copy(dst)
         ...         
 
@@ -77,7 +71,40 @@ class IOBaseObj(ABC):
         """Representation request method."""
         return self.src
     
-    @abstractmethod
+    def relpath(self, 
+                dst: str) -> str:
+        """Returns the relative file path to some destination.
+
+        Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC method
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ... 
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.relpath('new_dir/file2.txt'))
+            ...
+            "../file_namt.txt"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.relpath('new_dir/file2.txt')
+            "../file_namt.txt"
+
+        Arguments:
+            dst: Destination file path.
+
+        Returns:
+            String that reprents the relative file path of the object to the destination file or directory.
+        """
+        return os.path.relpath(dst, self.abspath())
+
     def abspath(self,
                 follow_sym_links: bool = False
                ) -> Union[str,None]:
@@ -87,19 +114,13 @@ class IOBaseObj(ABC):
             >>> # Initialize child class and inherit 
             >>> #   from IOBaseObj ABC
             >>> class SomeFileClass(IOBaseObj):
-            ...     def __init__(self, src):
+            ...     def __init__(self, src: str):
             ...         super().__init__(src)
-            ...     
-            ...     # Overwrite IOBaseObj ABC methods
-            ...     def abspath(self, follow_sym_links):
-            ...         return super().abspath(follow_sym_links)
             ...
-            ...     def sym_link(self, dst, relative):
-            ...         return super().sym_link(dst, relative)
-            ...     
-            ...     def copy(self, dst):
+            ...     # Overwrite IOBaseObj ABC methods
+            ...     def copy(self, dst: str):
             ...         return super().copy(dst)
-            ...         
+            ...              
             >>> # Using class object as context manager
             >>> with SomeFileClass("file_name.txt") as file:
             ...     print(file.abspath())
@@ -122,7 +143,6 @@ class IOBaseObj(ABC):
         else:
             return os.path.abspath(self.src)
     
-    @abstractmethod
     def sym_link(self, 
                  dst: str, 
                  relative: bool = False
@@ -133,17 +153,11 @@ class IOBaseObj(ABC):
             >>> # Initialize child class and inherit 
             >>> #   from IOBaseObj ABC
             >>> class SomeFileClass(IOBaseObj):
-            ...     def __init__(self, src):
+            ...     def __init__(self, src: str):
             ...         super().__init__(src)
-            ...     
-            ...     # Overwrite IOBaseObj ABC methods
-            ...     def abspath(self, follow_sym_links):
-            ...         return super().abspath(follow_sym_links)
             ...
-            ...     def sym_link(self, dst, relative):
-            ...         return super().sym_link(dst, relative)
-            ...     
-            ...     def copy(self, dst):
+            ...     # Overwrite IOBaseObj ABC methods
+            ...     def copy(self, dst: str):
             ...         return super().copy(dst)
             ...         
             >>> # Using class object as context manager
@@ -169,11 +183,11 @@ class IOBaseObj(ABC):
         src: str = self.abspath(follow_sym_links=True)
 
         if os.path.exists(dst):
-            os.remove(dst)
             warn(f"WARNING: Symlinked file of the name {dst} already exists. It is being replaced.")
+            os.remove(dst)
         
         if relative:
-            src: str = os.path.relpath(src, dst)
+            src: str = self.relpath(dst=dst)
         
         # Create command list
         cmd: List[str] = [ "ln", 
@@ -198,17 +212,11 @@ class IOBaseObj(ABC):
             >>> # Initialize child class and inherit 
             >>> #   from IOBaseObj ABC
             >>> class SomeFileClass(IOBaseObj):
-            ...     def __init__(self, src):
+            ...     def __init__(self, src: str):
             ...         super().__init__(src)
-            ...     
-            ...     # Overwrite IOBaseObj ABC methods
-            ...     def abspath(self, follow_sym_links):
-            ...         return super().abspath(follow_sym_links)
             ...
-            ...     def sym_link(self, dst, relative):
-            ...         return super().sym_link(dst, relative)
-            ...     
-            ...     def copy(self, dst):
+            ...     # Overwrite IOBaseObj ABC methods
+            ...     def copy(self, dst: str):
             ...         return super().copy(dst)
             ...         
             >>> # Using class object as context manager
@@ -234,3 +242,102 @@ class IOBaseObj(ABC):
             return os.path.abspath(copy(src=src, dst=dst))
         elif os.path.isdir(src):
             return os.path.abspath(copytree(src=src, dst=dst))
+    
+    def basename(self) -> str:
+        """Retrieves file or directory basename.
+
+        Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC method
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ... 
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.basename())
+            ...
+            "file_namt.txt"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.basename()
+            "file_namt.txt"
+
+        Returns:
+            String that represents the basename of the file or directory.
+        """
+        return os.path.basename(self)
+
+    def dirname(self) -> str:
+        """Retrieves file or directory basename.
+
+        Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC method
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ... 
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.dirname())
+            ...
+            "/abs/path/to"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.dirname()
+            "/abs/path/to"
+
+        Returns:
+            String that represents the directory name of the file or the parent directory of the directory.
+        """
+        return os.path.dirname(self.abspath())
+    
+    def move(self, 
+             dst: str) -> str:
+        """Renames/moves a file/directory. 
+
+        Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC method
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ... 
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.move("file2.txt))
+            ...
+            "file2.txt"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.move("file2.txt")
+            "file2.txt"
+
+        Arguments:
+            dst: Destination file path.
+
+        Returns:
+            String that represents the path of the new file or directory.
+        """
+        src: str = self.abspath(follow_sym_links=False)
+        if os.path.isfile(src):
+            return os.path.abspath(move(src=src, dst=dst, copy_function=copy))
+        elif os.path.isdir(src):
+            return os.path.abspath(move(src=src, dst=dst, copy_function=copytree))
+    
