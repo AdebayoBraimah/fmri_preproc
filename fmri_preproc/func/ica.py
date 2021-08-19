@@ -53,19 +53,25 @@ def ica(outdir: str,
     else:
         func_tr: float = nib.load(func).header.get('pixdim','')[4]
     
+    func_filt: str = outputs.get('func_filt')
+
     if temporal_fwhm:
         temporal_fwhm: float = float(temporal_fwhm)
-        func_filt: str = outputs.get('func_filt')
-        # sigma:float = np.round(temporal_fwhm / (2 * func_tr))  # 150 second filter
+        # sigma: float = np.round(temporal_fwhm / (2 * func_tr))  # 150 second filter
 
         with TmpDir(src=icadir) as tmp:
             tmp.mkdir()
             func_mean: str = os.path.join(tmp,'func_mean.nii.gz')
             func_mean: str = fslmaths(img=func).Tmean().run(out=func_mean, log=log)
-            func_filt: str = fslmaths(img=func).bptf(high_pass=temporal_fwhm, low_pass=-1, tr=func_tr, input_is_sec=True).add(input=func_mean).run(out=func_filt, log=log)
+            func_filt: str = fslmaths(img=func).bptf(high_pass=temporal_fwhm, 
+                                                     low_pass=-1, 
+                                                     tr=func_tr, 
+                                                     input_is_sec=True).add(input=func_mean).run(out=func_filt, log=log)
             tmp.rmdir()
     else:
-        func_filt: str = func
+        with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
+            # func_filt: str = fn.copy(dst=func_filt)
+            func_filt: str = fn.sym_link(dst=func_filt, relative=True)
     
     meldir: str = melodic(input=func_filt,
                           mask=func_brainmask,
