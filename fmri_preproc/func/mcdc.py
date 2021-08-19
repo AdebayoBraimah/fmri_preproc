@@ -111,33 +111,23 @@ def mcdc(func: str,
     
     # Define output files
     if use_mcflirt:
-        mcdir: str = os.path.join(outdir,"mc")
-        outputs: Dict[str,str] = {
-                                    "func_mcdc": os.path.join(mcdir,"func_mc.nii.gz"),
-                                    "func_mot": os.path.join(mcdir,"func_mc_motion.tsv"),
-                                    "func_metrics": os.path.join(mcdir,"func_mc_regressors.tsv"),
-                                    "func_out_plot": os.path.join(mcdir,"func_mc_outliers.png"),
-                                    "mcdc_mean": os.path.join(mcdir,"func_mc_mean.nii.gz"),
-                                    "mcdc_std": os.path.join(mcdir,"func_mc_std.nii.gz"),
-                                    "mcdc_tsnr": os.path.join(mcdir,"func_mc_tsnr.nii.gz"),
-                                    "mcdc_brainmask": os.path.join(mcdir,"func_mc_brainmask.nii.gz"),
-                                    "func_mcdc_fovmask": os.path.join(mcdir,"func_mc_fovmask.nii.gz"),
-                                    "func_mcdc_fovpercent": os.path.join(mcdir,"func_mc_fovpercent.nii.gz")
-                                }
+        mc_name: str = 'mc'
     else:
-        mcdir: str = os.path.join(outdir,"mcdc")
-        outputs: Dict[str,str] = {
-                                    "func_mcdc": os.path.join(mcdir,"func_mcdc.nii.gz"),
-                                    "func_mot": os.path.join(mcdir,"func_mcdc_motion.tsv"),
-                                    "func_metrics": os.path.join(mcdir,"func_mcdc_regressors.tsv"),
-                                    "func_out_plot": os.path.join(mcdir,"func_mcdc_outliers.png"),
-                                    "mcdc_mean": os.path.join(mcdir,"func_mcdc_mean.nii.gz"),
-                                    "mcdc_std": os.path.join(mcdir,"func_mcdc_std.nii.gz"),
-                                    "mcdc_tsnr": os.path.join(mcdir,"func_mcdc_tsnr.nii.gz"),
-                                    "mcdc_brainmask": os.path.join(mcdir,"func_mcdc_brainmask.nii.gz"),
-                                    "func_mcdc_fovmask": os.path.join(mcdir,"func_mcdc_fovmask.nii.gz"),
-                                    "func_mcdc_fovpercent": os.path.join(mcdir,"func_mcdc_fovpercent.nii.gz")
-                                }
+        mc_name: str = 'mcdc'
+
+    mcdir: str = os.path.join(outdir,f"{mc_name}")
+    outputs: Dict[str,str] = {
+                                "func_mcdc": os.path.join(mcdir,f"func_{mc_name}.nii.gz"),
+                                "func_mot": os.path.join(mcdir,f"func_{mc_name}_motion.tsv"),
+                                "func_metrics": os.path.join(mcdir,f"func_{mc_name}_regressors.tsv"),
+                                "func_out_plot": os.path.join(mcdir,f"func_{mc_name}_outliers.png"),
+                                "mcdc_mean": os.path.join(mcdir,f"func_{mc_name}_mean.nii.gz"),
+                                "mcdc_std": os.path.join(mcdir,f"func_{mc_name}_std.nii.gz"),
+                                "mcdc_tsnr": os.path.join(mcdir,f"func_{mc_name}_tsnr.nii.gz"),
+                                "mcdc_brainmask": os.path.join(mcdir,f"func_{mc_name}_brainmask.nii.gz"),
+                                "func_mcdc_fovmask": os.path.join(mcdir,f"func_{mc_name}_fovmask.nii.gz"),
+                                "func_mcdc_fovpercent": os.path.join(mcdir,f"func_{mc_name}_fovpercent.nii.gz")
+                            }
 
     # Perform MCDC
     if use_mcflirt:
