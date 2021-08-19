@@ -7,6 +7,8 @@ NOTE:
         * Convert 3D ``c3d``: https://sourceforge.net/p/c3d/git/ci/master/tree/doc/c3d.md 
             * Can download pre-compiled binaries: https://sourceforge.net/projects/c3d/files/c3d/
 """
+import os
+from fmri_preproc.utils.workdir import WorkDir
 from typing import (
     Dict,
     List,
@@ -17,14 +19,55 @@ from typing import (
 
 from fmri_preproc.utils.util import Command
 from fmri_preproc.utils.logutil import LogFile
+from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.fileio import (
     File,
     NiiFile
 )
 
 
-def fmap_to_struct():
-    """doc-string"""
+def fmap_to_struct(outdir: str,
+                   fmap: str,
+                   fmap_magnitude: str,
+                   fmap_brainmask: str,
+                   struct: str,
+                   struct_brainmask: str,
+                   struct_boundarymask: Optional[str] = None,
+                   bbr: bool = True,
+                   bbr_slope: float = 0.5,
+                   bbr_type: Optional[str] = None, # This SHOULD be an enum
+                   log: Optional[LogFile] = None
+                  ) -> None:
+    """Perform (rigid-body) fieldmap to structural image registration, with optional BBR.
+    """
+    with WorkDir(src=outdir) as od:
+        regdir: str = os.path.join(od.abspath(),'reg') # This might change as src_to_ref space directories need to be specififed.
+        outdir: str = od.abspath()
+
+    # Check and validate input fmap associated NIFTI files
+    with NiiFile(src=fmap, assert_exists=True, validate_nifti=True) as fmp:
+        with NiiFile(src=fmap_magnitude, assert_exists=True, validate_nifti=True) as fmm:
+            with NiiFile(src=fmap_brainmask, assert_exists=True, validate_nifti=True) as fmb:
+                fmap: str = fmp.abspath()
+                fmap_magnitude: str = fmm.abspath()
+                fmap_brainmask: str = fmb.abspath()
+
+    # Check and validate input structural associated NIFTI images
+    with NiiFile(src=struct, assert_exists=True, validate_nifti=True) as stc:
+        with NiiFile(src=struct_brainmask, assert_exists=True, validate_nifti=True) as sbm:
+            struct: str = stc.abspath()
+            struct_brainmask: str = sbm.abspath()
+
+    if struct_boundarymask:
+        with NiiFile(src=struct_boundarymask, assert_exists=True, validate_nifti=True) as sbm:
+            struct_boundarymask: str = sbm.abspath()
+    
+    if bbr:
+        if (struct_boundarymask is None) or (struct_boundarymask == ""):
+            if log:
+                log.error("RuntimeError: struct_boundarymask is required for BBR")
+            raise RuntimeError('struct_boundarymask is required for BBR')
+
     pass
 
 def func_to_sbref():
