@@ -7,7 +7,6 @@ from warnings import warn
 
 from typing import (
     Optional,
-    Union,
     Tuple
 )
 
