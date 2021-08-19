@@ -154,7 +154,7 @@ class Command:
             env: Dict = {},
             stdout: str = "",
             shell: bool = False
-           ) -> Tuple[int,Union[File,None]]:
+           ) -> Tuple[int,Union[str,None]]:
         """Uses python's built-in subprocess class to execute (run) a command from an input command list.
         The standard output and error can optionally be written to file.
         
