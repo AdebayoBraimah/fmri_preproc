@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 
 from typing import (
+    Dict,
     Optional,
     Tuple
 )
@@ -124,7 +125,7 @@ def fix_extract(func_filt: str,
     funcmask: str = fslmaths(img=funcmask).thr(0.5).bin().run(out=funcmask, log=log)
 
     # TODO:
-    #   mask convert function
+    #   mask convert function/operation goes here
 
     # Extract FIX features
     cmd: Command = Command("fix")
@@ -137,7 +138,7 @@ def fix_extract(func_filt: str,
 def _classify(fixdir: str,
               rdata: str,
               thr: int,
-              fix_src: Optional[str],
+              fix_src: Optional[str] = None,
               log: Optional[LogFile] = None
              ) -> str:
     """Helper function that performs unlabeled ICA classification.
@@ -169,13 +170,48 @@ def _classify(fixdir: str,
     except Exception as _:
         with open(fix_log, 'r') as f:
             s: str = f.read()
+        log.error(s)
         raise RuntimeError(s)
 
     return fixdir
 
+def fix_classify(rdata: str,
+                 thr: int,
+                 outdir: str,
+                 log: Optional[LogFile] = None
+                ):
+    """FIX feature classification.
+    """
+    # Check inputs
+    with File(src=rdata, assert_exists=True) as rd:
+        rdata: str = rd.abspath()
+    
+    with WorkDir(src=outdir) as od:
+        denoisedir: str = os.path.join(od.src,'denoise')
+        fixdir: str = os.path.join(denoisedir,'fix')
+        with WorkDir(src=fixdir) as fd:
+            if not fd.exists():
+                log.error("RuntimeError: FIX feature extraction must be performed before feature classification.")
+                raise RuntimeError(f"FIX feature extraction must be performed before feature classification.")
+            fixdir: fd.abspath()
+    
+    # Define outputs
+    outputs: Dict[str,str] = {
+                                "fix_labels": os.path.join(denoisedir,'fix_labels.txt'),
+                                "fix_regressors": os.path.join(denoisedir,'fix_regressors.tsv'),
+                             }
+    
+    # FIX feature classification
+    _: str = _classify(fixdir=fixdir, rdata=rdata, thr=thr)
 
-
-def fix_classify():
+    # Rename FIX labels
+    with File(src=rdata) as rd:
+        _, basename, _ = rd.file_parts()
+        labels: str = f'fix4melview_{basename}_thr{thr}.txt'
+        labels: str = os.path.join(fixdir, labels)
+    
+    with File(src=labels, assert_exists=True) as f:
+        fix_labels: str = f.copy(dst=outputs.get('fix_labels'))
     pass
 
 def fix_apply():
