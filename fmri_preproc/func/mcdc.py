@@ -40,6 +40,10 @@ from fmri_preproc.utils.enums import (
     SliceAcqOrder
 )
 
+# TODO: 
+#   * Import brain_extract to other modules
+#   * Replace ``bet`` with brain_extract function
+
 def mcdc(func: str,
          outdir: str,
          func_echospacing: Optional[float] = 0.1,
@@ -770,6 +774,31 @@ def motion_outlier(func: str,
         plt.savefig(plot_name)
 
     return outlier, metric_data, thr, metric_name, plot_name
+
+def brain_extract(img: str,
+                  out: str,
+                  mask: Optional[str] = None,
+                  robust: bool = False,
+                  seg: bool = True,
+                  frac_int: Optional[float] = None,
+                  log: Optional[LogFile] = None
+                 ) -> Tuple[str,str]:
+    """Performs brain extraction.
+    """
+    if mask:
+        mask_bool: bool = True
+    else:
+        mask_bool: bool = False
+
+    brain, _ = bet(img=img,
+                   out=out,
+                   mask=mask_bool,
+                   robust=robust,
+                   seg=seg,
+                   frac_int=frac_int,
+                   log=log)
+    mask: str = fslmaths(img=brain).bin().run(out=mask, log=log)
+    return brain, mask
 
 # This function should be used elsewhere, perhaps outside of this
 #   package.
