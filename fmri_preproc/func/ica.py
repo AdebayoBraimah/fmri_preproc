@@ -6,7 +6,8 @@ import nibabel as nib
 
 from typing import (
     Dict, 
-    Optional
+    Optional,
+    Tuple
 )
 
 from fmri_preproc.utils.workdir import WorkDir
@@ -26,7 +27,7 @@ def ica(outdir: str,
         temporal_fwhm: Optional[float] = 150,
         icadim: Optional[int] = None,
         log: Optional[LogFile] = None
-       ) -> str:
+       ) -> Tuple[str]:
     """Performs single-subject ICA.
     """
     # Validate input NIFTI files
