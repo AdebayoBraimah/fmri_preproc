@@ -32,6 +32,12 @@ from fmri_preproc.utils.fslpy import (
     fslmaths,
 )
 
+# TODO:
+#   * Add fixlabels module: https://git.fmrib.ox.ac.uk/fsl/fslpy/-/blob/master/fsl/data/fixlabels.py
+#       * Add fsl directory to package
+#   * Add dseg_type to enums
+#   * Add mask module to utils
+
 def fix_extract(func_filt: str,
                 func_ref: str,
                 struct: str,
@@ -62,7 +68,7 @@ def fix_extract(func_filt: str,
     with File(src=func2struct_mat, assert_exists=True) as fm:
         with File(src=mot_param, assert_exists=True) as mt:
             func2struct_mat: str = fm.abspath()
-            mot_param: str = mt.abspaths()
+            mot_param: str = mt.abspath()
     
     with WorkDir(src=outdir) as od:
         denoisedir: str = os.path.join(od.src,'denoise')
@@ -212,6 +218,10 @@ def fix_classify(rdata: str,
     
     with File(src=labels, assert_exists=True) as f:
         fix_labels: str = f.copy(dst=outputs.get('fix_labels'))
+    
+    # Create FIX regressors
+    # if log: log.write() # - if statement oneliner
+    # noise_idx: str = 
     pass
 
 def fix_apply():
