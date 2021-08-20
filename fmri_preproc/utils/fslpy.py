@@ -440,7 +440,7 @@ def bet(img: str,
         mask: bool = False,
         robust: bool = False,
         seg: bool = True,
-        frac_int: Optional[int] = None,
+        frac_int: Optional[float] = None,
         verbose: bool = False,
         log: Optional[LogFile] = None
        ) -> Tuple[str,str]:
