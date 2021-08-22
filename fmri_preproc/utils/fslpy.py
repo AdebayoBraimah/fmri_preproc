@@ -971,9 +971,36 @@ def convertwarp(out: str,
     return out.src
 
 
-def fugue():
+def fugue(unmaskshift: bool = False, 
+          despike: bool = False, 
+          unmaskfmap: bool = False, 
+          log: Optional[LogFile] = None,
+          **kwargs
+         ) -> Tuple[str,str,str,str]:
     """FMRIB's Utility for Geometric Unwarping of EPIs."""
-    pass
+    cmd: Command = Command("fugue")
+
+    if unmaskshift:
+        cmd.opt("--unmaskshift")
+    if despike:
+        cmd.opt("--despike")
+    if unmaskfmap:
+        cmd.opt("--unmaskfmap")
+    
+    unwarp: str = kwargs.get('unwarp','')
+    warp: str = kwargs.get('warp','')
+    savefmap: str = kwargs.get('savefmap','')
+    saveshift: str = kwargs.get('saveshift','')
+
+    for k,v in kwargs.items():
+        cmd.opt(f"--{k}={v}")
+    
+    cmd.run(log=log)
+    
+    return (unwarp,
+            warp,
+            savefmap,
+            saveshift)
 
 def flirt(src: str,
           ref: str,
