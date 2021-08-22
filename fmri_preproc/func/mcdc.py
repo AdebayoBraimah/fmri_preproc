@@ -6,8 +6,6 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 
-from math import pi as PI
-
 from typing import (
     Dict,
     List,
@@ -394,7 +392,7 @@ def eddy_mcdc(func: str,
         with NiiFile(src=fmap, assert_exists=True, validate_nifti=True) as f:
             _, fname, _ = f.file_parts()
             field_hz: str = os.path.join(eddy_basename + "_" + fname + "_Hz_pre-mcdc")
-            field_hz: str = fslmaths(img=fmap).div(2 * PI).run(out=field_hz, log=log)
+            field_hz: str = fslmaths(img=fmap).div(6.2832).run(out=field_hz, log=log)
         
     # Perform Eddy-based mcdc
     (eddy_corr,

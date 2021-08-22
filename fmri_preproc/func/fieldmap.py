@@ -7,8 +7,6 @@ NOTE:
 import os
 import nibabel as nib
 
-from math import pi as PI
-
 from typing import (
     Dict,
     Optional,
@@ -126,7 +124,7 @@ def fieldmap(outdir: str,
     if log:
         log.log("Computing fieldmaps.")
 
-    fmap: str = fslmaths(img=field_img).mul(2 * PI).run(out=outputs.get('fmap'), log=log)
+    fmap: str = fslmaths(img=field_img).mul(6.2832).run(out=outputs.get('fmap'), log=log)
     mag: str = fslmaths(img=mag_img).Tmean().run(out=outputs.get('fmap_mag'), log=log)
 
     # Create brain mask
