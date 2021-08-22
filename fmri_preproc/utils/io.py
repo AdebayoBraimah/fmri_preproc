@@ -183,7 +183,7 @@ class IOBaseObj(ABC):
 
         Arguments:
             dst: Destination file path.
-            relative: Symbolically link the file using a relative path.
+            relative: Symbolically link the file or directory using a relative path.
 
         Returns:
             String that reprents the absolute path of the sym linked file path.
