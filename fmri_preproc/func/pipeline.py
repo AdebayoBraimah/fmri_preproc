@@ -15,9 +15,9 @@
 #   a. [X] melodic
 # 5. [X] Denoise
 #   a. [X] FIX
-# 6. Post-processing
-#   a. Spatial smooting
-#   b. intensity norm
+# 6. [X] Post-processing
+#   a. [X] Spatial smooting
+#   b. [X] Intensity norm
 # 7. QC
 #   a. PENDING
 
