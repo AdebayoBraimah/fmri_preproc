@@ -17,7 +17,8 @@ from typing import (
 from fmri_preproc.utils.util import Command
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
-from fmri_preproc.utils.tempdir import TmpDir
+from fmri_preproc.utils.mask import convert_to_fsl_fast
+from fmri_preproc.utils.fixlabels import loadLabelFile
 from fmri_preproc.func.ica import ica
 from fmri_preproc.func.mcdc import brain_extract
 
@@ -31,12 +32,6 @@ from fmri_preproc.utils.fslpy import (
     invxfm,
     fslmaths,
 )
-
-# TODO:
-#   * Add fixlabels module: https://git.fmrib.ox.ac.uk/fsl/fslpy/-/blob/master/fsl/data/fixlabels.py
-#       * Add fsl directory to package
-#   * Add dseg_type to enums
-#   * Add mask module to utils
 
 def fix_extract(func_filt: str,
                 func_ref: str,
@@ -79,6 +74,8 @@ def fix_extract(func_filt: str,
             fixdir: str = fx.abspath()
     
     # Setup fake FIX directory
+    if log: log.log("Setting up FIX directory")
+
     with NiiFile(src=func_filt) as ff:
         tmp_func: str = os.path.join(fixdir,'filtered_func_data.nii.gz')
         tmp_func: str = ff.sym_link(dst=tmp_func, relative=True)
@@ -92,6 +89,19 @@ def fix_extract(func_filt: str,
         with WorkDir(src=icadir) as icd:
             icd.mkdir()
         
+        if func_brainmask:
+            with NiiFile(src=func_brainmask, assert_exists=True, validate_nifti=True) as fnb:
+                func_brainmask: str = fnb.abspath()
+        else:
+            tmp_func_brain: str = os.path.join(fixdir, 'func_brain.nii.gz')
+            tmp_func_brainmask: str = os.path.join(fixdir, 'func_brain_mask.nii.gz')
+
+            _, func_brainmask = brain_extract(img=tmp_func,
+                                              out=tmp_func_brain,
+                                              mask=tmp_func_brainmask,
+                                              robust=True,
+                                              frac_int=0.4,
+                                              log=log)
         _: Tuple[str] = ica(outdir=icadir,
                             func=tmp_func,
                             func_brainmask=func_brainmask,
@@ -130,10 +140,14 @@ def fix_extract(func_filt: str,
     funcmask: str = applyxfm(src=struct_brainmask, ref=example_func, mat=highres2examp, out=funcmask)
     funcmask: str = fslmaths(img=funcmask).thr(0.5).bin().run(out=funcmask, log=log)
 
-    # TODO:
-    #   mask convert function/operation goes here
+    fsl_labels: str = os.path.join(fixregdir,'highres_pveseg.nii.gz')
+    fsl_labels: str = convert_to_fsl_fast(dseg=struct_dseg,
+                                          dseg_type=dseg_type,
+                                          out=fsl_labels)
 
     # Extract FIX features
+    if log: log.log("Performing FIX feature extraction")
+
     cmd: Command = Command("fix")
     cmd.opt("-f")
     cmd.opt(f"{fixdir}")
@@ -176,7 +190,7 @@ def _classify(fixdir: str,
     except Exception as _:
         with open(fix_log, 'r') as f:
             s: str = f.read()
-        log.error(s)
+            if log: log.error(s)
         raise RuntimeError(s)
 
     return fixdir
@@ -185,7 +199,7 @@ def fix_classify(rdata: str,
                  thr: int,
                  outdir: str,
                  log: Optional[LogFile] = None
-                ):
+                ) -> Tuple[str,str]:
     """FIX feature classification.
     """
     # Check inputs
@@ -208,6 +222,7 @@ def fix_classify(rdata: str,
                              }
     
     # FIX feature classification
+    if log: log.log("Performing FIX feature classification.")
     _: str = _classify(fixdir=fixdir, rdata=rdata, thr=thr)
 
     # Rename FIX labels
@@ -220,9 +235,69 @@ def fix_classify(rdata: str,
         fix_labels: str = f.copy(dst=outputs.get('fix_labels'))
     
     # Create FIX regressors
-    # if log: log.write() # - if statement oneliner
-    # noise_idx: str = 
-    pass
+    mel_mix_dir: str = os.path.join(fixdir, 'filtered_func_data.ica/melodic_mix')
+    fix_reg: str = outputs.get('fix_regressors')
 
-def fix_apply():
-    pass
+    noise_idx: str = loadLabelFile(filename=fix_labels, returnIndices=True)[2]
+    noise_idx: np.array = np.array(noise_idx) - 1
+    mix: np.array = np.loadtxt(mel_mix_dir)[:, noise_idx]
+    df: pd.DataFrame = pd.DataFrame(data=mix, columns=[f'noise_{i}' for i in noise_idx])
+    df.to_csv(fix_reg, sep='\t', index=None)
+    
+    return fix_labels, fix_reg
+
+def fix_apply(outdir: str,
+              temporal_fwhm: Optional[float] = 150.0,
+              log: Optional[LogFile] = None
+             ) -> None:
+    """FIX regress noise ICs from data.
+    """
+    with WorkDir(src=outdir) as od:
+        denoisedir: str = os.path.join(od.src,'denoise')
+        fixdir: str = os.path.join(denoisedir,'fix')
+        with WorkDir(src=fixdir) as fx:
+            if not fx.exists(): fx.mkdir()
+            denoisedir: str = os.path.abspath(denoisedir)
+            fixdir: str = fx.abspath()
+
+    # Define outputs
+    outputs: Dict[str,str] = {
+                                "fix_labels": os.path.join(denoisedir,'fix_labels.txt'),
+                                "func_clean": os.path.join(denoisedir,'func_clean.nii.gz'),
+                                "func_clean_mean": os.path.join(denoisedir,'func_clean_mean.nii.gz'),
+                                "func_clean_std": os.path.join(denoisedir,'func_clean_std.nii.gz'),
+                                "func_clean_tsnr": os.path.join(denoisedir,'func_clean_tsnr.nii.gz'),
+                                "fix_clean": os.path.join(fixdir,'filtered_func_data_clean.nii.gz')
+                             }
+
+    # Output variables
+    labels: str = outputs.get('fix_labels')
+    fix_clean: str = outputs.get('fix_clean')
+    func_clean: str = outputs.get('func_clean')
+    func_mean: str = outputs.get('func_clean_mean')
+    func_stdev: str = outputs.get('func_clean_std')
+    func_tsnr: str = outputs.get('func_clean_tsnr')
+
+
+    # FIX apply
+    if log: log.log("Performing FIX noise/nuissance regression")
+    cmd: Command = Command("fix")
+    cmd.opt("-a")
+    cmd.opt(f"{labels}")
+    cmd.opt("-m")
+    cmd.opt("-h")
+    cmd.opt(f"{temporal_fwhm}")
+    cmd.run(log=log)
+
+    # Organize output files
+    with NiiFile(src=fix_clean, assert_exists=True, validate_nifti=True) as fxc:
+        func_clean: str = fxc.sym_link(dst=func_clean, relative=True)
+    
+    func_mean: str = fslmaths(img=func_clean).Tmean().run(out=func_mean, log=log)
+    func_stdev: str = fslmaths(img=func_clean).Tstd().run(out=func_stdev, log=log)
+    func_tsnr: str = fslmaths(img=func_mean).div(func_stdev).run(out=func_tsnr, log=log)
+    
+    return (func_clean,
+            func_mean,
+            func_stdev,
+            func_tsnr)
