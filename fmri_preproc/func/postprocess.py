@@ -109,10 +109,3 @@ def postprocess(func: str,
         func_intnorm: str = fslmaths(img=func).mul(scaling).run(out=func_intnorm, log=log)
     
     return func_smooth, func_intnorm
-
-
-
-
-
-
-    
