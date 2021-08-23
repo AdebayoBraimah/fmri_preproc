@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Setup up acquisition parameters needed for EDDY, TOPUP, and FLIRT.
 """
-import os
 import nibabel as nib
 import numpy as np
 import json
@@ -14,17 +13,23 @@ from typing import (
     Union
 )
 
+from fmri_preproc.utils.enums import PhaseEncodeDirection
+
 def write_func_params(epi: str,
                       echospacing: float,
-                      pedir: str,
+                      pedir: Union[str,List[str]],
                       out: str,
-                      epifactor: Optional[int],
+                      epifactor: Optional[int] = None,
                       inplane_acc: Optional[float] = 1,
                       out_flirt: Optional[str] = None
                      ) -> Tuple[str,Union[str,None]]:
     """doc
     """
-    pedir: List[str] = pedir.split(",")
+    if not isinstance(pedir, list):
+        pedir: List[str] = pedir.split(",")
+
+    # Verify input phase encoding directions
+    pedir: List[str] = [ PhaseEncodeDirection(x.upper()).name for x in pedir ]
 
     eddyp: np.array = np.zeros((len(pedir),4))
     ax: List[str] = [''] * len(pedir)
