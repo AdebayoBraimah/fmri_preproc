@@ -103,7 +103,13 @@ class SegType(Enum):
 
 @unique
 class BBRType(Enum):
-    """BBR sign types"""
+    """BBR sign types."""
     signed: str = "signed"
     abs:    str = "abs"
+
+@unique
+class LogLevel(Enum):
+    """Log level enumerators."""
+    info:  str = "info"
+    debug: str = "debug"
     
