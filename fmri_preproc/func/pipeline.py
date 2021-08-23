@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """fMRI preprocessing pipeline - main pipeline.
 """
+# NOTE:
+# 
 # Pipeline overview
+# 
+# 0. Import/copy data to working directory
 # 
 # 1. [X] Prepare fieldmap
 #   a. [X] Topup [mc]
