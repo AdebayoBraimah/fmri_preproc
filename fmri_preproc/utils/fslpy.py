@@ -619,6 +619,33 @@ def fslroi(img: str,
 
     return out.src
 
+def sigloss(img: str,
+            out: str,
+            te: Optional[float] = None,
+            slicedir: Optional[str] = None,
+            mask: Optional[str] = None,
+            log: Optional[LogFile] = None
+           ) -> str:
+    """Estimate signal loss from a field map (in rad/s).
+    """
+    with NiiFile(src=img, assert_exists=True, validate_nifti=True) as im:
+        img: str = im.abspath()
+    
+    cmd: Command = Command("sigloss")
+    cmd.opt("-i"); cmd.opt(f"{img}")
+    cmd.opt("-s"); cmd.opt(f"{out}")
+
+    if te:
+        te: float = float(te)
+        cmd.opt(f"--te={te}")
+    if slicedir:
+        cmd.opt(f"--slicedir={slicedir}")
+    if mask:
+        cmd.opt(f"--mask={mask}")
+    
+    cmd.run(log=log)
+    return out
+
 def fslmerge(out: str,
              merge_opt: str = "t",
              tr: Optional[float] = None,
