@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Utility module for classes and functions that pertain to wrapping command line executables.
+"""Utility module for classes and functions that pertain to wrapping command line executables and other miscellaneous actions.
 """
 import os
 import subprocess
@@ -13,15 +13,11 @@ from typing import (
     Union
 )
 
-from fmri_preproc.utils.io import File
+from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.logutil import LogFile
 
 class DependencyError(Exception):
     """Exception intended for unment dependencies"""
-    pass
-
-class SymLinkWarning(Warning):
-    """Warning intended for symlinking files with an existing link of the same name."""
     pass
 
 class Command:
@@ -146,8 +142,6 @@ class Command:
         if not shutil.which(self.command):
             if err_msg:
                 print(f"\n \t {err_msg} \n")
-            else:
-                print(f"\n \t The required dependency {self.command} is not installed or in the system path. \n")
             raise DependencyError(f"Command executable not found in system path: {self.command}.")
         else:
             return True
@@ -160,7 +154,7 @@ class Command:
             env: Dict = {},
             stdout: str = "",
             shell: bool = False
-           ) -> Tuple[int,Union[File,None]]:
+           ) -> Tuple[int,Union[str,None]]:
         """Uses python's built-in subprocess class to execute (run) a command from an input command list.
         The standard output and error can optionally be written to file.
         
@@ -239,15 +233,15 @@ class Command:
         if stdout:
             stderr: str = os.path.splitext(stdout)[0] + ".err"
 
-            with File(file=stdout) as stout:
-                with File(file=stderr) as sterr:
-                    stout.write_txt(out)
-                    sterr.write_txt(err)
-                    stdout: str = stout.abs_path()
-                    stderr: str = sterr.abs_path()
+            with File(src=stdout) as stout:
+                with File(src=stderr) as sterr:
+                    stout.write(out)
+                    sterr.write(err)
+                    stdout: str = stout.abspath()
+                    stderr: str = sterr.abspath()
         else:
-            stdout: None = None
-            stderr: None = None
+            stdout: str = None
+            stderr: str = None
 
         if p.returncode != 0:
             if log:
@@ -273,48 +267,4 @@ class Command:
         return (p.returncode, 
                 stdout, 
                 stderr)
-
-def rel_sym_link(target: str,
-                 linkname: str,
-                 log: Optional[LogFile] = None
-                ) -> str:
-    """Creates a symlink with a relative path.
-
-    Usage example:
-        >>> linked_file = rel_sym_link(target="/home/.zprofile",
-        ...                            linkname="/home/my_zprofile")
-        ...
-        >>> linked_file
-        "/home/my_zprofile"
-
-    Arguments:
-        target: Input target file.
-        linkname: Output name of symlinked file.
-        log: LogFile object for logging purposes.
-
-    Returns:
-        String that corresponds to symlinked file.
-
-    Raises:
-        SymLinkWarning: Warning that arises if the symlinked file already exists.
-    """
-    with File(file=target, assert_exists=True) as src:
-        with File(file=linkname, assert_exists=False) as lnk:
-            target: str = src.abs_path(follow_sym_links=True)
-            linkname: str = lnk.abs_path()
-    
-    if os.path.exists(linkname):
-        os.remove(linkname)
-        raise SymLinkWarning(f"Symlinked file of the name {linkname} already exists. It is being replaced.")
-    
-    target: str = os.path.relpath(target, linkname)
-
-    cmd: Command = Command("ln")
-    cmd.opt("-s")
-    cmd.opt(f"{target}")
-    cmd.opt(f"{linkname}")
-    cmd.run(log=log)
-
-    return linkname
-
     

@@ -1,396 +1,356 @@
 # -*- coding: utf-8 -*-
-"""File IO methods, functions and operations.
+"""Abstract base class file IO methods, functions and operations.
 """
 import os
-import nibabel as nib
+import subprocess
+from warnings import warn
 
-from fmri_preproc.utils.enums import NiiHeaderField
-
-from typing import (
-    Optional,
-    Tuple
+from shutil import (
+    copy,
+    copytree,
+    move
 )
 
-class InvalidNiftiFileError(Exception):
-    """Exception intended for invalid NIFTI files."""
-    pass
+from typing import (
+    Any,
+    List, 
+    Tuple,
+    Union
+)
 
-class NiftiFileIOWarning(Warning):
-    """Warning that is raised in the case of char byte overflow written to NIFTI file headers."""
-    pass
+from abc import (
+    ABC,
+    abstractmethod
+)
 
-class File:
-    """File object base class. This class creates a ``File`` object that encapsulates a number of methods and properites for file and filename handling, and file manipulation.
-    
+class IOBaseObj(ABC):
+    """IO abstract base class (``ABC``) object that encapsulates methods related to file and directory manipulation. 
+
+    This ``ABC`` cannot be directly instantiated, and **MUST** used by a child/sub-class that inherits from this class. 
+    Additionally, the ``copy`` class method (shown in abstract methods) **MUST** be overwritten when inheriting from this class. 
+
     Attributes:
-        file: Input file.
-        ext: File extension of input file. If no extension is provided, it is inferred.
-
+        src: Input string that represents a file or directory.
+    
+    Abstract methods:
+        copy: Copies a file or recursively copies a directory using ``copy`` and ``copytree`` from ``shutil``. 
+            This method may need to be implemented differently should other aspects of the data need to be preserved (i.e. needing to copy the file metadata with the file).
+    
     Usage example:
-        >>> # Using class object as context manager
-        >>> with File("file_name.txt") as file:
-        ...     file.touch()
-        ...     file.write_txt("some text")
+        >>> # Initialize child class and inherit 
+        >>> #   from IOBaseObj ABC
+        >>> class SomeFileClass(IOBaseObj):
+        ...     def __init__(self, src: str):
+        ...         super().__init__(src)
         ...
-        >>> # or
-        >>> 
-        >>> file = File("file_name.txt")
-        >>> file
-        "file_name.txt"
+        ...     # Overwrite IOBaseObj ABC method
+        ...     def copy(self, dst: str):
+        ...         return super().copy(dst)
+        ...         
 
     Arguments:
-        file: Input file (need not exist at runtime/instantiated).
-        ext: File extension of input file. If no extension is provided, it is inferred.
+        src: Input string that represents a file or directory.
     """
-    __slots__ = [ 
-                    "file", 
-                    "ext"
-                ]
-    
-    def __init__(self,
-                 file: str,
-                 ext: Optional[str] = "",
-                 assert_exists: bool = False
-                ) -> None:
-        """Initialization method for the File base class.
-        
-        Usage example:
-            >>> # Using class object as context manager
-            >>> with File("file_name.txt") as file:
-            ...     file.touch()
-            ...     file.write_txt("some text")
-            ...
-            >>> # or
-            >>> 
-            >>> file = File("file_name.txt")
-            >>> file
-            "file_name.txt"
+    __slots__ = [ "src" ]
 
-        Arguments:
-            file: Input file (need not exist at runtime/instantiated).
-            ext: File extension of input file. If no extension is provided, it is inferred.
-            assert_exists: Asserts that the specified input file must exist. 
-        """
-        self.file: str = file
-        
-        if ext:
-            self.ext: str = ext
-        elif self.file.endswith('.gz'):
-            self.ext: str = self.file[-7:]
-        else:
-            _, self.ext = os.path.splitext(self.file)
-        
-        if assert_exists:
-            assert os.path.exists(self.file), f"Input file {self.file} does not exist."
+    def __init__(self,
+                 src: str) -> None:
+        """Constructor that initializes ``IOBaseObj`` abstract base class."""
+        self.src: str = src
+        super(IOBaseObj, self).__init__()
     
     def __enter__(self):
         """Context manager entrance method."""
         return self
-
+    
     def __exit__(self, exc_type, exc_val, traceback):
         """Context manager exit method."""
         return False
-
+    
     def __repr__(self):
         """Representation request method."""
-        return self.file
-        
-    def touch(self) -> None:
-        """Creates empty file.
-
-        This class mehtod is analagous to UNIX's ``touch`` command.
-        
-        Usage example:
-            >>> # Using class object as context manager
-            >>> with File("file_name.txt") as file:
-            ...     file.touch()
-            ...
-            >>> # or
-            >>> 
-            >>> file = File("file_name.txt")
-            >>> file.touch()
-        """
-        if os.path.exists(self.file):
-            print(f"The file: {self.file} already exists.")
-        else:
-            with open(self.file,'w') as _:
-                pass
-        return None
+        return self.src
     
-    def abs_path(self,
-                 follow_sym_links: bool = False
-                ) -> str:
-        """Returns absolute path of file.
+    def relpath(self, 
+                dst: str) -> str:
+        """Returns the relative file path to some destination.
+
+        Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC method
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ... 
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.relpath('new_dir/file2.txt'))
+            ...
+            "../file_namt.txt"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.relpath('new_dir/file2.txt')
+            "../file_namt.txt"
+
+        Arguments:
+            dst: Destination file path.
+
+        Returns:
+            String that reprents the relative file path of the object from the destination file or directory.
+        """
+        if os.path.isfile(self.src):
+            return (os.path.join(
+                os.path.relpath(
+                    os.path.dirname(self.abspath()),
+                    os.path.dirname(dst)),
+                    os.path.basename(self.src)))
+        else:
+            return os.path.relpath(dst, self.abspath())
+
+    def abspath(self,
+                follow_sym_links: bool = False
+               ) -> Union[str,None]:
+        """Returns the absolute file path.
         
         Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC methods
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ...              
             >>> # Using class object as context manager
-            >>> with File("file_name.txt") as file:
-            ...     file.touch()
-            ...     print(file.abs_path())
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.abspath())
             ...
             "abspath/to/file_namt.txt"
-            >>> 
-            >>> # or
-            >>> 
-            >>> file = File("file_name.txt")
-            >>> file.abs_path()
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.abspath()
             "abspath/to/file_namt.txt"
         
         Arguments:
             follow_sym_links: If set to true, the absolute path of the symlinked file is returned.
-        """
-        if follow_sym_links and os.path.exists(self.file):
-            return os.path.abspath(os.path.realpath(self.file))
-        else:
-            return os.path.abspath(self.file)
-    
-    def rm_ext(self,
-               ext: str = "") -> str:
-        """Removes file extension from the file.
-        
-        Usage example:
-            >>> # Using class object as context manager
-            >>> with File("file_name.txt") as file:
-            ...     file.touch()
-            ...     print(file.rm_ext())
-            ...
-            "file_name"
-            >>> 
-            >>> # or
-            >>> 
-            >>> file = File("file_name.txt")
-            >>> file.rm_ext()
-            "file_name"
-        
-        Arguments:
-            ext: File extension.
         
         Returns:
-            Filename as string with no extension.
+            String that represents the absolute file path if it exists, otherwise ``None`` is returned.
         """
-        if ext:
-            ext_len: int = len(ext)
-            return self.file[:-(ext_len)]
-        elif self.ext:
-            ext_len = len(self.ext)
-            return self.file[:-(ext_len)]
+        if follow_sym_links and os.path.exists(self.src):
+            return os.path.abspath(os.path.realpath(self.src))
         else:
-            return self.file[:-(4)]
-        
-    def write_txt(self,
-                  txt: str = ""
-                 ) -> None:
-        """Writes/appends text to file.
-
-        NOTE:
-            Text written to file is ALWAYS utf-8 encoded.
-        
-        Usage example:
-            >>> # Using class object as context manager
-            >>> with File("file_name.txt") as file:
-            ...     file.write_txt("<Text to be written>")
-            ...
-            >>> # or
-            >>> 
-            >>> file = File("file_name.txt")
-            >>> file.write_txt("<Text to be written>")
-        
-        Arguments:
-            txt: Text/string to be written to file.
-        """
-        with open(self.file, mode="a", encoding='utf-8') as tmp_file:
-            tmp_file.write(txt)
-            tmp_file.close()
-        return None
-
-    def file_parts(self,
-                   ext: str = ""
-                  ) -> Tuple[str,str,str]:
-        """Similar to MATLAB's ``fileparts``, this function splits a file and its path into its constituent parts:
-
-            * file path
-            * filename
-            * extension
-        
-        Usage example:
-            >>> # Using class object as context manager
-            >>> with File("file_name.txt") as file:
-            ...     print(file.file_parts())
-            ...
-            ("path/to/file", "filename", ".txt")
-            >>> 
-            >>> # or
-            >>> 
-            >>> file = File("file_name.txt")
-            >>> file.file.file_parts()
-            ("path/to/file", "filename", ".txt")
-        
-        Arguments:
-            ext: File extension, needed if the file extension of file object is longer than 4 characters.
-        
-        Returns:
-            Tuple: 
-                * Absolute file path, excluding filename.
-                * Filename, excluding extension.
-                * File extension.
-        """
-        file: File = self.file
-        file: str = os.path.abspath(file)
-        
-        path, _filename = os.path.split(file)
-        
-        if ext:
-            ext_num: int = len(ext)
-            _filename: str = _filename[:-(ext_num)]
-            [filename, _] = os.path.splitext(_filename)
-        elif self.ext:
-            ext: str = self.ext
-            ext_num: int = len(ext)
-            _filename: str = _filename[:-(ext_num)]
-            [filename, _] = os.path.splitext(_filename)
-        else:
-            [filename, ext] = os.path.splitext(_filename)
-        
-        return (path, 
-                filename, 
-                ext)
-
-class NiiFile(File):
-    """NIFTI file class specific for NIFTI files which inherits class methods from the ``File`` base class.
+            return os.path.abspath(self.src)
     
-    Usage example:
-        >>> # Using class object as context manager
-        >>> with NiiFile("file.nii") as nii:
-        ...     print(nii.file_parts())
-        ...
-        ("path/to/file", "file", ".nii")
-        >>> 
-        >>> # or
-        >>> 
-        >>> nii = NiiFile("file.nii")
-        >>> nii
-        "file.nii"
-        >>> nii.abs_path()
-        "abspath/to/file.nii"
-        >>> 
-        >>> nii.rm_ext()
-        "file"
-        >>>
-        >>> nii.file_parts()
-        ("path/to/file", "file", ".nii")
-    
-    Arguments:
-        file: Path to NIFTI file.
-        
-    Raises:
-        InvalidNiftiFileError: Exception that is raised in the case **IF** the specified NIFTI file exists, but is an invalid NIFTI file.
-    """
+    def sym_link(self, 
+                 dst: str, 
+                 relative: bool = False
+                ) -> str:
+        """Creates a symbolic link with an absolute or relative file path.
 
-    def __init__(self,
-                 file: str,
-                 assert_exists: bool = False,
-                 validate_nifti: bool = False
-                ) -> None:
-        """Initialization method for the NiiFile class.
-        
+        NOTE: If a directory is the used as the input object, then the linked destination is returned.
+
         Usage example:
-            >>> # Using class object as context manager
-            >>> with NiiFile("file.nii") as nii:
-            ...     print(nii.file_parts())
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
             ...
-            "abspath/to/file.nii"
-            "file"
-            ("path/to/file", "file", ".nii")
-            >>> 
-            >>> # or
-            >>> 
-            >>> nii = NiiFile("file.nii")
-            >>> nii
-            "file.nii"
-            >>> nii.abs_path()
-            "abspath/to/file.nii"
-            >>> 
-            >>> nii.rm_ext()
-            "file"
+            ...     # Overwrite IOBaseObj ABC methods
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ...         
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     linked_file: str = file.sym_link("file2.txt")
+            ...     print(linked_file)
+            ...
+            "file2.txt"
             >>>
-            >>> nii.file_parts()
-            ("path/to/file", "file", ".nii")
-        
-        Arguments:
-            file: Path to NIFTI file.
-            assert_exists: Asserts that the specified input file must exist. 
-            validate_nifti: Validates the input NIFTI file if it exists.
-        
-        Raises:
-            InvalidNiftiFileError: Exception that is raised in the case **IF** the specified NIFTI file exists, but is an invalid NIFTI file.
-        """
-        self.file: str = file
-        super(NiiFile, self).__init__(self.file)
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.sym_link("file2.txt")
+            "file2.txt"
 
-        if self.file.endswith(".nii.gz"):
-            self.ext: str = ".nii.gz"
-        elif self.file.endswith(".nii"):
-            self.ext: str = ".nii"
+        Arguments:
+            dst: Destination file path.
+            relative: Symbolically link the file or directory using a relative path.
+
+        Returns:
+            String that reprents the absolute path of the sym linked file path.
+        """
+        src: str = self.abspath(follow_sym_links=True)
+
+        # Create command list
+        cmd: List[str] = [ "ln", "-s" ]
+        
+        if relative and os.path.isdir(dst):
+            dst: str = os.path.relpath(dst, src)
+        elif relative:
+            src: str = self.relpath(dst=dst)
         else:
-            self.ext: str = ".nii.gz"
-            self.file: str = self.file + self.ext
-
-        if assert_exists:
-            assert os.path.exists(self.file), f"Input file {self.file} does not exist."
+            src: str = self.abspath(follow_sym_links=True)
         
-        if validate_nifti and os.path.exists(self.file):
-            try:
-                _: nib.Nifti1Header = nib.load(filename=self.file)
-            except Exception as e:
-                # print(e)
-                raise InvalidNiftiFileError(f"The NIFTI file {self.file} is not a valid NIFTI file and raised the error {e}.")
+        if os.path.exists(dst) and os.path.isfile(dst):
+            warn(f"WARNING: Symlinked file of the name {dst} already exists. It is being replaced.")
+            os.remove(dst)
+            cmd.extend([f"{src}",f"{dst}"])
+        elif os.path.isdir(src):
+            cmd.extend([f"{dst}",f"{src}"])
+        else:
+            cmd.extend([f"{src}",f"{dst}"])
         
-    # Overwrite several File base class methods
-    def touch(self) -> None:
-        """This class method is not implemented and will simply return None, and is not relevant/needed for NIFTI files.
-        """
-        return None
+        # Execute command
+        p: subprocess.Popen = subprocess.Popen(cmd)
+        _: Tuple[Any] = p.communicate()
+        dst: str = os.path.abspath(dst)
+        return dst
 
-    def write_txt(self,
-                  txt: str = "",
-                  header_field: str = "intent_name"
-                 ) -> None:
-        """This class method writes relevant information to the NIFTI file header.
-        This is done by writing text to either the ``descrip`` or ``intent_name``
-        field of the NIFTI header.
+    @abstractmethod
+    def copy(self, 
+             dst: str
+            ) -> str:
+        """Copies file or recursively copies a directory to some destination.
 
-        NOTE:
-            * The ``descrip`` NIFTI header field has limitation of 24 bytes - meaning that only a string of 24 characters can be written without truncation.
-            * The ``intent_name`` NIFTI header field has limitation of 16 bytes - meaning that only a string of 16 characters can be written without truncation.
-        
         Usage example:
-            >>> # Using class object as context manager
-            >>> with NiiFile("file.nii") as nii:
-            ...     nii.write_txt(txt='Source NIFTI',
-            ...                   header_field='intent_name')
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
             ...
-            >>> # or
-            >>> 
-            >>> nii = NiiFile("file.nii")
-            >>> nii.write_txt(txt='Source NIFTI',
-            ...               header_field='intent_name')
+            ...     # Overwrite IOBaseObj ABC methods
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ...         
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     new_file: str = file.copy("file2.txt")
+            ...     print(new_file)
+            ...
+            "/abs/path/to/file2.txt"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.copy("file2.txt")
+            "/abs/path/to/file2.txt"
 
         Arguments:
-            txt: Input text to be added to the NIFTI file header.
-            header_field: Header field to have text added to.
+            dst: Destination file path.
 
-        Raises:
-            NiftiFileIOWarning: Warning that is raised if the byte character limit is surpassed for the specified header field.
+        Return:
+            String that corresponds to the copied file or directory.
         """
-        img: nib.Nifti1Header = nib.load(self.file)
-        header_field: str = NiiHeaderField(header_field).name
+        src: str = self.abspath(follow_sym_links=True)
+        if os.path.isfile(src):
+            return os.path.abspath(copy(src=src, dst=dst))
+        elif os.path.isdir(src):
+            return os.path.abspath(copytree(src=src, dst=dst))
+    
+    def basename(self) -> str:
+        """Retrieves file or directory basename.
 
-        if header_field == 'descrip':
-            if len(txt) >= 24:
-                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field}' header field.")
-            img.header['descrip'] = txt
-        elif header_field == 'intent_name':
-            if len(txt) >= 16:
-                raise NiftiFileIOWarning(f"The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field}' header field.")
-            img.header['intent_name'] = txt
-        return None
+        Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC method
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ... 
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.basename())
+            ...
+            "file_namt.txt"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.basename()
+            "file_namt.txt"
+
+        Returns:
+            String that represents the basename of the file or directory.
+        """
+        return os.path.basename(self.src)
+
+    def dirname(self) -> str:
+        """Retrieves file or directory basename.
+
+        Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC method
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ... 
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.dirname())
+            ...
+            "/abs/path/to"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.dirname()
+            "/abs/path/to"
+
+        Returns:
+            String that represents the directory name of the file or the parent directory of the directory.
+        """
+        return os.path.dirname(self.abspath())
+    
+    def move(self, 
+             dst: str) -> str:
+        """Renames/moves a file/directory. 
+
+        Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC method
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ... 
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.move("file2.txt))
+            ...
+            "file2.txt"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.move("file2.txt")
+            "file2.txt"
+
+        Arguments:
+            dst: Destination file path.
+
+        Returns:
+            String that represents the path of the new file or directory.
+        """
+        src: str = self.abspath(follow_sym_links=False)
+        if os.path.isfile(src):
+            return os.path.abspath(move(src=src, dst=dst, copy_function=copy))
+        elif os.path.isdir(src):
+            return os.path.abspath(move(src=src, dst=dst, copy_function=copytree))
+    

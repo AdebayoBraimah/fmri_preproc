@@ -92,3 +92,18 @@ class MotionMetric(Enum):
     """Motion metric calculation methods."""
     dvars:  str = "dvars"
     refrms: str = "refrms"
+
+@unique
+class SegType(Enum):
+    """Tissue segmentation types."""
+    fsl_fast:           str = "fsl_fast"
+    freesurfer_aseg:    str = "freesurfer_aseg"
+    drawem:             str = "drawem"
+    toblerone:          str = "toblerone"
+
+@unique
+class BBRType(Enum):
+    """BBR sign types"""
+    signed: str = "signed"
+    abs:    str = "abs"
+    

@@ -1,21 +1,28 @@
 # -*- coding: utf-8 -*-
 """fMRI preprocessing pipeline - main pipeline.
 """
+# NOTE:
+# 
 # Pipeline overview
 # 
-# 1. Prepare fieldmap
-#   a. Topup [mc]
-# 2. Motion correction, distortion correction
-#   a. eddy [mc]
-#   b. mcflirt [mc]
+# 0. Import/copy data to working directory
+# 
+# 1. [X] Prepare fieldmap
+#   a. [X] Topup [mc]
+# 2. [X] Motion correction, distortion correction
+#   a. [X] eddy [mc]
+#   b. [X] mcflirt [mc]
 # 3. Registration (linear, and non-linear)
 #   a. flirt ( + mcflirt) [reg]
 #       i. sym-link field map files from [mc]
-# 4. ICA
-#   a. meldic
-# 5. Denoise
-#   a. FIX
-# 6. QC
+# 4. [X] ICA
+#   a. [X] melodic
+# 5. [X] Denoise
+#   a. [X] FIX
+# 6. [X] Post-processing
+#   a. [X] Spatial smooting
+#   b. [X] Intensity norm
+# 7. QC
 #   a. PENDING
 
 class Pipeline:
