@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Utility module for classes and functions that pertain to wrapping command line executables.
+"""Utility module for classes and functions that pertain to wrapping command line executables and other miscellaneous actions.
 """
 import os
 import subprocess
