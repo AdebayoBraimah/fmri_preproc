@@ -17,6 +17,8 @@ from typing import (
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
+from fmri_preproc.utils.enums import PhaseEncodeDirection
+from fmri_preproc.utils.acqparam import write_func_params
 
 from fmri_preproc.utils.fslpy import (
     applywarp,
@@ -45,6 +47,9 @@ from fmri_preproc.utils.enums import (
 def mcdc(func: str,
          outdir: str,
          func_echospacing: Optional[float] = 0.1,
+         func_pedir: Optional[Union[str,List[str]]] = None,
+         epifactor: Optional[int] = None,
+         inplane_acc: float = 1,
          func_brainmask: Optional[str] = None,
          func_slorder: Optional[str] = None,
          fmap: Optional[str] = None,
@@ -64,7 +69,7 @@ def mcdc(func: str,
 
     # Logic tests
     _has_fmap: bool = fmap is not None
-    _has_acqp: bool = func_echospacing is not None
+    _has_acqp: bool = (func_pedir is not None) & (func_echospacing is not None)
 
     if dc:
         pass
@@ -142,6 +147,9 @@ def mcdc(func: str,
                                        func_mcdc=outputs.get('func_mcdc'),
                                        func_sliceorder=func_slorder,
                                        func_echospacing=func_echospacing,
+                                       func_pedir=func_pedir,
+                                       epifactor=epifactor,
+                                       inplane_acc=inplane_acc,
                                        fmap=fmap,
                                        fmap2func_xfm=fmap2func_affine,
                                        mb_factor=mb_factor,
@@ -262,6 +270,9 @@ def eddy_mcdc(func: str,
               func_mcdc: str,
               func_sliceorder: Optional[str] = None,
               func_echospacing: Optional[float] = 0.1,
+              func_pedir: Optional[Union[str,List[str]]] = None,
+              epifactor: Optional[int] = None,
+              inplane_acc: float = 1,
               fmap: Optional[str] = None,
               fmap2func_xfm: Optional[str] = None,
               mb_factor: Optional[int] = 1,
@@ -288,9 +299,9 @@ def eddy_mcdc(func: str,
                 eddy_basename: str = os.path.join(eddy_dir,"eddy_corr")
 
                 with WorkDir(src=eddy_dir) as d:
-                    if log:
-                        log.log("Creating eddy output directory.")
-                    d.mkdir()
+                    if not d.exists(): 
+                        if log: log.log("Creating eddy output directory.")
+                        d.mkdir()
     
     # Define output files
     outputs: Dict[str,str] = {
@@ -303,7 +314,7 @@ def eddy_mcdc(func: str,
                              }
 
     # Logic tests
-    _has_acqp = func_echospacing is not None
+    _has_acqp = (func_pedir is not None) & (func_echospacing is not None)
     _has_fmap = fmap is not None
 
     if _has_fmap and not _has_acqp:
@@ -332,9 +343,12 @@ def eddy_mcdc(func: str,
     idx: str = write_index(num_frames=num_vols, out_file=outputs.get('idx'))
     bvals: str = write_bvals(num_frames=num_vols, out_file=outputs.get('bvals'))
     bvecs: str = write_bvecs(num_frames=num_vols, out_file=outputs.get('bvecs'))
-    acqp: str = write_func_acq_params(num_frames=num_vols, 
-                                      effective_echo_spacing=func_echospacing, 
-                                      out_prefix=outputs.get('acqp'))
+    acqp: str = write_func_params(epi=func,
+                                  echospacing=func_echospacing,
+                                  pedir=func_pedir,
+                                  out=outputs.get('acqp'),
+                                  epifactor=epifactor,
+                                  inplane_acc=inplane_acc)
 
     # Set default Eddy parameters
     niter: int = 10
@@ -508,47 +522,6 @@ def write_bvecs(num_frames: int,
                encoding='utf-8')
     out_file: str = os.path.abspath(out_file)
     return out_file
-
-def write_func_acq_params(num_frames: int, 
-                          effective_echo_spacing: Optional[float] = 0.05, 
-                          out_prefix: Optional[str] = 'file'
-                         ) -> str:
-    """Creates acquisition parameters files for fMRI acquisition provided the number of frames and the 
-    effective echo spacing.
-    
-    Usage example:
-        >>> func_acqp = write_func_acq_params(num_frames=1200, 
-        ...                                   effective_echo_spacing=0.05,
-        ...                                   out_prefix="fmri")
-        ...
-        
-    Arguments:
-        num_frames: Number of temporal frames/dynamics.
-        effective_echo_spacing: Effective echo spacing.
-        out_prefix: Output file prefix.
-        
-    Returns:
-        String that corresponds to the acquisition parameter file for eddy current correction.
-    
-    Raises:
-        TypeError: Exception that is raised when either ``num_frames`` is not an ``int`` OR when ``effective_echo_spacing`` is not a ``float``.
-    """
-    if (not isinstance(effective_echo_spacing, int) and 
-        not isinstance(effective_echo_spacing, float) or
-        not isinstance(num_frames, int)):
-        raise TypeError(f"Input for num_frames: {num_frames} is not an integer OR effective_echo_spacing: {effective_echo_spacing} is not a float.")
-    
-    with File(src=out_prefix) as op:
-        out_func: str = op.rm_ext() + '.acqp'
-    
-    with open(out_func,'w') as f:
-        for _ in range(0,num_frames):
-            f.write(f"0 1 0 {effective_echo_spacing}\n")
-        f.close()
-    
-    out_func: str = os.path.abspath(out_func)
-    
-    return out_func
 
 def write_index(num_frames: int,
                 out_file: str = 'file.idx'
