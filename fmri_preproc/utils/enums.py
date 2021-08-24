@@ -110,8 +110,11 @@ class BBRType(Enum):
 @unique
 class LogLevel(Enum):
     """Log level enumerators."""
-    info:   str = "info"
-    debug:  str = "debug"
+    info:       str = "info"
+    debug:      str = "debug"
+    critical:   str = "critical"
+    error:      str = "error"
+    warning:    str = "warning"
 
 @unique
 class PhaseUnits(Enum):
