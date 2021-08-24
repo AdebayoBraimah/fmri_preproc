@@ -14,7 +14,7 @@ from typing import (
     Tuple
 )
 
-from fmri_preproc.utils.util import Command
+from fmri_preproc.utils.command import Command
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.mask import convert_to_fsl_fast
