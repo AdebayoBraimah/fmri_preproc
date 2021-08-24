@@ -2,19 +2,16 @@
 """Utility module for ``fmri_preproc`` resting-state fMRI pre-processing pipeline.
 """
 import os
-import subprocess
-import shutil
+import json
 from time import time 
 
 from typing import (
     Any,
     Dict,
-    List,
     Optional,
-    Tuple,
-    Union
 )
 
+from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.logutil import LogFile
 
 def timeops(log: Optional[LogFile] = None) -> Any:
@@ -51,3 +48,55 @@ def timeops(log: Optional[LogFile] = None) -> Any:
             return result
         return timed
     return decor
+
+def json2dict(jsonfile: str) -> Dict[Any,Any]:
+    """Read JSON file to dictionary.
+    """
+    with open(jsonfile, 'r') as file:
+        d: Dict[Any,Any] = json.load(file)
+    return d
+
+def dict2json(dict: Dict[Any,Any],
+              jsonfile: str,
+              indent: int = 4
+             ) -> str:
+    """Write dictionary to JSON file.
+    """
+    with open(jsonfile, 'w') as out:
+        json.dump(dict, out, indent=indent)
+    return out
+
+def update_sidecar(file: str, **kwargs) -> str:
+    """Updates a JSON sidecar/file.
+    """
+    with File(src=file, assert_exists=True) as f:
+        dirname, basename, _ = f.file_parts()
+        jsonfile: str = os.path.join(dirname,basename + '.json')
+        with File(src=jsonfile) as jf:
+            jsonfile: str = jf.abspath()
+    
+    d: Dict[Any,Any] = load_sidecar(file=jsonfile)
+    d.update(**kwargs)
+    jsonfile: str = dict2json(dict=d, jsonfile=jsonfile, indent=4)
+
+    return jsonfile
+
+def load_sidecar(file: str) -> Dict[Any,Any]:
+    """Reads in a JSON sidecar/file.
+    """
+    d: Dict[Any,Any] = {}
+    with File(src=file, assert_exists=True) as f:
+        dirname, basename, _ = f.file_parts()
+        jsonfile: str = os.path.join(dirname,basename + '.json')
+        with File(src=jsonfile) as jf:
+            if os.path.exists(jf.abspath()):
+                d.update(json.load(jf.abspath()))
+    return d
+
+def get_fsl_version() -> str:
+    """Returns a string that represents the version of ``FSL`` in the system path.
+    """
+    fsl_version_file: str = os.path.join(os.environ['FSLDIR'], 'etc/fslversion')
+    with open(fsl_version_file, 'r') as file:
+        ver: str = file.read().split(':')[0]
+    return ver
