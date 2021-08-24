@@ -672,7 +672,7 @@ def motion_outlier(func: str,
     """
     func: NiiFile = NiiFile(src=func, assert_exists=True, validate_nifti=True)
 
-    img0: nib.Nifti1Header = nib.load(func)
+    img0: nib.Nifti1Header = nib.load(func.src)
     image_data: np.array = img0.get_data().astype(float)
 
     # Threshold image
@@ -706,7 +706,7 @@ def motion_outlier(func: str,
     if metric_name:
         pd.DataFrame(
             np.stack((dvars, refrms, outlier), axis=1),
-            columns=['DVARS', 'RefRMS', 'Outlier' + metric.name.upper()],
+            columns=['DVARS', 'RefRMS', 'Outlier' + metric.upper()],
         ).to_csv(metric_name, sep='\t', index=None)
 
     # Plot metric
