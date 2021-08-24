@@ -26,7 +26,7 @@ from fmri_preproc.utils.fileio import (
 
 from fmri_preproc.utils.logutil import LogFile
 
-from fmri_preproc.utils.util import (
+from fmri_preproc.utils.command import (
     Command,
     DependencyError
 )
