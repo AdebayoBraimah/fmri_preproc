@@ -3,6 +3,7 @@
 """
 import logging
 from datetime import datetime
+
 from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.enums import LogLevel
 
@@ -60,10 +61,16 @@ class LogFile(File):
 
         if format_log_str and (level == "debug"):
             FORMAT: str = "%(asctime)s %(name)-12s %(levelname)-8s %(message)s"
+            DATEFMT: str = "%m-%d-%y %H:%M:%S"
+        elif format_log_str and (level == "info"):
+            FORMAT: str = "%(asctime)s %(message)s"
+            DATEFMT: str = "%m-%d-%y %H:%M:%S"
         elif format_log_str and (level != "debug"):
             FORMAT: str = "%(asctime)s %(name)s %(message)s"
+            DATEFMT: str = "%m-%d-%y %H:%M:%S"
         else:
             FORMAT: str = None
+            DATEFMT: str = None
         
         if level == "info":
             level: logging.INFO = logging.INFO
@@ -80,20 +87,20 @@ class LogFile(File):
             # Use Basic Config for root level logging
             logging.basicConfig(level=level,
                                 format=FORMAT,
-                                datefmt='%m-%d-%y %H:%M:%S',
+                                datefmt=DATEFMT,
                                 filename=self.log_file,
                                 filemode='a')
         else:
             # Define logging components
             self.logger.setLevel(level=level)
             file_handler: logging.FileHandler = logging.FileHandler(self.log_file)
-            formatter: logging.Formatter = logging.Formatter(FORMAT)
+            formatter: logging.Formatter = logging.Formatter(FORMAT, DATEFMT)
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
 
         # Define a Handler which writes to the sys.stderr
         if print_to_screen:
-            self.console = logging.StreamHandler()
+            self.console: logging.StreamHandler = logging.StreamHandler()
             self.console.setLevel(level)
             logging.getLogger().addHandler(self.console)
         
