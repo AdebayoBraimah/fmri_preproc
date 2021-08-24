@@ -19,7 +19,7 @@ from typing import (
 
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
-from fmri_preproc.utils.util import Command
+from fmri_preproc.utils.command import Command
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.enums import BBRType
 
