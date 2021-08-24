@@ -56,6 +56,8 @@ def fieldmap(outdir: str,
     NOTE: 
         Input directory should be parent FEAT/processing directory path.
     """
+    # TODO: 
+    # Re-configure function to ensure compatibility with import_spinecho and import fieldmap functions
     if log: log.log("Preparing fieldmaps")
 
     outdir: str = os.path.join(outdir,"fmap")
@@ -78,7 +80,7 @@ def fieldmap(outdir: str,
 
     with TmpDir(src=topup_dir) as tmp:
         tmp.mkdir()
-
+        
         input_spinecho: str = os.path.join(topup_dir,'spinecho.nii.gz')
 
         if spinecho:
