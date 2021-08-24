@@ -28,7 +28,9 @@ class LogFile(File):
     def __init__(self,
                  log_file: str = "",
                  print_to_screen: bool = False,
-                 level: str = "info" # TODO: Need enum here
+                 format_log_str: bool = False,
+                 use_root_logger: bool = False,
+                 level: str = "info"
                 ) -> None:
         """Initialization method for the LogFile class. Initiates logging and its associated methods (from the ``logging`` module).
         
@@ -40,31 +42,60 @@ class LogFile(File):
         Arguments:
             file: Log filename (need not exist at runtime).
             print_to_screen: If true, prints output to standard output (stdout) as well.
+            format_log_str: If true, this formats the logging information with more detail.
+            use_root_logger: If true, **ALL** information is written to a single log file.
+            level: Logging level. Options include:
+                * ``info``
+                * ``debug``
+                * ``critical``
+                * ``error``
+                * ``warning``
         """
         self.log_file: str = log_file
-
         level: str = LogLevel(level.lower()).name
+
+        # Define logging
+        self.logger = logging.getLogger(__name__)
+        super(LogFile, self).__init__(self.log_file)
+
+        if format_log_str and (level == "debug"):
+            FORMAT: str = "%(asctime)s %(name)-12s %(levelname)-8s %(message)s"
+        elif format_log_str and (level != "debug"):
+            FORMAT: str = "%(asctime)s %(name)s %(message)s"
+        else:
+            FORMAT: str = None
         
         if level == "info":
             level: logging.INFO = logging.INFO
         elif level == "debug":
             level: logging.DEBUG = logging.DEBUG
+        elif level == "critical":
+            level: logging.CRITICAL = logging.CRITICAL
+        elif level == "error":
+            level: logging.ERROR = logging.ERROR
+        elif level == "warning":
+            level: logging.WARNING = logging.WARNING
         
-        logging.basicConfig(level=level,
-                            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                            datefmt='%m-%d-%y %H:%M:%S',
-                            filename=self.log_file,
-                            filemode='a')
-        
-        # Define a Handler which writes INFO messages or higher to the sys.stderr
+        if use_root_logger:
+            # Use Basic Config for root level logging
+            logging.basicConfig(level=level,
+                                format=FORMAT,
+                                datefmt='%m-%d-%y %H:%M:%S',
+                                filename=self.log_file,
+                                filemode='a')
+        else:
+            # Define logging components
+            self.logger.setLevel(level=level)
+            file_handler: logging.FileHandler = logging.FileHandler(self.log_file)
+            formatter: logging.Formatter = logging.Formatter(FORMAT)
+            file_handler.setFormatter(formatter)
+            self.logger.addHandler(file_handler)
+
+        # Define a Handler which writes to the sys.stderr
         if print_to_screen:
             self.console = logging.StreamHandler()
-            self.console.setLevel(logging.INFO)
+            self.console.setLevel(level)
             logging.getLogger().addHandler(self.console)
-            
-        # Define logging
-        self.logger = logging.getLogger(__name__)
-        super(LogFile, self).__init__(self.log_file)
         
     def info(self,
              msg: str = "",
