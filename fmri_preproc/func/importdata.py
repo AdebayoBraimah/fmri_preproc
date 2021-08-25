@@ -29,8 +29,8 @@ from fmri_preproc.utils.util import (
 
 from fmri_preproc.utils.enums import (
     SegType,
-    PhaseEncodeDirection,
-    PhaseUnits
+    LogLevel,
+    PhaseEncodeDirection
 )
 
 from fmri_preproc.utils.fileio import (
@@ -53,6 +53,8 @@ from fmri_preproc.func.mcdc import (
 # Globlally define log file object
 log: LogFile = None
 
+# TODO: Remove this once log file testing 
+#   is completed.
 @timeops(log)
 def testfunc(s, log):
     log.log(s)
@@ -60,28 +62,59 @@ def testfunc(s, log):
 
 @timeops(log)
 def import_info(outdir: str,
-                subid: str,
+                func: str,
                 scan_pma: float,
-                sesid: Optional[str] = None,
                 birth_ga: Optional[float] = None,
                 log: Optional[LogFile] = None,
+                verbose: bool = False,
+                log_datetime: bool = False,
+                log_level: str = 'info',
                 **kwargs
                ) -> Tuple[str, Dict[Any,Any]]:
     """Import subject related information and data.
     """
+    with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
+        _, fname, _ = fn.file_parts()
+
+        for item in fname.split('_'):
+            if 'sub' in item: subid: str = item[4:]
+            if 'ses' in item: sesid: str = item[4:]
+            if 'run' in item: runid: str = item[4:]
+    
     with WorkDir(src=outdir) as od:
-        if not od.exists(): 
-            if log: log.log("Creating subject information files.")
-            od.mkdir()
-        outdir: str = od.abspath()
-    
+
+        if sesid:
+            info_dir: str = os.path.join(od.src,f'sub-{subid}',f'ses-{sesid}',f'run-{runid}')
+            info_data: str = f'sub-{subid}_ses-{sesid}'
+            sub_info: str = f"sub: {subid} \nses: {sesid} \nrun: {runid}"
+        else:
+            info_dir: str = os.path.join(od.src,f'sub-{subid}',f'run-{runid}')
+            info_data: str = f'sub-{subid}'
+            sub_info: str = f"sub: {subid} \nrun: {runid}"
+
+        with WorkDir(src=info_dir) as ifd:
+
+            logdir: str = os.path.join(ifd.src,'logs')
+
+            with WorkDir(src=logdir) as logdr:
+
+                if not logdr.exists():
+                    logdr.mkdir()
+                
+                info_dir: str = ifd.abspath()
+
+                if not log:
+                    log_file: str = os.path.join(logdr,info_data + ".log")
+                    log: LogFile = LogFile(log_file=log_file,
+                                           print_to_screen=verbose,
+                                           format_log_str=log_datetime,
+                                           level=LogLevel(log_level.lower()).name)
+                
+        log.log(sub_info, use_header=True)
+        log.log("Creating subject information files.")
+            
     # Define outputs
-    if sesid:
-        info_data: str = f'sub-{subid}_ses-{sesid}'
-    else:
-        info_data: str = f'sub-{subid}'
-    
-    outputs: Dict[str,Union[int,str]] = { "subject_info": os.path.join(outdir, info_data + "_info.json") }
+    outputs: Dict[str,Union[int,str]] = { "subject_info": os.path.join(info_dir, info_data + "_info.json") }
     
     # Define info dictionary
     info_name: str = outputs.get('subject_info')
@@ -92,9 +125,11 @@ def import_info(outdir: str,
                             "sesid": sesid,
                             "scan_pma": scan_pma,
                             "birth_ga": birth_ga,
+                            **kwargs,
                           }
     info_name: str = dict2json(dict=info, jsonfile=info_name)
-    return info_name, info
+
+    return info_dir, info_name, info
 
 @timeops(log)
 def import_func(outdir: str,
@@ -322,9 +357,105 @@ def import_spinecho(outdir: str,
                     spinecho_epifactor: Optional[int] = None,
                     spinecho_inplaneacc: Optional[float] = 1,
                     log: Optional[LogFile] = None
-                   ) -> None:
+                   ) -> str:
     """Import reverse phase-encoded (blip-up, blip-down) spin-echo images.
     """
-    # TODO: Pick-up from here
-    pass
+    if log: log.log("Importing field map.")
 
+    outdir: str = os.path.join(outdir,"fmap")
+    with WorkDir(src=outdir) as od:
+        topup_dir: str = os.path.join(od.src, "topup")
+        with WorkDir(src=topup_dir) as td:
+            if not td.exists(): 
+                if log: log.log(f"Making fieldmap directory: {od.src}.")
+                td.mkdir()
+            outdir: str = od.abspath()
+            topup_dir: str = td.abspath()
+
+    # Check inputs to ensure that they are reversed phase encoded
+    with TmpDir(src=topup_dir) as tmp:
+        tmp.mkdir()
+        
+        input_spinecho: str = os.path.join(topup_dir,'spinecho.nii.gz')
+
+        if spinecho:
+            if log: log.log(f"Input spinecho fieldmap(_epi): {spinecho}.")
+
+            if not spinecho_pedir:
+                if log: log.error(f"TypeError: No phase encoding direction list was passed as input.")
+                raise TypeError("No phase encoding direction list was passed as input.")
+            elif not isinstance(spinecho_pedir, list):
+                spinecho_pedir: List[str] = spinecho_pedir.split(",")
+
+            # Verify input phase encoding directions
+            spinecho_pedir: List[str] = [ PhaseEncodeDirection(x.upper()).name for x in spinecho_pedir ]
+
+            if log: log.log(f"Phase encodind directions: {spinecho_pedir}")
+
+            with NiiFile(src=spinecho, assert_exists=True, validate_nifti=True) as sp:
+                input_spinecho: str = fslreorient2std(img=sp.abspath(), out=input_spinecho)
+                tmp.rmdir()
+
+        elif ap_dir and pa_dir:
+            if log:
+                log.log(f"Input AP fieldmap(_epi): {ap_dir}.")
+                log.log(f"Input PA fieldmap(_epi): {pa_dir}.")
+            
+            input_ap: str = os.path.join(tmp.src,'AP_epi.nii.gz')
+            input_pa: str = os.path.join(tmp.src,'PA_epi.nii.gz')
+
+            with NiiFile(src=ap_dir, assert_exists=True, validate_nifti=True) as ap:
+                with NiiFile(src=pa_dir, assert_exists=True, validate_nifti=True) as pa:
+                    input_ap: str = fslreorient2std(img=ap.abspath(), out=input_ap)
+                    input_pa: str = fslreorient2std(img=pa.abspath(), out=input_pa)
+            
+            spinecho_pedir: List[str] = [ "PA", "AP" ]
+            input_spinecho: str = merge_rpe(out=input_spinecho, log=log, ap_dir=input_ap, pa_dir=input_pa)
+            tmp.rmdir()
+
+        elif lr_dir and rl_dir:
+            if log:
+                log.log(f"Input LR fieldmap(_epi): {lr_dir}.")
+                log.log(f"Input RL fieldmap(_epi): {rl_dir}.")
+            
+            input_lr: str = os.path.join(tmp.src,'LR_epi.nii.gz')
+            input_rl: str = os.path.join(tmp.src,'RL_epi.nii.gz')
+
+            with NiiFile(src=lr_dir, assert_exists=True, validate_nifti=True) as lrd:
+                with NiiFile(src=rl_dir, assert_exists=True, validate_nifti=True) as rld:
+                    input_lr: str = fslreorient2std(img=lrd.abspath(), out=input_lr)
+                    input_rl: str = fslreorient2std(img=rld.abspath(), out=input_rl)
+            
+            spinecho_pedir: List[str] = [ "LR", "RL" ]
+            input_spinecho: str = merge_rpe(out=input_spinecho, log=log, lr_dir=input_lr, rl_dir=input_rl)
+            tmp.rmdir()
+
+        elif is_dir and si_dir:
+            if log:
+                log.log(f"Input IS fieldmap(_epi): {is_dir}.")
+                log.log(f"Input SI fieldmap(_epi): {si_dir}.")
+            
+            input_is: str = os.path.join(tmp.src,'IS_epi.nii.gz')
+            input_si: str = os.path.join(tmp.src,'SI_epi.nii.gz')
+
+            with NiiFile(src=is_dir, assert_exists=True, validate_nifti=True) as isd:
+                with NiiFile(src=si_dir, assert_exists=True, validate_nifti=True) as sid:
+                    input_is: str = fslreorient2std(img=isd.abspath(), out=input_is)
+                    input_si: str = fslreorient2std(img=sid.abspath(), out=input_si)
+            
+            spinecho_pedir: List[str] = [ "IS", "SI" ]
+            input_spinecho: str = merge_rpe(out=input_spinecho, log=log, is_dir=input_is, si_dir=input_si)
+            tmp.rmdir()
+
+        else:
+            if log: log.error(f"AttributeError: Input images are not reversed phase encoded fieldmap EPIs: Spinecho: {spinecho} \nAP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}")
+            raise AttributeError(f"Input images are not reversed phase encoded fieldmap EPIs: Spinecho: {spinecho} \nAP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}")
+    
+    # Update JSON sidecar
+    _: str = update_sidecar(file=input_spinecho,
+                            echo_spacing=spinecho_echospacing,
+                            phase_encode_dir=spinecho_pedir,
+                            epi_factor=spinecho_epifactor,
+                            inplane_accel=spinecho_inplaneacc)
+    
+    return input_spinecho
