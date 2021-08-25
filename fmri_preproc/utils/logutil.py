@@ -8,10 +8,7 @@ from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.enums import LogLevel
 
 class LogFile(File):
-    """Convenience class that creates a log file object for logging purposes. Due to how this class is constructed - its 
-    intended use case requires that this class is instantiated/called once and ONLY once.
-    
-    Once a class instance has been instantiated, then it and its associated methods can be used.
+    """Convenience class that creates a log file object for logging purposes.
     
     Attributes:
         log_file: Log filename.
@@ -24,6 +21,14 @@ class LogFile(File):
     Arguments:
         file: Log filename (need not exist at runtime).
         print_to_screen: If true, prints output to standard output (stdout) as well.
+        format_log_str: If true, this formats the logging information with more detail.
+        use_root_logger: If true, **ALL** information is written to a single log file.
+        level: Logging level. Options include:
+            * ``info``
+            * ``debug``
+            * ``critical``
+            * ``error``
+            * ``warning``
     """
     
     def __init__(self,
