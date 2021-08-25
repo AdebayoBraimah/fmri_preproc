@@ -3,7 +3,8 @@
 """
 import os
 import json
-from time import time 
+from time import time
+import logging
 
 from typing import (
     Any,
@@ -14,7 +15,12 @@ from typing import (
 from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.logutil import LogFile
 
-def timeops(log: Optional[LogFile] = None) -> Any:
+# TODO: Remove LogFile dependency and just 
+#   logger class from logging module.
+logger = logging.getLogger(__name__)
+
+# def timeops(log: Optional[LogFile] = None) -> Any:
+def timeops() -> Any:
     """Decorator function that times some operation and writes that time to
     a log file object.
 
@@ -41,10 +47,12 @@ def timeops(log: Optional[LogFile] = None) -> Any:
             """Nested decorator function the performs timing of an operation.
             """
             start: float = time()
-            if log: log.log(f"BEGIN {func.__name__}", use_header=True)
+            # if log: log.log(f"BEGIN {func.__name__}", use_header=True)
+            logger.info(f"BEGIN: {func.__name__}")
             result: Any = func(*args,**kwargs)
             end: float = time()
-            if log: log.log(f"END: {func.__name__}  |  Time elapsed: {(end - start):2f} sec.", use_header=True)
+            logger.info(f"END: {func.__name__}  |  Time elapsed: {(end - start):2f} sec.")
+            # if log: log.log(f"END: {func.__name__}  |  Time elapsed: {(end - start):2f} sec.", use_header=True)
             return result
         return timed
     return decor
@@ -69,7 +77,7 @@ def dict2json(dict: Dict[Any,Any],
 def update_sidecar(file: str, **kwargs) -> str:
     """Updates a JSON sidecar/file.
     """
-    with File(src=file, assert_exists=True) as f:
+    with File(src=file, assert_exists=False) as f:
         dirname, basename, _ = f.file_parts()
         jsonfile: str = os.path.join(dirname,basename + '.json')
         with File(src=jsonfile) as jf:
@@ -85,12 +93,13 @@ def load_sidecar(file: str) -> Dict[Any,Any]:
     """Reads in a JSON sidecar/file.
     """
     d: Dict[Any,Any] = {}
-    with File(src=file, assert_exists=True) as f:
+    with File(src=file, assert_exists=False) as f:
         dirname, basename, _ = f.file_parts()
         jsonfile: str = os.path.join(dirname,basename + '.json')
         with File(src=jsonfile) as jf:
             if os.path.exists(jf.abspath()):
-                d.update(json.load(jf.abspath()))
+                with open(jf.abspath(),'r') as j:
+                    d.update(json.load(j))
     return d
 
 def get_fsl_version() -> str:
