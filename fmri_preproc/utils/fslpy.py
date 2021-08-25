@@ -463,7 +463,7 @@ def bet(img: str,
 
     if frac_int:
         cmd.opt("-f")
-        cmd.opt(frac_int)
+        cmd.opt(f"{frac_int}")
     
     if seg:
         pass
@@ -585,18 +585,18 @@ def fslroi(img: str,
 
     if (xmin and xsize and ymin and ysize and zmin and zsize) and (tmin and tsize):
         raise FSLError("Cannot specify both xyz and temporal dimensions.")
-    elif (not (xmin and xsize and ymin and ysize and zmin and zsize) and 
-            not (tmin and tsize)):
+    elif ((xmin is None and xsize is None and ymin is None and ysize is None and zmin is None and zsize is None) and 
+            (tmin is None and tsize is None)):
         raise FSLError("Neither xyz nor temporal dimensions were specified.")
     else:
         cmd: Command = Command("fslroi")
         cmd.opt(img.src)
         cmd.opt(out.src)
     
-    if (xmin and xsize and ymin and ysize and zmin and zsize):
-        cmd.opt(xmin); cmd.opt(xsize)
-        cmd.opt(ymin); cmd.opt(ysize)
-        cmd.opt(zmin); cmd.opt(zsize)
+    if (xmin is not None and xsize is not None and ymin is not None and ysize is not None and zmin is not None and zsize is not None):
+        cmd.opt(f"{xmin}"); cmd.opt(f"{xsize}")
+        cmd.opt(f"{ymin}"); cmd.opt(f"{ysize}")
+        cmd.opt(f"{zmin}"); cmd.opt(f"{zsize}")
     elif ((xmin is None) and
             (xsize is None) and
             (ymin is None) and
@@ -607,10 +607,10 @@ def fslroi(img: str,
     else:
         raise FSLError("Either the xyz min or size was not specified.")
 
-    if (tmin and tsize):
-        cmd.opt(tmin); cmd.opt(tsize)
-    elif (tmin is None) and \
-        (tsize is None):
+    if (tmin is not None and tsize is not None):
+        cmd.opt(f"{tmin}"); cmd.opt(f"{tsize}")
+    elif ((tmin is None) and
+        (tsize is None)):
         pass
     else:
         raise FSLError("Either the temporal min or size was not specified.")
@@ -665,7 +665,7 @@ def fslmerge(out: str,
         cmd.opt(img.abspath())
     
     if tr:
-        cmd.opt(tr)
+        cmd.opt(f"{tr}")
     
     cmd.run(log=log)
 

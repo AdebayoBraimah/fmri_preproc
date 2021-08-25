@@ -730,10 +730,10 @@ def motion_outlier(func: str,
                         interpolate=True)
         plt.setp(h, alpha=0.25)
 
-        ax_hdl.plot(metric_data, label=metric.name)
+        ax_hdl.plot(metric_data, label=metric)
         ax_hdl.set_xlim(1, len(metric_data))
         ax_hdl.set_ylim(0, np.nanmean(metric_data) + (4 * np.nanstd(metric_data)))
-        ax_hdl.set_ylabel(metric.name)
+        ax_hdl.set_ylabel(metric)
         ax_hdl.set_title(fname)
         ax_hdl.set_xlabel("time (volumes)")
         plt.legend()

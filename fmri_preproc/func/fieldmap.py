@@ -68,7 +68,7 @@ def fieldmap(outdir: str,
     outputs: Dict[str,str] = {
                                 "fmap": os.path.join(outdir,"fieldmap.nii.gz"),
                                 "fmap_mag": os.path.join(outdir,"fieldmap_magnitude.nii.gz"),
-                                "fmap_mask": os.path.join(outdir,"fieldmap_magnitude.nii.gz"),
+                                "fmap_mask": os.path.join(outdir,"fieldmap_brainmask.nii.gz"),
                                 "topup_out": os.path.join(topup_dir, "topup_dist_corr"),
                              }
     
@@ -81,7 +81,7 @@ def fieldmap(outdir: str,
     
     dist_acqp: str = os.path.join(topup_dir,'spinecho.acqp')
 
-    dist_acqp: str = write_func_params(epi=spinecho,
+    dist_acqp, _ = write_func_params(epi=spinecho,
                                        echospacing=echo_spacing,
                                        pedir=pedir,
                                        out=dist_acqp,
@@ -113,7 +113,7 @@ def fieldmap(outdir: str,
     with TmpDir(src=os.path.join(topup_dir)) as tmp:
         tmp.mkdir()
         brain: str = os.path.join(tmp.src,"brain")
-        fmap_brain, _ = bet(img=fmap,
+        fmap_brain, _ = bet(img=mag,
                             out=brain,
                             mask=False,
                             robust=True,

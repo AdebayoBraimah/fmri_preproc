@@ -53,14 +53,8 @@ from fmri_preproc.func.mcdc import (
 # Globlally define log file object
 log: LogFile = None
 
-# TODO: Remove this once log file testing 
-#   is completed.
-@timeops(log)
-def testfunc(s, log):
-    log.log(s)
-    return s
-
-@timeops(log)
+# @timeops(log)
+@timeops()
 def import_info(outdir: str,
                 func: str,
                 scan_pma: float,
@@ -70,11 +64,13 @@ def import_info(outdir: str,
                 log_datetime: bool = False,
                 log_level: str = 'info',
                 **kwargs
-               ) -> Tuple[str, Dict[Any,Any]]:
+               ) -> Tuple[str,str,str,Dict[Any,Any]]:
     """Import subject related information and data.
     """
     with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
         _, fname, _ = fn.file_parts()
+        
+        sesid: str = None
 
         for item in fname.split('_'):
             if 'sub' in item: subid: str = item[4:]
@@ -86,11 +82,11 @@ def import_info(outdir: str,
         if sesid:
             info_dir: str = os.path.join(od.src,f'sub-{subid}',f'ses-{sesid}',f'run-{runid}')
             info_data: str = f'sub-{subid}_ses-{sesid}'
-            sub_info: str = f"sub: {subid} \nses: {sesid} \nrun: {runid}"
+            sub_info: str = f"\nSubject information \nsub: {subid} \nses: {sesid} \nrun: {runid}"
         else:
             info_dir: str = os.path.join(od.src,f'sub-{subid}',f'run-{runid}')
             info_data: str = f'sub-{subid}'
-            sub_info: str = f"sub: {subid} \nrun: {runid}"
+            sub_info: str = f"\nSubject information \nsub: {subid} \nrun: {runid}"
 
         with WorkDir(src=info_dir) as ifd:
 
@@ -102,9 +98,10 @@ def import_info(outdir: str,
                     logdr.mkdir()
                 
                 info_dir: str = ifd.abspath()
+                logdir: str = logdr.abspath()
 
                 if not log:
-                    log_file: str = os.path.join(logdr,info_data + ".log")
+                    log_file: str = os.path.join(logdr.src, info_data + ".log")
                     log: LogFile = LogFile(log_file=log_file,
                                            print_to_screen=verbose,
                                            format_log_str=log_datetime,
@@ -123,15 +120,16 @@ def import_info(outdir: str,
                             **info,
                             "subid": subid,
                             "sesid": sesid,
-                            "scan_pma": scan_pma,
+                            "scan_pma": float(scan_pma),
                             "birth_ga": birth_ga,
                             **kwargs,
                           }
     info_name: str = dict2json(dict=info, jsonfile=info_name)
 
-    return info_dir, info_name, info
+    return info_dir, logdir, info_name, info
 
-@timeops(log)
+# @timeops(log)
+@timeops()
 def import_func(outdir: str,
                 func: str,
                 func_echospacing: float,
@@ -181,7 +179,7 @@ def import_func(outdir: str,
     # Import functional EP image data
     with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
         func: str = fn.abspath()
-        func: str = fslreorient2std(img=func, out=outputs.get('func'), log=log)
+        _, func, _ = fslreorient2std(img=func, out=outputs.get('func'), log=log)
         _: str = update_sidecar(file=func, 
                                 echo_spacing=func_echospacing, 
                                 phase_encode_dir=func_pedir)
@@ -193,8 +191,8 @@ def import_func(outdir: str,
     # Create or import functional brain mask
     if func_brainmask:
         with NiiFile(src=func_brainmask, assert_exists=True, validate_nifti=True) as fnb:
-            func_brainmask: str = fnb.abspath()
-            func_brainmask: str = fslreorient2std(img=func_brainmask, out=outputs.get('func_brainmask'), log=log)
+            func_brainmask = fnb.abspath()
+            _, func_brainmask, _ = fslreorient2std(img=func_brainmask, out=outputs.get('func_brainmask'), log=log)
     else:
         with NiiFile(src=func) as fn:
             dirname, _, _ = fn.file_parts()
@@ -202,12 +200,12 @@ def import_func(outdir: str,
         with TmpDir(src=dirname) as tmp:
             tmp.mkdir()
             brain: str = os.path.join(tmp.src, 'brain.nii.gz')
-            brain: str = bet(img=func_mean, out=brain, frac_int=0.4, mask=False, log=log)
+            brain, _ = bet(img=func_mean, out=brain, frac_int=0.4, mask=False, log=log)
             func_brainmask: str = fslmaths(img=brain).bin().run(out=outputs.get('func_brainmask'), log=log)
             tmp.rmdir()
     
     # Create dilated brainmask
-    func_dilated_brainmask: str = fslmaths(img=func_brainmask).dilM().dilM().bin().run(out=outputs.get('func_dilated_brainmask'), log=log)
+    func_dilated_brainmask: str = fslmaths(img=func_brainmask).dilM().dilM().bin().run(out=outputs.get('func_dil_brainmask'), log=log)
 
     # Mask func (with dilated brainmask) to reduce file size
     if mask_func:
@@ -236,7 +234,7 @@ def import_func(outdir: str,
 
     if sbref:
 
-        if not sbref_pedir:
+        if sbref_pedir:
             sbref_pedir: str = PhaseEncodeDirection(sbref_pedir.upper()).name
         else:
             if log: log.error("RuntimeError: sbref' phase-encoding direction required.")
@@ -249,14 +247,14 @@ def import_func(outdir: str,
             raise RuntimeError("'sbref' echo-spacing required.")
         
         with NiiFile(src=sbref, assert_exists=True, validate_nifti=True) as sb:
-            sbref: str = fslreorient2std(img=sb.abspath(), out=outputs.get('sbref'), log=log)
+            _, sbref, _ = fslreorient2std(img=sb.abspath(), out=outputs.get('sbref'), log=log)
             _: str = update_sidecar(file=sbref,
                                     echo_spacing=sbref_echospacing,
                                     phase_encode_dir=sbref_pedir)
         
         if sbref_brainmask:
             with NiiFile(src=sbref_brainmask, assert_exists=True, validate_nifti=True) as sbm:
-                sbref_brainmask: str = fslreorient2std(img=sbm.abspath(), out=outputs.get('sbref_brainmask'), log=log)
+                _, sbref_brainmask, _ = fslreorient2std(img=sbm.abspath(), out=outputs.get('sbref_brainmask'), log=log)
         else:
             with NiiFile(src=func) as fn:
                 dirname, _, _ = fn.file_parts()
@@ -264,8 +262,9 @@ def import_func(outdir: str,
             with TmpDir(src=dirname) as tmp:
                 tmp.mkdir()
                 brain: str = os.path.join(tmp.src, 'brain.nii.gz')
-                brain: str = bet(img=sbref, out=brain, frac_int=0.4, mask=False, log=log)
+                brain, _ = bet(img=sbref, out=brain, frac_int=0.4, mask=False, log=log)
                 sbref_brainmask: str = fslmaths(img=brain).bin().run(out=outputs.get('sbref_brainmask'), log=log)
+                tmp.rmdir()
     return (func,
             func_mean, 
             func_brainmask, 
@@ -273,7 +272,8 @@ def import_func(outdir: str,
             sbref, 
             sbref_brainmask)
 
-@timeops(log)
+# @timeops(log)
+@timeops()
 def import_struct(outdir: str,
                   T2w: str,
                   brainmask: str,
@@ -312,25 +312,25 @@ def import_struct(outdir: str,
     # Import anatomical data
 
     with NiiFile(src=T2w, assert_exists=True, validate_nifti=True) as t2:
-        T2w: str = fslreorient2std(img=t2.abspath(), out=outputs.get('T2w'), log=log)
+        _, T2w, _ = fslreorient2std(img=t2.abspath(), out=outputs.get('T2w'), log=log)
     
     with NiiFile(src=brainmask, assert_exists=True, validate_nifti=True) as bm:
-        brainmask: str = fslreorient2std(img=bm.abspath(), out=outputs.get('T2w_brainmask'), log=log)
+        _, brainmask, _ = fslreorient2std(img=bm.abspath(), out=outputs.get('T2w_brainmask'), log=log)
     
     with NiiFile(src=dseg, assert_exists=True, validate_nifti=True) as ds:
-        dseg: str = fslreorient2std(img=ds.abspath(), out=outputs.get('T2w_dseg'), log=log)
+        _, dseg, _ = fslreorient2std(img=ds.abspath(), out=outputs.get('T2w_dseg'), log=log)
         _: str = update_sidecar(file=dseg,
                                 seg_type=dseg_type)
     
     if probseg:
         with NiiFile(src=probseg, assert_exists=True, validate_nifti=True) as pb:
-            probseg: str = fslreorient2std(img=pb.abspath(), out=outputs.get('T2w_probseg'), log=log)
+            _, probseg, _ = fslreorient2std(img=pb.abspath(), out=outputs.get('T2w_probseg'), log=log)
             _: str = update_sidecar(file=probseg,
                                     seg_type=probseg_type)
     
     if wmmask:
         with NiiFile(src=wmmask, assert_exists=True, validate_nifti=True) as wm:
-            wmmask: str = fslreorient2std(img=wm.abspath(), out=outputs.get('T2w_wmmask'), log=log)
+            _, wmmask, _ = fslreorient2std(img=wm.abspath(), out=outputs.get('T2w_wmmask'), log=log)
     else:
         wmmask: str = create_mask(dseg=dseg,
                                   dseg_type=dseg_type,
@@ -339,11 +339,12 @@ def import_struct(outdir: str,
     
     if T1w:
         with NiiFile(src=T1w, assert_exists=True, validate_nifti=True) as t1:
-            T1w: str = fslreorient2std(img=t1.abspath(), out=outputs.get('T1w'), log=log)   
+            _, T1w, _ = fslreorient2std(img=t1.abspath(), out=outputs.get('T1w'), log=log)   
     
     return T2w, wmmask, dseg
 
-@timeops(log)
+# @timeops(log)
+@timeops()
 def import_spinecho(outdir: str,
                     spinecho: Optional[str] = None,
                     spinecho_echospacing: Optional[float] = 0.1,
@@ -393,7 +394,7 @@ def import_spinecho(outdir: str,
             if log: log.log(f"Phase encodind directions: {spinecho_pedir}")
 
             with NiiFile(src=spinecho, assert_exists=True, validate_nifti=True) as sp:
-                input_spinecho: str = fslreorient2std(img=sp.abspath(), out=input_spinecho)
+                _, input_spinecho, _ = fslreorient2std(img=sp.abspath(), out=input_spinecho)
                 tmp.rmdir()
 
         elif ap_dir and pa_dir:
@@ -406,8 +407,8 @@ def import_spinecho(outdir: str,
 
             with NiiFile(src=ap_dir, assert_exists=True, validate_nifti=True) as ap:
                 with NiiFile(src=pa_dir, assert_exists=True, validate_nifti=True) as pa:
-                    input_ap: str = fslreorient2std(img=ap.abspath(), out=input_ap)
-                    input_pa: str = fslreorient2std(img=pa.abspath(), out=input_pa)
+                    _, input_ap, _ = fslreorient2std(img=ap.abspath(), out=input_ap)
+                    _, input_pa, _ = fslreorient2std(img=pa.abspath(), out=input_pa)
             
             spinecho_pedir: List[str] = [ "PA", "AP" ]
             input_spinecho: str = merge_rpe(out=input_spinecho, log=log, ap_dir=input_ap, pa_dir=input_pa)
@@ -423,8 +424,8 @@ def import_spinecho(outdir: str,
 
             with NiiFile(src=lr_dir, assert_exists=True, validate_nifti=True) as lrd:
                 with NiiFile(src=rl_dir, assert_exists=True, validate_nifti=True) as rld:
-                    input_lr: str = fslreorient2std(img=lrd.abspath(), out=input_lr)
-                    input_rl: str = fslreorient2std(img=rld.abspath(), out=input_rl)
+                    _, input_lr, _ = fslreorient2std(img=lrd.abspath(), out=input_lr)
+                    _, input_rl, _ = fslreorient2std(img=rld.abspath(), out=input_rl)
             
             spinecho_pedir: List[str] = [ "LR", "RL" ]
             input_spinecho: str = merge_rpe(out=input_spinecho, log=log, lr_dir=input_lr, rl_dir=input_rl)
@@ -440,8 +441,8 @@ def import_spinecho(outdir: str,
 
             with NiiFile(src=is_dir, assert_exists=True, validate_nifti=True) as isd:
                 with NiiFile(src=si_dir, assert_exists=True, validate_nifti=True) as sid:
-                    input_is: str = fslreorient2std(img=isd.abspath(), out=input_is)
-                    input_si: str = fslreorient2std(img=sid.abspath(), out=input_si)
+                    _, input_is, _ = fslreorient2std(img=isd.abspath(), out=input_is)
+                    _, input_si, _ = fslreorient2std(img=sid.abspath(), out=input_si)
             
             spinecho_pedir: List[str] = [ "IS", "SI" ]
             input_spinecho: str = merge_rpe(out=input_spinecho, log=log, is_dir=input_is, si_dir=input_si)
@@ -458,4 +459,4 @@ def import_spinecho(outdir: str,
                             epi_factor=spinecho_epifactor,
                             inplane_accel=spinecho_inplaneacc)
     
-    return input_spinecho
+    return input_spinecho, spinecho_pedir
