@@ -36,15 +36,9 @@ from fmri_preproc.utils.fileio import (
 )
 
 def fieldmap(outdir: str,
-             echo_spacing: Optional[float] = 0.1,
-             spinecho: Optional[str] = None,
-             pedir: Union[str,List[str]] = None,
-             ap_dir: Optional[str] = None,
-             pa_dir: Optional[str] = None,
-             lr_dir: Optional[str] = None,
-             rl_dir: Optional[str] = None,
-             is_dir: Optional[str] = None,
-             si_dir: Optional[str] = None,
+             spinecho: str,
+             echo_spacing: float,
+             pedir: Union[str,List[str]],
              epifactor: Optional[int] = None,
              inplane_acc: Optional[float] = 1,
              config: Optional[str] = None,
@@ -77,83 +71,8 @@ def fieldmap(outdir: str,
                                 "fmap_mask": os.path.join(outdir,"fieldmap_magnitude.nii.gz"),
                                 "topup_out": os.path.join(topup_dir, "topup_dist_corr"),
                              }
-
-    with TmpDir(src=topup_dir) as tmp:
-        tmp.mkdir()
-        
-        input_spinecho: str = os.path.join(topup_dir,'spinecho.nii.gz')
-
-        if spinecho:
-            if log: log.log(f"Input spinecho fieldmap(_epi): {spinecho}.")
-
-            if not pedir:
-                if log: log.error(f"TypeError: No phase encoding direction list was passed as input.")
-                raise TypeError("No phase encoding direction list was passed as input.")
-            elif not isinstance(pedir, list):
-                pedir: List[str] = pedir.split(",")
-
-            # Verify input phase encoding directions
-            pedir: List[str] = [ PhaseEncodeDirection(x.upper()).name for x in pedir ]
-
-            if log: log.log(f"Phase encodind directions: {pedir}")
-
-            with NiiFile(src=spinecho, assert_exists=True, validate_nifti=True) as sp:
-                input_spinecho: str = fslreorient2std(img=sp.abspath(), out=input_spinecho)
-                tmp.rmdir()
-
-        elif ap_dir and pa_dir:
-            if log:
-                log.log(f"Input AP fieldmap(_epi): {ap_dir}.")
-                log.log(f"Input PA fieldmap(_epi): {pa_dir}.")
-            
-            input_ap: str = os.path.join(tmp.src,'AP_epi.nii.gz')
-            input_pa: str = os.path.join(tmp.src,'PA_epi.nii.gz')
-
-            with NiiFile(src=ap_dir, assert_exists=True, validate_nifti=True) as ap:
-                with NiiFile(src=pa_dir, assert_exists=True, validate_nifti=True) as pa:
-                    input_ap: str = fslreorient2std(img=ap.abspath(), out=input_ap)
-                    input_pa: str = fslreorient2std(img=pa.abspath(), out=input_pa)
-            
-            pedir: List[str] = [ "PA", "AP" ]
-            input_spinecho: str = _merge_rpe(out=input_spinecho, log=log, ap_dir=input_ap, pa_dir=input_pa)
-            tmp.rmdir()
-        elif lr_dir and rl_dir:
-            if log:
-                log.log(f"Input LR fieldmap(_epi): {lr_dir}.")
-                log.log(f"Input RL fieldmap(_epi): {rl_dir}.")
-            
-            input_lr: str = os.path.join(tmp.src,'LR_epi.nii.gz')
-            input_rl: str = os.path.join(tmp.src,'RL_epi.nii.gz')
-
-            with NiiFile(src=lr_dir, assert_exists=True, validate_nifti=True) as lrd:
-                with NiiFile(src=rl_dir, assert_exists=True, validate_nifti=True) as rld:
-                    input_lr: str = fslreorient2std(img=lrd.abspath(), out=input_lr)
-                    input_rl: str = fslreorient2std(img=rld.abspath(), out=input_rl)
-            
-            pedir: List[str] = [ "LR", "RL" ]
-            input_spinecho: str = _merge_rpe(out=input_spinecho, log=log, lr_dir=input_lr, rl_dir=input_rl)
-            tmp.rmdir()
-        elif is_dir and si_dir:
-            if log:
-                log.log(f"Input IS fieldmap(_epi): {is_dir}.")
-                log.log(f"Input SI fieldmap(_epi): {si_dir}.")
-            
-            input_is: str = os.path.join(tmp.src,'IS_epi.nii.gz')
-            input_si: str = os.path.join(tmp.src,'SI_epi.nii.gz')
-
-            with NiiFile(src=is_dir, assert_exists=True, validate_nifti=True) as isd:
-                with NiiFile(src=si_dir, assert_exists=True, validate_nifti=True) as sid:
-                    input_is: str = fslreorient2std(img=isd.abspath(), out=input_is)
-                    input_si: str = fslreorient2std(img=sid.abspath(), out=input_si)
-            
-            pedir: List[str] = [ "IS", "SI" ]
-            input_spinecho: str = _merge_rpe(out=input_spinecho, log=log, is_dir=input_is, si_dir=input_si)
-            tmp.rmdir()
-        else:
-            if log: log.error(f"AttributeError: Input images are not reversed phase encoded fieldmap EPIs: Spinecho: {spinecho} \nAP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}")
-            raise AttributeError(f"Input images are not reversed phase encoded fieldmap EPIs: Spinecho: {spinecho} \nAP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}")
-
-    slices: int = nib.load(filename=input_spinecho).header.get('dim','')[3]
+    
+    slices: int = nib.load(filename=spinecho).header.get('dim','')[3]
 
     if config:
         pass
@@ -162,7 +81,7 @@ def fieldmap(outdir: str,
     
     dist_acqp: str = os.path.join(topup_dir,'spinecho.acqp')
 
-    dist_acqp: str = write_func_params(epi=input_spinecho,
+    dist_acqp: str = write_func_params(epi=spinecho,
                                        echospacing=echo_spacing,
                                        pedir=pedir,
                                        out=dist_acqp,
@@ -172,7 +91,7 @@ def fieldmap(outdir: str,
     # Run topup
     if log: log.log("Performing topup distortion field estimation")
 
-    _,field_img, mag_img = topup(img=spinecho.src, 
+    _,field_img, mag_img = topup(img=spinecho, 
                                  param=dist_acqp, 
                                  out=outputs.get('topup_out'),
                                  config=config,
