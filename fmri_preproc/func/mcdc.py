@@ -5,6 +5,7 @@ import os
 import numpy as np
 import nibabel as nib
 import pandas as pd
+from warnings import warn
 
 from typing import (
     Dict,
@@ -87,13 +88,18 @@ def mcdc(func: str,
     if use_mcflirt:
         _has_fmap: bool = False
         _has_acqp: bool = False
+        s2v: bool = False
+        mbs: bool = False
+        dc: bool = False
     else:
         use_mcflirt: bool = (not dc) & (not s2v) & (not mbs)
 
     # Check argument combinations
     if (dc & use_mcflirt) | (s2v & use_mcflirt) | (mbs & use_mcflirt):
-        if log: log.error("RuntimeError: Cannot use MCFLIRT with dc, s2v and/or mbs.")
-        raise RuntimeError('Cannot use MCFLIRT with dc, s2v and/or mbs.')
+        if log: log.warning("WARNING: MCFLIRT enabled. This has disabled dc, s2v and/or mbs.")
+        warn("WARNING: MCFLIRT enabled. This has disabled dc, s2v and/or mbs.")
+        # if log: log.error("RuntimeError: Cannot use MCFLIRT with dc, s2v and/or mbs.")
+        # raise RuntimeError('Cannot use MCFLIRT with dc, s2v and/or mbs.')
 
     if dc and not (_has_fmap & _has_acqp):
         if log: log.error("RuntimeError: fmap, fmap2func_affine, func_pedir, and func_echospacing are required for DC.")
@@ -139,6 +145,7 @@ def mcdc(func: str,
                          func_mc=outputs.get('func_mcdc'),
                          ref=ref,
                          log=log)
+        eddy_output_mask: str = ""
     else:
         (func_mcdc,
          motfile,
@@ -174,9 +181,9 @@ def mcdc(func: str,
 
     # Brain extract mcdc images
     mcdc: str = func_mcdc
-    mcdc_mean: str = outputs.get('func_mcdc_mean')
-    mcdc_std: str = outputs.get('func_mcdc_std')
-    mcdc_tsnr: str = outputs.get('func_mcdc_tsnr')
+    mcdc_mean: str = outputs.get('mcdc_mean')
+    mcdc_std: str = outputs.get('mcdc_std')
+    mcdc_tsnr: str = outputs.get('mcdc_tsnr')
     mcdc_brainmask: str = outputs.get('mcdc_brainmask')
 
     mcdc_mean: str = fslmaths(img=mcdc).Tmean().run(out=mcdc_mean, log=log)
@@ -285,8 +292,7 @@ def eddy_mcdc(func: str,
 
     NOTE: Input ``fmri`` is **ASSUMED** to be in the PA phase encoding direction.
     """
-    if log:
-        log.log("Performing EDDY-based motion and distortion correction.")
+    if log: log.log("Performing EDDY-based motion and distortion correction.")
 
     with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
         with NiiFile(src=func_brainmask, assert_exists=True, validate_nifti=True) as fb:
@@ -345,7 +351,7 @@ def eddy_mcdc(func: str,
     bvecs: str = write_bvecs(num_frames=num_vols, out_file=outputs.get('bvecs'))
     acqp: str = write_func_params(epi=func,
                                   echospacing=func_echospacing,
-                                  pedir=func_pedir,
+                                  pedir=PhaseEncodeDirection(func_pedir).name,
                                   out=outputs.get('acqp'),
                                   epifactor=epifactor,
                                   inplane_acc=inplane_acc)
