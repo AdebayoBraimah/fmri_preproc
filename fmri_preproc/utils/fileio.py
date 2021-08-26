@@ -91,6 +91,7 @@ class File(IOBaseObj):
         if assert_exists:
             assert os.path.exists(self.src), f"Input file {self.src} does not exist."
     
+    # TODO: Re-implement __enter__ method similar to that of tempfile.TemporaryDirectory
     def copy(self,
              dst: str
             ) -> str:
