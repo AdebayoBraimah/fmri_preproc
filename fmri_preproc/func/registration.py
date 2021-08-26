@@ -40,7 +40,9 @@ from fmri_preproc.utils.fslpy import (
     convertwarp,
     flirt,
     fslmaths,
+    fslmerge,
     fugue,
+    invwarp,
     invxfm
 )
 
@@ -65,7 +67,7 @@ def fmap_to_struct(outdir: str,
                    bbr_slope: float = 0.5,
                    bbr_type: Optional[str] = "signed",
                    log: Optional[LogFile] = None
-                  ) -> None:
+                  ) -> Tuple[str,str,str,str]:
     """Perform (rigid-body) fieldmap to structural image registration, with optional BBR.
     """
     # Check and validate input fmap associated NIFTI files
@@ -165,30 +167,114 @@ def fmap_to_struct(outdir: str,
             src2ref,
             init_affine)
 
-def func_to_sbref():
-    """doc-string"""
-    pass
+
+def func_to_sbref(outdir: str,
+                  func: str,
+                  func_brainmask: str,
+                  sbref: str,
+                  sbref_brainmask: str,
+                  src_space: Optional[str] = None,
+                  ref_space: Optional[str] = None,
+                  log: Optional[LogFile] = None
+                 ) -> Tuple[str,str,str]:
+    """Rigid-body register functional 4D EPI to sbref."""
+    # Check and validate input structural associated NIFTI images
+    with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
+        with NiiFile(src=func_brainmask, assert_exists=True, validate_nifti=True) as fb:
+            func: str = fn.abspath()
+            func_brainmask: str = fb.abspath()
+            if not src_space:
+                _, src_space, _ = fn.file_parts()
+    
+    with NiiFile(src=sbref, assert_exists=True, validate_nifti=True) as sb:
+        with NiiFile(src=sbref_brainmask, assert_exists=True, validate_nifti=True) as sm:
+            sbref: str = sb.abspath()
+            sbref_brainmask: str = sm.abspath()
+            if not ref_space:
+                _, ref_space, _ = sb.file_parts()
+
+    with WorkDir(src=outdir) as od:
+        regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+        with WorkDir(src=regdir) as rd:
+            if not rd.exists(): rd.mkdir()
+            outdir: str = od.abspath()
+            regdir: str = rd.abspath()
+            regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
+    
+    # Define outputs
+    outputs: Dict[str,str] = {
+                                "resampled_image": f"{regname}_img.nii.gz",
+                                "affine": f"{regname}_affine.mat",
+                                "inv_affine": f"{regname}_invaffine.mat",
+                             }
+
+    with TmpDir(src=regdir) as tmp:
+        tmp.mkdir()
+
+        func_brain: str = os.path.join(tmp.src, 'func_brain.nii.gz')
+        func_brain: str = fslmaths(img=func).mas(func_brainmask).run(out=func_brain, log=log)
+
+        sbref_brain: str = os.path.join(tmp.src, 'sbref_brain.nii.gz')
+        sbref_brain: str = fslmaths(img=sbref).mas(sbref_brainmask).run(out=sbref_brain, log=log)
+
+        # Perform registration
+        #   1. Brain-extracted
+        #   2. Not brain-extracted
+
+        init_affine: str = os.path.join(tmp.src, 'init.mat')
+
+        (init_affine, 
+        _, 
+        _, 
+        _, 
+        _) = epireg(outdir=tmp.src,
+                    src=func_brain,
+                    ref=sbref_brain,
+                    affine=init_affine,
+                    inv_affine=os.path.join(tmp.src, 'init_inv.mat'),
+                    src2ref=os.path.join(tmp.src, 'init.nii.gz'))
+        
+        (affine, 
+        inv_affine, 
+        src2ref, 
+        _, 
+        _) = epireg(outdir=tmp.src,
+                    src=func,
+                    ref=sbref,
+                    init_xfm=init_affine,
+                    affine=outputs.get('affine'),
+                    inv_affine=outputs.get('inv_affine'),
+                    src2ref=outputs.get('resampled_image'))
+        tmp.rmdir()
+    return src2ref, affine, inv_affine
+
 
 def sbref_to_struct():
     """doc-string"""
     pass
 
+
 def func_to_struct_composite():
     """doc-string"""
     pass
+
 
 def fmap_to_func_composite():
     """doc-string"""
     pass
 
+
 def template_to_struct():
     pass
+
 
 def struct_to_template_composite():
     pass
 
+
 def func_to_template_composite():
     pass
+
 
 def epireg(outdir: str,
            src: str,
@@ -221,8 +307,15 @@ def epireg(outdir: str,
     
     if log: log.log(f"Performing epireg: Register {src} to {ref} ")
 
-    if basename:
-        pass
+    if basename and src_space and ref_space:
+        with WorkDir(src=outdir) as od:
+            regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+            basename: str = os.path.join(regdir,basename)
+    elif basename:
+        with WorkDir(src=outdir) as od:
+            if not od.exists(): od.mkdir()
+            regdir: str = od.abspath()
+            basename: str = os.path.join(regdir,basename)
     else: 
         with WorkDir(src=outdir) as od:
             regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
@@ -268,10 +361,7 @@ def epireg(outdir: str,
                 fmap: str = fmp.abspath()
                 fmap_brainmask: str = fmb.abspath()
 
-    # Phase encode direction
-    # TODO: 
-    #   * Add phase encoding directions dict
-    #   * Add acqp params module
+    # Get phase-encode direction for FLIRT
     if src_pedir in ['PA', 'AP', 'IS', 'SI', 'RL', 'LR']:
         src_pedir: str = get_axis(src, src_pedir)[0]
     
@@ -459,6 +549,7 @@ def epireg(outdir: str,
         tmp.rmdir()
     return affine, inv_affine, src2ref, warp, inv_warp
 
+
 def nonlinear_reg(outdir: str,
                   src: str,
                   ref: str,
@@ -486,8 +577,15 @@ def nonlinear_reg(outdir: str,
     else:
         raise TypeError(f"Input for 'ref' is not a list or string: {ref}")
     
-    if basename:
-        pass
+    if basename and src_space and ref_space:
+        with WorkDir(src=outdir) as od:
+            regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+            basename: str = os.path.join(regdir,basename)
+    elif basename:
+        with WorkDir(src=outdir) as od:
+            if not od.exists(): od.mkdir()
+            regdir: str = od.abspath()
+            basename: str = os.path.join(regdir,basename)
     else: 
         with NiiFile(src=src[0]) as sr:
             with NiiFile(src=ref[0]) as rf:
@@ -510,7 +608,8 @@ def nonlinear_reg(outdir: str,
                                 "antsout": f'{basename}.ants/output_',
                                 "affine": f'{basename}_affine.mat',
                                 "warp": f'{basename}_warp.nii.gz',
-                                "inv_warp": f'{basename}_invaffine.mat',
+                                "inv_warp": f'{basename}_invwarp.nii.gz',
+                                "inv_affine": f'{basename}_invaffine.mat',
                                 "src2ref": f'{basename}_img.nii.gz'
                              }
 
@@ -520,7 +619,71 @@ def nonlinear_reg(outdir: str,
             raise ValueError(f'Unknown output template {k}')
         outputs[k] = v
     
-    # Pick-up from here
+    # Perform ANTs registration
+    antsRegistrationSyN(fixed=ref,
+                        moving=src,
+                        dim=dim,
+                        out_prefix=outputs.get('antsout'),
+                        quick=quick,
+                        fixed_mask=ref_brainmask,
+                        log=log)
+
+    # Convert ANTs transformation matrix to FSL
+    cmd: Command = Command("c3d_affine_tool")
+
+    cmd.opt("-ref"); cmd.opt(f"{ref[0]}") 
+    cmd.opt("-src"); cmd.opt(f"{src[0]}") 
+    cmd.opt("-itk"); cmd.opt(f"{outputs.get('antsout')}0GenericAffine.mat")
+    cmd.opt("-ras2fsl")
+    cmd.opt("-o"); cmd.opt(f"{outputs.get('affine')}")
+    cmd.run(log=log)
+
+    affine: str = outputs.get('affine')
+
+    # Convert ANTs warp to FSL
+    with TmpDir(src=regdir) as tmp:
+        tmp.mkdir()
+
+        cmd: Command = Command("c3d")
+
+        cmd.opt("-mcs"); cmd.opt(f"{outputs.get('antsout')}1Warp.nii.gz")
+        cmd.opt("-oo"); cmd.opt(f"{tmp.src}/wy.nii.gz")
+        cmd.opt(f"{tmp.src}/wz.nii.gz")
+        cmd.run(log=log)
+
+        tmp_invwarp: str = fslmaths(img=f"{tmp.src}/wy.nii.gz").mul(input=int(-1)).run(out=f"{tmp.src}/i_wy.nii.gz", log=log)
+
+        warp: str = fslmerge(f"{outputs.get('warp')}",
+                             "t", 
+                             None, 
+                             log, 
+                             f"{tmp.src}/wx",  
+                             tmp_invwarp,  
+                             f"{tmp.src}/wz")
+        tmp.rmdir()
+    
+    warp: str = convertwarp(ref=ref[0],
+                            premat=affine,
+                            warp1=warp,
+                            out=warp,
+                            log=log)
+
+    inv_warp: str = invwarp(inwarp=warp,
+                            outwarp=outputs.get('inv_warp'),
+                            ref=src[0],
+                            log=log)
+
+    src2ref: str = applywarp(src=src[0],
+                             ref=ref[0],
+                             warp=warp,
+                             out=outputs.get('src2ref'),
+                             interp='spline',
+                             log=log)
+    return (warp,
+            inv_warp,
+            affine,
+            src2ref)
+
 
 def antsRegistrationSyN(fixed: Union[List[str],str],
                         moving: str,
@@ -564,5 +727,7 @@ def antsRegistrationSyN(fixed: Union[List[str],str],
 
     if fixed_mask:
         cmd.opt("-x"); cmd.opt(f"{fixed_mask}")
+    
+    cmd.run(log=log)
     
     return None
