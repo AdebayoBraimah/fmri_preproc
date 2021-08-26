@@ -36,8 +36,7 @@ def postprocess(func: str,
                 func_mean: str = fm.abspath()
                 func_brainmask: str = fnb.abspath()
 
-    if log: 
-        log.log("Post-processing: spatial smoothing and/or intensity normalization")
+    if log: log.log("Post-processing: spatial smoothing and/or intensity normalization")
 
     with WorkDir(src=outdir) as od:
         if not od.exists(): od.mkdir()
@@ -98,12 +97,12 @@ def postprocess(func: str,
 
     if intnorm:
         # Multiplicative mean intensity normalization of the volume at each
-        # timepoint
+        #   timepoint
         if log: log.log(f"Performing intensity normalization with a multiplicative mean intensity of: {normmean}")
         func_intnorm: str = fslmaths(img=func).inm(normmean).run(out=func_intnorm, log=log)
     else:
         # Grand-mean intensity normalization of the entire 4D dataset by a
-        # single multiplicative factor
+        #   single multiplicative factor
         if log: log.log(f"Performing grand-mean intensity normalization")
         scaling: float = normmean / median_intensity
         func_intnorm: str = fslmaths(img=func).mul(scaling).run(out=func_intnorm, log=log)
