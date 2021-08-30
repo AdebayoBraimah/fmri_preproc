@@ -21,7 +21,10 @@ from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.command import Command
 from fmri_preproc.utils.logutil import LogFile
-from fmri_preproc.utils.enums import BBRType
+from fmri_preproc.utils.enums import (
+    BBRType,
+    PhaseEncodeDirection    
+)
 
 from fmri_preproc.utils.acqparam import (
     _get_axis as get_axis, 
@@ -249,13 +252,181 @@ def func_to_sbref(outdir: str,
     return src2ref, affine, inv_affine
 
 
-def sbref_to_struct():
-    """doc-string"""
-    pass
+def sbref_to_struct(outdir: str,
+                    sbref: str,
+                    sbref_brainmask: str,
+                    struct: str,
+                    struct_brainmask: str,
+                    dc: bool = True,
+                    fmap: Optional[str] = None,
+                    fmap_brainmask: Optional[str] = None,
+                    fmap2struct_xfm: Optional[str] = None,
+                    sbref_pedir: Optional[str] = None,
+                    sbref_echospacing: Optional[float] = None,
+                    struct_boundarymask: Optional[str] = None,
+                    bbr: bool = True,
+                    bbrslope: float = 0.5,
+                    bbrtype: str = "signed",
+                    src_space: Optional[str] = None,
+                    ref_space: Optional[str] = None,
+                    log: Optional[LogFile] = None
+                   ) -> Tuple[Union[str,None]]:
+    """Register ``sbref`` to structural image with BBR (optional) and distortion correction (optional)."""
+    # Check and validate input structural associated NIFTI images
+    with NiiFile(src=sbref, assert_exists=True, validate_nifti=True) as sf:
+        with NiiFile(src=sbref_brainmask, assert_exists=True, validate_nifti=True) as sb:
+            sbref: str = sf.abspath()
+            sbref_brainmask: str = sb.abspath()
+            if not src_space:
+                _, src_space, _ = sf.file_parts()
+
+    with NiiFile(src=struct, assert_exists=True, validate_nifti=True) as st:
+        with NiiFile(src=struct_brainmask, assert_exists=True, validate_nifti=True) as sb:
+            struct: str = st.abspath()
+            struct_brainmask: str = sb.abspath()
+            if not ref_space:
+                _, ref_space, _ = st.file_parts()
+    
+    with WorkDir(src=outdir) as od:
+        regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+        with WorkDir(src=regdir) as rd:
+            outdir: str = od.abspath()
+            regdir: str = rd.abspath()
+            regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
+
+            dc_warp: str = rd.join(f'{src_space}_dc_warp.nii.gz') 
+            dc_img: str = rd.join(f'{src_space}_dc_img.nii.gz')
+            dc_brainmask: str = rd.join(f'{src_space}_dc_brainmask.nii.gz')
+    
+    # Logic tests
+    _has_fmap: bool = fmap is not None and fmap_brainmask is not None
+    _has_boundary: bool = struct_boundarymask is not None
+    _has_sbref_props: bool = sbref_pedir is not None and sbref_echospacing is not None
+
+    if bbr:
+        if not _has_boundary:
+            raise RuntimeError("'struct_boundarymask' is required for BBR.")
+        
+        with NiiFile(src=struct_boundarymask, assert_exists=True, validate_nifti=True) as sb:
+            struct_boundarymask: str = sb.abspath()
+            bbrslope: float = float(bbrslope)
+            bbrtype: str = BBRType(bbrtype.lower()).name
+    
+    if dc:
+        if not _has_fmap:
+            raise RuntimeError("'fmap' and 'fmap_brainmask' are required for distortion correction.")
+
+        if not _has_sbref_props:
+            raise RuntimeError("'sbref_pedir' and 'sbref_echospacing' are required for distortion correction.")
+
+        with NiiFile(src=fmap, assert_exists=True, validate_nifti=True) as fm:
+            with NiiFile(src=fmap_brainmask, assert_exists=True, validate_nifti=True) as fb:
+                fmap: str = fm.abspath()
+                fmap_brainmask: str = fb.abspath()
+
+                sbref_echospacing: float = float(sbref_echospacing)
+                sbref_pedir: str = PhaseEncodeDirection(sbref_pedir.lower()).name
+    
+    # Define outputs
+    outputs: Dict[str, str] = {
+                                "resampled_image": f"{regname}_img.nii.gz",
+                                "affine": f"{regname}_affine.mat",
+                                "inv_affine": f"{regname}_invaffine.mat",
+                                "init_affine": f'{regname}_init_affine.mat',
+                                "resampled_image_init": f"{regname}_init_img.nii.gz",
+                                "warp": f'{regname}_warp.nii.gz',
+                                "dc_warp": dc_warp,
+                                "dc_image": dc_img,
+                                "dc_brainmask": dc_brainmask,
+                              }
+
+    # Perform registration(s)
+    with TmpDir(src=regdir) as tmp:
+        sbref_brain: str = tmp.join('sbref_brain.nii.gz')
+        struct_brain: str = tmp.join('struct_brain.nii.gz')
+
+        sbref_brain: str = fslmaths(img=sbref).mas(sbref_brainmask).run(out=sbref_brain, log=log)
+        struct_brain: str = fslmaths(img=struct).mas(struct_brainmask).run(out=struct_brain, log=log)
+
+        epireg_kwargs: Dict[str,str] = {
+            "src": sbref_brain,
+            "ref": struct_brain,
+            "affine": outputs.get('affine'),
+            "inv_affine": outputs.get('inv_affine'),
+            "src2ref": outputs.get('resampled_image')
+        }
+
+        if bbr:
+            epireg_kwargs: Dict[str,str] = {
+                **epireg_kwargs,
+                "ref_boundarymask": struct_boundarymask,
+                "bbrslope": bbrslope,
+                "bbrtype": bbrtype,
+                "init_affine": outputs.get('init_affine'),
+                "src2ref_init": outputs.get('resampled_image_init')
+            }
+        
+        if dc:
+            if fmap2struct_xfm is None:
+                fmap2struct_xfm = os.path.join(FSLDIR, 'etc/flirtsch/ident.mat')
+
+            with File(src=fmap2struct_xfm, assert_exists=True) as fxm:
+                fmap2struct_xfm: str = fxm.abspath()
+            
+            epireg_kwargs: Dict[str,str] = {
+                **epireg_kwargs,
+                "fmap": fmap,
+                "fmap_brainmask": fmap_brainmask,
+                "fmap2ref_xfm": fmap2struct_xfm,
+                "src_pedir": sbref_pedir,
+                "src_echospacing": sbref_echospacing,
+                "warp": outputs.get('warp')
+            }
+        
+        (affine,
+        inv_affine,
+        src2ref,
+        warp,
+        _) = epireg(**epireg_kwargs)
+
+        # Create warp to distortion correct func and/or sbref/sbref_brainmask
+        if dc:
+            dc_warp: str = convertwarp(warp1=warp,
+                                       postmat=inv_affine,
+                                       ref=sbref,
+                                       out=outputs.get('dc_warp'))
+
+            dc_img: str = applywarp(src=sbref,
+                                    ref=sbref,
+                                    warp=dc_warp,
+                                    out=outputs.get('dc_image'),
+                                    interp='spline')
+
+            dc_brainmask: str = applywarp(src=sbref_brainmask,
+                                          ref=sbref_brainmask,
+                                          warp=dc_warp,
+                                          out=outputs.get('dc_brainmask'),
+                                          interp='trilinear')
+
+            dc_brainmask: str = fslmaths(img=dc_brainmask).thr(0.5).bin().run(out=dc_brainmask, log=log)
+        else:
+            dc_warp: str = None
+            dc_img: str = None
+            dc_brainmask: str = None
+
+    return (affine, 
+            inv_affine, 
+            src2ref, 
+            warp,
+            dc_warp, 
+            dc_img, 
+            dc_brainmask)
 
 
 def func_to_struct_composite():
-    """doc-string"""
+    """Create composite transform func -> sbref -> struct.
+    Create distortion correction warp for func and sbref.
+    """
     pass
 
 
@@ -311,11 +482,13 @@ def epireg(outdir: str,
         with WorkDir(src=outdir) as od:
             regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
             basename: str = os.path.join(regdir,basename)
+            dc_warp: str = os.path.join(regdir, f'{src_space}_dc_warp.nii.gz')
     elif basename:
         with WorkDir(src=outdir) as od:
             if not od.exists(): od.mkdir()
             regdir: str = od.abspath()
             basename: str = os.path.join(regdir,basename)
+            dc_warp: str = os.path.join(regdir, f'{src_space}_dc_warp.nii.gz')
     else: 
         with WorkDir(src=outdir) as od:
             regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
