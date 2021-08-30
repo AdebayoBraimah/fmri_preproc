@@ -103,7 +103,31 @@ class SegType(Enum):
 
 @unique
 class BBRType(Enum):
-    """BBR sign types"""
+    """BBR sign types."""
     signed: str = "signed"
     abs:    str = "abs"
-    
+
+@unique
+class LogLevel(Enum):
+    """Log level enumerators."""
+    info:       str = "info"
+    debug:      str = "debug"
+    critical:   str = "critical"
+    error:      str = "error"
+    warning:    str = "warning"
+
+@unique
+class PhaseUnits(Enum):
+    """Phase encoded units for field maps."""
+    rads:   str = "rads"
+    hz:     str = "hz"
+
+@unique
+class PhaseEncodeDirection(Enum):
+    """Phase-encoding directions."""
+    PA: str = "PA"
+    AP: str = "AP"
+    LR: str = "LR"
+    RL: str = "RL"
+    IS: str = "IS"
+    SI: str = "SI"

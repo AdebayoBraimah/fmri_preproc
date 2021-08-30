@@ -15,7 +15,7 @@ from fmri_preproc.utils.enums import SegType
 def get_dseg_labels(seg_type: str) -> Dict[str,List[int]]:
     """Gets image segmentation labels.
     """
-    seg_type: str = SegType(seg_type).name
+    seg_type: str = SegType(seg_type.lower()).name
 
     if seg_type == 'drawem':
         labels: Dict[str,int] = {
@@ -79,7 +79,7 @@ def create_mask(dseg: str,
                 dseg_type: str,
                 labels: List[str],
                 out: str
-               ) -> None:
+               ) -> str:
     """Create segmentation mask.
     """
     dseg: nib.Nifti1Header = nib.load(dseg)

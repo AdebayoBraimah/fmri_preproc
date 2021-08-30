@@ -91,6 +91,7 @@ class File(IOBaseObj):
         if assert_exists:
             assert os.path.exists(self.src), f"Input file {self.src} does not exist."
     
+    # TODO: Re-implement __enter__ method similar to that of tempfile.TemporaryDirectory
     def copy(self,
              dst: str
             ) -> str:
@@ -355,13 +356,13 @@ class NiiFile(File):
             self.src: str = self.src + self.ext
 
         if assert_exists:
-            assert os.path.exists(self.src), f"Input file {self.src} does not exist."
+            assert os.path.exists(self.src), f"Input NIFTI file {self.src} does not exist."
         
         if validate_nifti and os.path.exists(self.src):
             try:
                 _: nib.Nifti1Header = nib.load(filename=self.src)
             except Exception as error:
-                raise InvalidNiftiFileError(f"The NIFTI file {self.src} is not a valid NIFTI file and raised the error {error}.")
+                raise InvalidNiftiFileError(f"The NIFTI file {self.src} is not a valid NIFTI file and raised the following error {error}.")
         
     # Overwrite several File base class methods
     def touch(self) -> None:

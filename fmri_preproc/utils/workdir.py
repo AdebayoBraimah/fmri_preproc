@@ -73,6 +73,7 @@ class WorkDir(IOBaseObj):
             self.src: str = os.path.join(_cwd, self.src)
             self.parent_dir: str = os.path.dirname(self.src)
     
+    # TODO: Re-implement __enter__ and __exit__ methods similar to that of tempfile.TemporaryDirectory
     def mkdir(self) -> None:
         """Makes/creates the working directory.
 

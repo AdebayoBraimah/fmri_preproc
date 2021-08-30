@@ -1,2 +1,4 @@
 *.nii*
 data/*
+atlas/*
+*.tar.gz
