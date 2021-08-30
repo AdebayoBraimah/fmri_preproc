@@ -73,7 +73,12 @@ class WorkDir(IOBaseObj):
             self.src: str = os.path.join(_cwd, self.src)
             self.parent_dir: str = os.path.dirname(self.src)
     
-    # TODO: Re-implement __enter__ and __exit__ methods similar to that of tempfile.TemporaryDirectory
+    def __enter__(self):
+        """Context manager entrance method for ``WorkDir`` class."""
+        if not self.exists():
+            self.mkdir()
+        return super().__enter__()
+    
     def mkdir(self) -> None:
         """Makes/creates the working directory.
 
@@ -92,7 +97,7 @@ class WorkDir(IOBaseObj):
             >>> work
             "/path/to/working_directory"
         """
-        if not os.path.exists(self.src):
+        if not self.exists():
             return os.makedirs(self.src)
         else:
             print("Working directory already exists.")

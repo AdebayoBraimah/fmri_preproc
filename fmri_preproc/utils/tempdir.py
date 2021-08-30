@@ -66,6 +66,11 @@ class TmpDir(WorkDir):
             self.src = os.path.join(_cwd, self.src)
         super(TmpDir, self).__init__(self.src, use_cwd)
     
+    def __exit__(self, exc_type, exc_val, traceback):
+        """Context manager exit method for ``TmpDir`` class."""
+        self.rmdir()
+        return super().__exit__(exc_type, exc_val, traceback)
+    
     class TmpFile(File):
         """Sub-class of ``TmpDir`` class, which creates and manipulates temporary files via inheritance from the ``File`` object base class.
         
