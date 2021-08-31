@@ -8,6 +8,7 @@ NOTE:
             * Can download pre-compiled binaries: https://sourceforge.net/projects/c3d/files/c3d/
 """
 import os
+import glob
 
 from typing import (
     Dict,
@@ -40,6 +41,7 @@ from fmri_preproc.utils.fslpy import (
     FSLDIR,
     applywarp,
     applyxfm,
+    concatxfm,
     convertwarp,
     flirt,
     fslmaths,
@@ -423,27 +425,276 @@ def sbref_to_struct(outdir: str,
             dc_brainmask)
 
 
-def func_to_struct_composite():
+def func_to_struct_composite(outdir: str,
+                             func: str,
+                             struct: str,
+                             func2sbref_affine: str,
+                             sbref2struct_affine: str,
+                             sbref2struct_warp: Optional[str] = None,
+                             src_space: Optional[str] = None,
+                             ref_space: Optional[str] = None,
+                             log: Optional[LogFile] = None
+                            ) -> Tuple[Union[str,None]]:
     """Create composite transform func -> sbref -> struct.
     Create distortion correction warp for func and sbref.
+    """
+    with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
+        with NiiFile(src=struct, assert_exists=True, validate_nifti=True) as st:
+            func: str = fn.abspath()
+            struct: str = st.abspath()
+
+            if not src_space: _, src_space, _ = fn.file_parts()
+            if not ref_space: _, ref_space, _ = st.file_parts()
+    
+    with File(src=func2sbref_affine, assert_exists=True) as fsa:
+        with File(src=sbref2struct_affine, assert_exists=True) as ssa:
+            func2sbref_affine: str = fsa.abspath()
+            sbref2struct_affine: str = ssa.abspath()
+
+    with WorkDir(src=outdir) as od:
+        regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+        with WorkDir(src=regdir) as rd:
+            outdir: str = od.abspath()
+            regdir: str = rd.abspath()
+            regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
+
+            dc_warp: str = rd.join(f'{src_space}_dc_warp.nii.gz') 
+            dc_img: str = rd.join(f'{src_space}_dc_img.nii.gz')
+
+    _has_warp: bool = sbref2struct_warp is not None
+
+    # Define outputs
+    outputs: Dict[str,str] = {
+                                "resampled_image": f"{regname}_img.nii.gz",
+                                "affine": f"{regname}_affine.mat",
+                                "inv_affine": f"{regname}_invaffine.mat",
+                                "warp": f"{regname}_warp.nii.gz",
+                                "inv_warp": f"{regname}_invwarp.nii.gz",
+                                "dc_warp": dc_warp,
+                                "dc_image": dc_img
+                             }
+
+    # Func (undistorted) -> struct :: affine
+    affine: str = concatxfm(inmat1=func2sbref_affine, 
+                            inmat2=sbref2struct_affine, 
+                            outmat=outputs.get('affine'),
+                            log=log)
+
+    # Struct -> func (undistorted) :: affine
+    inv_affine: str = invxfm(inmat=affine, 
+                             outmat=outputs.get('inv_affine'), 
+                             log=log)
+
+    if _has_warp:
+        with NiiFile(src=sbref2struct_warp, assert_exists=True, validate_nifti=True) as sbs:
+            sbref2struct_warp: str = sbs.abspath()
+        
+        # Func (distorted) -> struct :: warp
+        warp: str = convertwarp(premat=func2sbref_affine, 
+                                warp1=sbref2struct_warp, 
+                                out=outputs.get('warp'), 
+                                ref=struct, 
+                                log=log)
+
+        # Struct -> func (distorted) :: warp
+        inv_warp: str = invwarp(inwarp=warp, 
+                                ref=func, 
+                                outwarp=outputs.get('inv_warp'),
+                                log=log)
+        
+        # Create warp to distortion correct func
+        dc_warp: str = convertwarp(warp1=warp, 
+                                   postmat=inv_affine, 
+                                   ref=func, 
+                                   out=outputs.get('dc_warp'), 
+                                   log=log)
+
+        dc_img: str = applywarp(src=func, 
+                                ref=func, 
+                                warp=dc_warp, 
+                                out=outputs.get('dc_image'), 
+                                log=log)
+
+        # Resample func -> structural space
+        resamp_img: str = applywarp(src=func, 
+                                    ref=struct, 
+                                    warp=warp, 
+                                    out=outputs.get('resampled_image'), 
+                                    interp='spline', 
+                                    log=log)
+    else:
+        # Resample func -> structural space
+        resamp_img: str = applywarp(src=func, 
+                                    ref=struct, 
+                                    premat=affine,
+                                    out=outputs.get('resampled_image'), 
+                                    interp='spline', 
+                                    log=log)
+        warp: str = None
+        inv_warp: str = None
+        dc_warp: str = None
+        dc_img: str = None
+
+    return (affine,
+            inv_affine,
+            warp,
+            inv_warp,
+            dc_warp,
+            dc_img,
+            resamp_img)
+
+
+def fmap_to_func_composite(outdir: str,
+                           fmap: str,
+                           func: str,
+                           fmap2struct_affine: str,
+                           func2struct_invaffine: str,
+                           src_space: Optional[str] = None,
+                           ref_space: Optional[str] = None,
+                           log: Optional[LogFile] = None
+                          ) -> Tuple[str,str]:
+    """Create composite transform fieldmap -> struct -> sbref -> func.
+    """
+    with NiiFile(src=fmap, assert_exists=True, validate_nifti=True) as fm:
+        with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
+            fmap: str = fm.abspath()
+            func: str = fn.abspath()
+
+            if not src_space: _, src_space, _ = fm.file_parts()
+            if not ref_space: _, ref_space, _ = fn.file_parts()
+    
+    with File(src=fmap2struct_affine, assert_exists=True) as fsa:
+        with File(src=func2struct_invaffine, assert_exists=True) as fsi:
+            fmap2struct_affine: str = fsa.abspath()
+            func2struct_invaffine: str = fsi.abspath()
+    
+    with WorkDir(src=outdir) as od:
+        regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+        with WorkDir(src=regdir) as rd:
+            outdir: str = od.abspath()
+            regdir: str = rd.abspath()
+            regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
+    
+    # Define outputs
+    outputs: Dict[str,str] = {
+                                "resampled_image": f"{regname}_img.nii.gz",
+                                "affine": f"{regname}_affine.mat"
+                             }
+
+    # Fmap -> func
+    affine: str = concatxfm(inmat1=fmap2struct_affine, 
+                            inmat2=func2struct_invaffine, 
+                            outmat=outputs.get('affine'), 
+                            log=log)
+    
+    resamp_img: str = applyxfm(src=fmap,
+                               ref=func,
+                               mat=affine,
+                               interp='spline',
+                               out=outputs.get('resampled_image'),
+                               log=log)
+    return affine, resamp_img
+
+
+def _select_atlas(atlasdir: str,
+                  age: Union[int,str],
+                 ) -> Dict[str,str]:
+    """Helper function designed to gather the relevant atlas/template
+    files for either the dHCP volumetric atlas or the UNC AAL atlas.
+    """
+    try:
+        age: int = int(age)
+        if age == 1:
+            age: str = "1yr"
+        elif age == 2:
+            age: str = "2yr"
+        else:
+            # Cap or trim age if in PMA (for dHCP)
+            age: int = 28 if age < 28 else age
+            age: int = 44 if age > 44 else age
+    except ValueError:
+        if (age.lower() == 'neo') or (age.lower() == 'neonate'):
+            age: str = 'neo'
+        else:
+            raise RuntimeError(f"The input for age is insufficient: {age}. Use 'neo' or 'neonate' or the PMA in weeks.")
+    
+    with WorkDir(src=atlasdir) as ad:
+        atlasdir: str = ad.abspath()
+        templatedir: str = ad.join("templates")
+
+        with WorkDir(src=templatedir) as td:
+            templatedir: str = td.abspath()
+            _cwd: str = os.getcwd()
+            os.chdir(templatedir)
+
+            t1: str = ' '.join(map(str, glob.glob(f"*{age}*T1*.nii*")))
+            t2: str = ' '.join(map(str, glob.glob(f"*{age}*T2*.nii*")))
+            
+            if t2 == "":
+                t2: str = ' '.join(map(str, glob.glob(f"*{age}.nii*")))
+            
+            gm_prob: str = ' '.join(map(str, glob.glob(f"*{age}*gm*.nii*")))
+            wm_prob: str = ' '.join(map(str, glob.glob(f"*{age}*wm*.nii*")))
+            probseg: str = ' '.join(map(str, glob.glob(f"*{age}*probseg*.nii*")))
+            seg: str = ' '.join(map(str, glob.glob(f"*{age}*dseg*.nii*")))
+
+            # Set variables to None if no atlas file is found
+            if t1 == "": 
+                t1: str = None
+            else:
+                t1: str = td.join(t1)
+
+            if gm_prob == "": 
+                gm_prob: str = None
+            else:
+                gm_prob: str = td.join(gm_prob)
+
+            if wm_prob == "": 
+                wm_prob: str = None
+            else:
+                wm_prob: str = td.join(wm_prob)
+
+            if probseg == "": 
+                probseg: str = None
+            else:
+                probseg: str = td.join(probseg)
+
+            if seg == "": 
+                seg: str = None
+            else:
+                seg: str = td.join(seg)
+
+            if t2 == "":
+                raise FileNotFoundError(f"Unable to find T2w image template for the specified age: {age} and atlas directory: {atlasdir}")
+
+            atlasdict: Dict[str,str] = {
+                                            "template_T1": t1,
+                                            "template_T2": t2,
+                                            "gm_prob": gm_prob,
+                                            "wm_prob": wm_prob,
+                                            "seg": seg,
+                                            "probseg": probseg
+                                    }
+            os.chdir(_cwd)
+
+    return atlasdict
+
+
+def template_to_struct(outdir: str,
+                       age: int
+                      ) -> Tuple[str]:
+    """Register template -> struct.
     """
     pass
 
 
-def fmap_to_func_composite():
+def struct_to_template_composite():
     """doc-string"""
     pass
 
 
-def template_to_struct():
-    pass
-
-
-def struct_to_template_composite():
-    pass
-
-
 def func_to_template_composite():
+    """doc-string"""
     pass
 
 
@@ -733,7 +984,7 @@ def nonlinear_reg(outdir: str,
                   ref_space: Optional[str] = None,
                   basename: Optional[str] = None,
                   log: Optional[LogFile] = None,
-                  **kwargs: Dict[str]
+                  **kwargs: Dict[str,str]
                  ):
     """Perform ``ANTs`` deformable registration."""
     if isinstance(src, list):
@@ -865,7 +1116,7 @@ def antsRegistrationSyN(fixed: Union[List[str],str],
                         fixed_mask: Optional[str] = None,
                         quick: bool = False,
                         log: Optional[LogFile] = None
-                       ) -> Tuple[str]:
+                       ) -> None:
     """Python wrapper for ``ANTs`` ``antsRegistrationSyN``."""
     if isinstance(fixed, list):
         pass
