@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from logging import log
 import os
 import sys
 _mod_path: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc"
@@ -122,3 +123,28 @@ fov_percent) = mcdc(func=func,
                     mbs=True,
                     use_mcflirt=False,
                     log=mcdc_log)
+
+from fmri_preproc.func.registration import (
+  epireg,
+  nonlinear_reg
+)
+
+T2w = "/Users/adebayobraimah/Desktop/projects/fmri_preproc/test/test.1/sub-194/run-01/import/T2w.nii.gz"
+
+# Test processing reg data
+_reg_log: str = os.path.join(logdir,'reg.log')
+
+reg_log: LogFile = LogFile(_reg_log,
+                              format_log_str=True)
+
+epireg(outdir=sub_workdir,
+src=T2w,
+ref=T2w,
+log=reg_log)
+
+nonlinear_reg(outdir=sub_workdir,
+src=T2w,
+ref=T2w,
+quick=True,
+log=reg_log)
+
