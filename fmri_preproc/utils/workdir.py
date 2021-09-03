@@ -100,7 +100,6 @@ class WorkDir(IOBaseObj):
         if not self.exists():
             return os.makedirs(self.src)
         else:
-            print("Working directory already exists.")
             return None
     
     def rmdir(self, 
@@ -131,7 +130,6 @@ class WorkDir(IOBaseObj):
         elif os.path.exists(self.src):
             return shutil.rmtree(self.src, ignore_errors=True)
         else:
-            print("Working directory does not exist.")
             return None
     
     def copy(self,
