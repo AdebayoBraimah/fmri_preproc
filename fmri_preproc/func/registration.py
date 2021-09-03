@@ -18,6 +18,7 @@ from typing import (
     Union
 )
 
+from fmri_preproc import _resourcedir
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.command import Command
@@ -46,6 +47,7 @@ from fmri_preproc.utils.fslpy import (
     flirt,
     fslmaths,
     fslmerge,
+    fslroi,
     fugue,
     invwarp,
     invxfm
@@ -58,6 +60,8 @@ from fmri_preproc.utils.fslpy import (
 # 
 # These variables will be used as inputs for all 
 # registration functions.
+
+ATLASDIR: str = os.path.join(_resourcedir,'atlases')
 
 def fmap_to_struct(outdir: str,
                    fmap: str,
@@ -569,11 +573,11 @@ def fmap_to_func_composite(outdir: str,
             func2struct_invaffine: str = fsi.abspath()
     
     with WorkDir(src=outdir) as od:
-        regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+        regdir: str = od.join('reg',f'{src_space}_to_{ref_space}')
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
+            regname: str = rd.join(f'{src_space}_to_{ref_space}')
     
     # Define outputs
     outputs: Dict[str,str] = {
@@ -596,27 +600,43 @@ def fmap_to_func_composite(outdir: str,
     return affine, resamp_img
 
 
-def _select_atlas(atlasdir: str,
-                  age: Union[int,str],
+def _select_atlas(age: Union[int,str],
+                  atlasdir: Optional[str] = None
                  ) -> Dict[str,str]:
     """Helper function designed to gather the relevant atlas/template
     files for either the dHCP volumetric atlas or the UNC AAL atlas.
     """
+    # Set atlas age
     try:
         age: int = int(age)
         if age == 1:
             age: str = "1yr"
+            atlas_name: str = "UNCAAL"
         elif age == 2:
             age: str = "2yr"
+            atlas_name: str = "UNCAAL"
         else:
             # Cap or trim age if in PMA (for dHCP)
             age: int = 28 if age < 28 else age
             age: int = 44 if age > 44 else age
+            atlas_name: str = "dHCPtemplate"
     except ValueError:
         if (age.lower() == 'neo') or (age.lower() == 'neonate'):
             age: str = 'neo'
+            atlas_name: str = "UNCAAL"
         else:
             raise RuntimeError(f"The input for age is insufficient: {age}. Use 'neo' or 'neonate' or the PMA in weeks.")
+    
+    # Select atlas directory
+    if atlasdir:
+        pass
+    elif ((age == 'neo') or (age == '1yr') or (age == '2yr')):
+        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"UNC*2020*"))))
+    elif ((28 <= age) and (age <= 44)):
+        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"dHCPatlas"))))
+    else:
+        raise FileNotFoundError("'atlasdir' does exists or was not specified.")
+
     
     with WorkDir(src=atlasdir) as ad:
         atlasdir: str = ad.abspath()
@@ -629,14 +649,20 @@ def _select_atlas(atlasdir: str,
 
             t1: str = ' '.join(map(str, glob.glob(f"*{age}*T1*.nii*")))
             t2: str = ' '.join(map(str, glob.glob(f"*{age}*T2*.nii*")))
+            seg: str = ' '.join(map(str, glob.glob(f"*{age}*dseg*.nii*")))
             
             if t2 == "":
                 t2: str = ' '.join(map(str, glob.glob(f"*{age}.nii*")))
             
+            if seg == "":
+                seg: str = ' '.join(map(str, glob.glob(f"*{age}*-seg.nii*")))
+            
             gm_prob: str = ' '.join(map(str, glob.glob(f"*{age}*gm*.nii*")))
             wm_prob: str = ' '.join(map(str, glob.glob(f"*{age}*wm*.nii*")))
             probseg: str = ' '.join(map(str, glob.glob(f"*{age}*probseg*.nii*")))
-            seg: str = ' '.join(map(str, glob.glob(f"*{age}*dseg*.nii*")))
+
+            if probseg == "":
+                probseg: str = ' '.join(map(str, glob.glob(f"*{age}*avgseg*.nii*")))
 
             # Set variables to None if no atlas file is found
             if t1 == "": 
@@ -665,27 +691,160 @@ def _select_atlas(atlasdir: str,
                 seg: str = td.join(seg)
 
             if t2 == "":
-                raise FileNotFoundError(f"Unable to find T2w image template for the specified age: {age} and atlas directory: {atlasdir}")
-
+                raise FileNotFoundError(f"Unable to find T2w image template for the specified age: {age} and atlas directory: {td.abspath()}")
+            
+            if 'dHCPatlas' in atlasdir:
+                age: str = f"{age}wks"
+            
             atlasdict: Dict[str,str] = {
                                             "template_T1": t1,
                                             "template_T2": t2,
                                             "gm_prob": gm_prob,
                                             "wm_prob": wm_prob,
                                             "seg": seg,
-                                            "probseg": probseg
-                                    }
+                                            "prob": probseg,
+                                            "atlas_name": atlas_name,
+                                            "atlas_age": age
+                                        }
             os.chdir(_cwd)
 
     return atlasdict
 
 
 def template_to_struct(outdir: str,
-                       age: int
+                       age: Union[int,str],
+                       struct_brainmask: str,
+                       struct_T1w: Optional[str] = None,
+                       struct_T2w: Optional[str] = None,
+                       struct_gmprob: Optional[str] = None,
+                       struct_wmprob: Optional[str] = None,
+                       quick: bool = False,
+                       src_space: Optional[str] = None,
+                       ref_space: Optional[str] = None,
+                       atlasdir: Optional[str] = None,
+                       log: Optional[LogFile] = None
                       ) -> Tuple[str]:
-    """Register template -> struct.
+    """Register (age-matched-) template -> struct.
     """
-    pass
+    atlas: Dict[str,str] = _select_atlas(age=age, atlasdir=atlasdir)
+
+    if (struct_T1w is None) and (struct_T2w is None):
+        raise RuntimeError('T2w and/or T1w is required')
+    
+    with NiiFile(src=struct_brainmask, assert_exists=True, validate_nifti=True) as sbn:
+        struct_brainmask: str = sbn.abspath()
+    
+    if not src_space:
+        src_space: str = f"{atlas.get('atlas_name')}-{atlas.get('atlas_age')}"
+    
+    if not ref_space:
+        ref_space: str = 'struct'
+    
+    with WorkDir(src=outdir) as od:
+        regdir: str = od.join('reg',f'{src_space}_to_{ref_space}')
+        with WorkDir(src=regdir) as rd:
+            outdir: str = od.abspath()
+            regdir: str = rd.abspath()
+            regname: str = rd.join(f'{src_space}_to_{ref_space}')
+
+    # Define outputs
+    outputs: Dict[str,str] = {
+                                "resampled_image": f"{regname}_img.nii.gz",
+                                "affine": f"{regname}_affine.mat",
+                                "warp": f"{regname}_warp.nii.gz",
+                                "inv_warp": f"{regname}_invwarp.nii.gz"
+                             }
+
+    # Build structural and template arguments
+    struct: List[str] = []
+    template: List[str] = []
+
+    if struct_T2w and atlas.get('template_T2'):
+        with NiiFile(src=struct_T2w, assert_exists=True, validate_nifti=True) as st2:
+            with NiiFile(src=atlas.get('template_T2'), assert_exists=True, validate_nifti=True) as tt2:
+                struct_T2w: str = st2.abspath()
+                template_T2w: str = tt2.abspath()
+
+                struct += [struct_T2w]
+                template += [template_T2w]
+
+    if struct_T1w and atlas.get('template_T1'):
+        with NiiFile(src=struct_T1w, assert_exists=True, validate_nifti=True) as st1:
+            with NiiFile(src=atlas.get('template_T1'), assert_exists=True, validate_nifti=True) as tt1:
+                struct_T1w: str = st1.abspath()
+                template_T1w: str = tt1.abspath()
+
+                struct += [struct_T1w]
+                template += [template_T1w]
+    
+    if struct_gmprob:
+        with NiiFile(src=struct_gmprob, assert_exists=True, validate_nifti=True) as stg:
+            struct_gmprob: str = stg.abspath()
+            struct += [struct_gmprob]
+
+        if 'dHCP' in atlas.get('prob'):
+            with NiiFile(src=atlas.get('prob'), assert_exists=True, validate_nifti=True) as tgmpb:
+                tprob: str = tgmpb.abspath()
+                gmpb: str = os.path.join(regdir,'template_gmprob.nii.gz')
+                gmpb: str = fslroi(img=tprob,
+                                   out=gmpb,
+                                   tmin=1,
+                                   tsize=1,
+                                   log=log)
+                gmpb: str = fslmaths(img=gmpb).div(100).run(out=gmpb, log=log)
+        else:
+            with NiiFile(src=atlas.get('gm_prob'), assert_exists=True, validate_nifti=True) as tgmpb:
+                gmpb: str = tgmpb.abspath()
+        
+        template += [gmpb]
+    
+    if struct_wmprob:
+        with NiiFile(src=struct_wmprob, assert_exists=True, validate_nifti=True) as stw:
+            struct_wmprob: str = stw.abspath()
+            struct += [struct_wmprob]
+
+        if 'dHCP' in atlas.get('prob'):
+            with NiiFile(src=atlas.get('prob'), assert_exists=True, validate_nifti=True) as twmpb:
+                tprob: str = twmpb.abspath()
+                wmpb: str = os.path.join(regdir,'template_wmprob.nii.gz')
+                wmpb: str = fslroi(img=tprob,
+                                   out=wmpb,
+                                   tmin=1,
+                                   tsize=1,
+                                   log=log)
+                wmpb: str = fslmaths(img=wmpb).div(100).run(out=wmpb, log=log)
+        else:
+            with NiiFile(src=atlas.get('wm_prob'), assert_exists=True, validate_nifti=True) as twmpb:
+                wmpb: str = twmpb.abspath()
+        
+        template += [wmpb]
+    
+    with NiiFile(src=outputs.get('warp')) as wp:
+        antsout_dir: str = wp.rm_ext()
+
+    (warp,
+    inv_warp,
+    affine,
+    src2ref) = nonlinear_reg(src=template,
+                            ref=struct,
+                            quick=quick,
+                            ref_brainmask=struct_brainmask,
+                            antsout=antsout_dir + + '.ants/output_',
+                            affine=outputs.get('affine'),
+                            warp=outputs.get('warp'),
+                            inv_warp=outputs.get('inv_warp'),
+                            src2ref=outputs.get('resampled_image'),
+                            log=log)
+    
+    inv_warp: str = invwarp(inwarp=warp,
+                            ref=template[0],
+                            outwarp=inv_warp,
+                            log=log)
+
+    return (warp,
+            inv_warp,
+            affine,
+            src2ref)
 
 
 def struct_to_template_composite():
@@ -985,7 +1144,7 @@ def nonlinear_reg(outdir: str,
                   basename: Optional[str] = None,
                   log: Optional[LogFile] = None,
                   **kwargs: Dict[str,str]
-                 ):
+                 ) -> Tuple[str,str,str,str]:
     """Perform ``ANTs`` deformable registration."""
     if isinstance(src, list):
         pass
