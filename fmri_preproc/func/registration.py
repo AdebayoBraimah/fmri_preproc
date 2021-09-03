@@ -1179,9 +1179,6 @@ def nonlinear_reg(outdir: str,
                     regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
 
                     with WorkDir(src=regdir) as rd:
-                        if not rd.exists(): 
-                            rd.mkdir()
-                        
                         outdir: str = od.abspath()
                         regdir: str = rd.abspath()
                         basename: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
@@ -1225,13 +1222,11 @@ def nonlinear_reg(outdir: str,
 
     # Convert ANTs warp to FSL
     with TmpDir(src=regdir) as tmp:
-        tmp.mkdir()
-
         cmd: Command = Command("c3d")
 
         cmd.opt("-mcs"); cmd.opt(f"{outputs.get('antsout')}1Warp.nii.gz")
-        cmd.opt("-oo"); cmd.opt(f"{tmp.src}/wy.nii.gz")
-        cmd.opt(f"{tmp.src}/wz.nii.gz")
+        cmd.opt("-oo"); cmd.opt(f"{tmp.src}/wx.nii.gz")
+        cmd.opt(f"{tmp.src}/wy.nii.gz"); cmd.opt(f"{tmp.src}/wz.nii.gz")
         cmd.run(log=log)
 
         tmp_invwarp: str = fslmaths(img=f"{tmp.src}/wy.nii.gz").mul(input=int(-1)).run(out=f"{tmp.src}/i_wy.nii.gz", log=log)
@@ -1240,10 +1235,9 @@ def nonlinear_reg(outdir: str,
                              "t", 
                              None, 
                              log, 
-                             f"{tmp.src}/wx",  
+                             f"{tmp.src}/wx.nii.gz",  
                              tmp_invwarp,  
-                             f"{tmp.src}/wz")
-        tmp.rmdir()
+                             f"{tmp.src}/wz.nii.gz")
     
     warp: str = convertwarp(ref=ref[0],
                             premat=affine,
@@ -1297,6 +1291,12 @@ def antsRegistrationSyN(fixed: Union[List[str],str],
         cmd: Command = Command("antsRegistrationSyNQuick.sh")
     else:
         cmd: Command = Command("antsRegistrationSyN.sh")
+    
+    # Get output directory name and create it
+    with File(src=out_prefix) as otp:
+        outdir, _, _ = otp.file_parts()
+        with WorkDir(src=outdir) as _:
+            pass
     
     cmd.opt("-d"); cmd.opt(f"{dim}")
 

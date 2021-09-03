@@ -757,7 +757,7 @@ def invxfm(inmat: str,
     inmat:  File = File(src=inmat, assert_exists=True)
     outmat: File = File(src=outmat, assert_exists=False)
 
-    cmd: Command = Command("invxfm")
+    cmd: Command = Command("convert_xfm")
 
     cmd.opt("-omat")
     cmd.opt(outmat.src)
@@ -933,15 +933,7 @@ def convertwarp(out: str,
     
     ref: NiiFile = NiiFile(src=ref, assert_exists=True, validate_nifti=True)
     out: NiiFile = NiiFile(src=out)
-
-    warp1: NiiFile = NiiFile(src="", assert_exists=False, validate_nifti=False)
-    warp2: NiiFile = NiiFile(src="", assert_exists=False, validate_nifti=False)
-    shiftmap: NiiFile = NiiFile(src="", assert_exists=False, validate_nifti=False)
-
-    postmat: File = File(src="", assert_exists=False)
-    premat: File = File(src="", assert_exists=False)
-    midmat: File = File(src="", assert_exists=False)
-
+    
     cmd: Command = Command("convertwarp")
     
     cmd.opt(f"--ref={ref.src}")
@@ -971,7 +963,9 @@ def convertwarp(out: str,
         shiftmap: NiiFile = NiiFile(src=shiftmap, assert_exists=True, validate_nifti=True)
         cmd.opt(f"--shiftmap={shiftmap.src}")
 
-    if (shiftdir == 'x' or 
+    if shiftdir is None:
+        pass
+    elif (shiftdir == 'x' or 
         shiftdir == 'x-' or 
         shiftdir == 'y' or 
         shiftdir == 'y-' or 
