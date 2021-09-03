@@ -15,9 +15,11 @@ from typing import (
 from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.logutil import LogFile
 
+
 # TODO: Remove LogFile dependency and just 
 #   logger class from logging module.
 logger = logging.getLogger(__name__)
+
 
 # def timeops(log: Optional[LogFile] = None) -> Any:
 def timeops() -> Any:
@@ -57,12 +59,14 @@ def timeops() -> Any:
         return timed
     return decor
 
+
 def json2dict(jsonfile: str) -> Dict[Any,Any]:
     """Read JSON file to dictionary.
     """
     with open(jsonfile, 'r') as file:
         d: Dict[Any,Any] = json.load(file)
     return d
+
 
 def dict2json(dict: Dict[Any,Any],
               jsonfile: str,
@@ -73,6 +77,7 @@ def dict2json(dict: Dict[Any,Any],
     with open(jsonfile, 'w') as out:
         json.dump(dict, out, indent=indent)
     return out
+
 
 def update_sidecar(file: str, **kwargs) -> str:
     """Updates a JSON sidecar/file.
@@ -89,6 +94,7 @@ def update_sidecar(file: str, **kwargs) -> str:
 
     return jsonfile
 
+
 def load_sidecar(file: str) -> Dict[Any,Any]:
     """Reads in a JSON sidecar/file.
     """
@@ -101,6 +107,7 @@ def load_sidecar(file: str) -> Dict[Any,Any]:
                 with open(jf.abspath(),'r') as j:
                     d.update(json.load(j))
     return d
+
 
 def get_fsl_version() -> str:
     """Returns a string that represents the version of ``FSL`` in the system path.

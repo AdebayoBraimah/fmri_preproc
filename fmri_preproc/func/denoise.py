@@ -33,6 +33,7 @@ from fmri_preproc.utils.fslpy import (
     fslmaths,
 )
 
+
 def fix_extract(func_filt: str,
                 func_ref: str,
                 struct: str,
@@ -154,6 +155,7 @@ def fix_extract(func_filt: str,
 
     return fixdir
 
+
 def _classify(fixdir: str,
               rdata: str,
               thr: int,
@@ -193,6 +195,7 @@ def _classify(fixdir: str,
         raise RuntimeError(s)
 
     return fixdir
+
 
 def fix_classify(rdata: str,
                  thr: int,
@@ -244,6 +247,7 @@ def fix_classify(rdata: str,
     df.to_csv(fix_reg, sep='\t', index=None)
     
     return fix_labels, fix_reg
+
 
 def fix_apply(outdir: str,
               temporal_fwhm: Optional[float] = 150.0,

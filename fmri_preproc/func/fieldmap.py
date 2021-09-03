@@ -25,7 +25,6 @@ from fmri_preproc.utils.fslpy import (
     bet,
     FSLDIR,
     fslmerge,
-    fslreorient2std,
     topup,
     fslmaths
 )
@@ -34,6 +33,7 @@ from fmri_preproc.utils.fileio import (
     File,
     NiiFile
 )
+
 
 def fieldmap(outdir: str,
              spinecho: str,
@@ -50,8 +50,6 @@ def fieldmap(outdir: str,
     NOTE: 
         Input directory should be parent FEAT/processing directory path.
     """
-    # TODO: 
-    # Re-configure function to ensure compatibility with import_spinecho and import fieldmap functions
     if log: log.log("Preparing fieldmaps")
 
     outdir: str = os.path.join(outdir,"fmap")
@@ -118,6 +116,7 @@ def fieldmap(outdir: str,
         fmap_mask: str = fslmaths(img=fmap_brain).bin().run(out=outputs.get('fmap_mask'),log=log)
     return fmap, mag, fmap_mask
 
+
 def _get_b0_conf(slices: int,
                  default: bool = True,
                 ) -> str:
@@ -142,6 +141,7 @@ def _get_b0_conf(slices: int,
         config: str = os.path.join(config_parent_dir,'b02b0_1.cnf')
         config: File = File(src=config, assert_exists=True)
         return config.abspath()
+
 
 def _merge_rpe(out: str,
                ap_dir: Optional[str] = None,

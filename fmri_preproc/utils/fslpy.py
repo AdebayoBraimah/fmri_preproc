@@ -42,12 +42,15 @@ from fmri_preproc.utils.enums import (
     RegInterp
 )
 
+
 # Global FSLDIR variable
 FSLDIR: str = os.getenv('FSLDIR', None)
+
 
 class FSLError(Exception):
     """Exception intended to be raised for FSL specific binaries and related wrapper functions."""
     pass
+
 
 def fnirt(src: str, 
           ref: str, 
@@ -435,6 +438,7 @@ def eddy(img: str,
             eddy_motion_par,
             eddy_mask)
 
+
 def bet(img: str,
         out: str,
         mask: bool = False,
@@ -477,6 +481,7 @@ def bet(img: str,
 
     return (out.src, 
             mask_img)
+
 
 def topup(img: str,
           param: str,
@@ -532,6 +537,7 @@ def topup(img: str,
             field_img.src,
             unwarped_img.src)
 
+
 def fslreorient2std(img: str,
                     out: Optional[str] = None,
                     out_mat: bool = False,
@@ -566,6 +572,7 @@ def fslreorient2std(img: str,
     return (img.src, 
             out.src, 
             out_mat.src)
+
 
 def fslroi(img: str,
            out: str,
@@ -619,6 +626,7 @@ def fslroi(img: str,
 
     return out.src
 
+
 def sigloss(img: str,
             out: str,
             te: Optional[float] = None,
@@ -646,6 +654,7 @@ def sigloss(img: str,
     cmd.run(log=log)
     return out
 
+
 def fslmerge(out: str,
              merge_opt: str = "t",
              tr: Optional[float] = None,
@@ -671,6 +680,7 @@ def fslmerge(out: str,
 
     return out.src
 
+
 def catmats(matdir: str,
             out: str
            ) -> str:
@@ -681,6 +691,7 @@ def catmats(matdir: str,
             with open(mat_file) as f:
                 output_file.write(f.read())
     return out
+
 
 def applywarp(src: str,
               ref: str,
@@ -768,6 +779,7 @@ def invxfm(inmat: str,
     cmd.run(log=log)
     return outmat
 
+
 def applyxfm(src: str,
              ref: str,
              mat: str,
@@ -803,6 +815,7 @@ def applyxfm(src: str,
 
     cmd.run(log=log)
     return out.src
+
 
 def apply_isoxfm(src: str,
                  ref: str,
@@ -845,6 +858,7 @@ def apply_isoxfm(src: str,
     cmd.run(log=log)
     return out.src
 
+
 def concatxfm(inmat1: str,
               inmat2: str,
               outmat: str,
@@ -865,6 +879,7 @@ def concatxfm(inmat1: str,
 
     cmd.run(log=log)
     return outmat
+
 
 def invwarp(inwarp: str,
             ref: str,
@@ -910,6 +925,7 @@ def invwarp(inwarp: str,
     
     cmd.run(log=log)
     return outwarp.src
+
 
 def convertwarp(out: str,
                 ref: str,
@@ -1022,6 +1038,7 @@ def fugue(unmaskshift: bool = False,
             warp,
             savefmap,
             saveshift)
+
 
 def flirt(src: str,
           ref: str,
@@ -1147,6 +1164,7 @@ def flirt(src: str,
     return (out,
             omat)
 
+
 def melodic(input: str,
             outdir: str,
             dim: Optional[int] = 0,
@@ -1207,7 +1225,8 @@ def melodic(input: str,
     #       each melodic options.
 
     return outdir
-    
+
+
 def fsl_regfilt(infile: str,
                 outfile: str,
                 mix: str,
@@ -1249,6 +1268,7 @@ def fsl_regfilt(infile: str,
     #       each fsl_regfilt options.
 
     return outfile.src
+
 
 def mcflirt(infile: str, 
             outfile: str, 
@@ -1293,6 +1313,7 @@ def mcflirt(infile: str,
     return (outfile.src, 
             parfile, 
             matsdir)
+
 
 def slicer(input: str,
            input2: Optional[str] = None,
@@ -1353,6 +1374,7 @@ def slicer(input: str,
     cmd.run(log=log)
 
     return None
+
 
 def cluster(infile: str,
             thresh: Optional[int] = None,

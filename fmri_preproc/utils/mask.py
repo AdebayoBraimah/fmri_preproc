@@ -12,6 +12,7 @@ from typing import (
 from fmri_preproc.utils.fileio import NiiFile
 from fmri_preproc.utils.enums import SegType
 
+
 def get_dseg_labels(seg_type: str) -> Dict[str,List[int]]:
     """Gets image segmentation labels.
     """
@@ -47,6 +48,7 @@ def get_dseg_labels(seg_type: str) -> Dict[str,List[int]]:
         raise RuntimeError('Unknown segmentation type.')
     return labels
 
+
 def convert_to_fsl_fast(dseg: str,
                         seg_type: str,
                         out: str
@@ -74,6 +76,7 @@ def convert_to_fsl_fast(dseg: str,
     with NiiFile(src=out, assert_exists=True, validate_nifti=True) as ot:
         out: str = ot.abspath()
     return out
+
 
 def create_mask(dseg: str,
                 dseg_type: str,

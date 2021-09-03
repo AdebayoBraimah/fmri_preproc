@@ -50,8 +50,10 @@ from fmri_preproc.func.mcdc import (
     write_slice_order
 )
 
+
 # Globlally define log file object
 log: LogFile = None
+
 
 # @timeops(log)
 @timeops()
@@ -124,6 +126,7 @@ def import_info(outdir: str,
     info_name: str = dict2json(dict=info, jsonfile=info_name)
 
     return info_dir, logdir, info_name, info
+
 
 # @timeops(log)
 @timeops()
@@ -264,6 +267,7 @@ def import_func(outdir: str,
             sbref, 
             sbref_brainmask)
 
+
 # @timeops(log)
 @timeops()
 def import_struct(outdir: str,
@@ -333,6 +337,7 @@ def import_struct(outdir: str,
             _, T1w, _ = fslreorient2std(img=t1.abspath(), out=outputs.get('T1w'), log=log)   
     
     return T2w, wmmask, dseg
+
 
 # @timeops(log)
 @timeops()

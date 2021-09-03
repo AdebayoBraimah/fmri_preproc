@@ -6,11 +6,13 @@ from enum import (
     unique
 )
 
+
 @unique
 class NiiHeaderField(Enum):
     """NIFTI file header field options."""
     descrip:        str = "descrip"
     intent_name:    str = "intent_name"
+
 
 @unique
 class MergeDim(Enum):
@@ -22,7 +24,8 @@ class MergeDim(Enum):
     a:  str = "a"
     tr: str = "tr"
     n:  str = "n"
-    
+
+
 @unique
 class ECModelFLM(Enum):
     """``eddy`` first level EC model (``flm``) options."""
@@ -31,6 +34,7 @@ class ECModelFLM(Enum):
     quadratic:  str = "quadratic"   # default
     cubic:      str = "cubic"
 
+
 @unique
 class ECModelSLM(Enum):
     """``eddy`` second level EC model (``slm``) options."""
@@ -38,11 +42,13 @@ class ECModelSLM(Enum):
     linear:     str = "linear"
     quadratic:  str = "quadratic"
 
+
 @unique
 class ECInterp(Enum):
     """``eddy`` interpolation model options."""
     spline:     str = "spline"      # default
     trilinear:  str = "trilinear"
+
 
 @unique
 class ECresamp(Enum):
@@ -50,12 +56,14 @@ class ECresamp(Enum):
     jac: str = "jac"                # default
     lsr: str = "lsr"
 
+
 @unique
 class ECOLType(Enum):
     """``eddy`` outlier type methods."""
     sw:     str = "sw"              # default
     gw:     str = "gw"
     both:   str = "both"
+
 
 @unique
 class FSLDataType(Enum):
@@ -71,6 +79,7 @@ class FSLDataType(Enum):
     double: str = "double"
     input:  str = "input"
 
+
 @unique
 class RegInterp(Enum):
     """``FSL`` registration interpolation methods."""
@@ -80,6 +89,7 @@ class RegInterp(Enum):
     spline:     str = "spline"
     nearest:    str = "nearestneighbour"
 
+
 @unique
 class SliceAcqOrder(Enum):
     """Slice acquisition order method."""
@@ -87,11 +97,13 @@ class SliceAcqOrder(Enum):
     default:        str = "default"
     single_shot:    str = "single-shot"
 
+
 @unique
 class MotionMetric(Enum):
     """Motion metric calculation methods."""
     dvars:  str = "dvars"
     refrms: str = "refrms"
+
 
 @unique
 class SegType(Enum):
@@ -101,11 +113,13 @@ class SegType(Enum):
     drawem:             str = "drawem"
     toblerone:          str = "toblerone"
 
+
 @unique
 class BBRType(Enum):
     """BBR sign types."""
     signed: str = "signed"
     abs:    str = "abs"
+
 
 @unique
 class LogLevel(Enum):
@@ -116,11 +130,13 @@ class LogLevel(Enum):
     error:      str = "error"
     warning:    str = "warning"
 
+
 @unique
 class PhaseUnits(Enum):
     """Phase encoded units for field maps."""
     rads:   str = "rads"
     hz:     str = "hz"
+
 
 @unique
 class PhaseEncodeDirection(Enum):
