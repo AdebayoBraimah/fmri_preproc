@@ -191,11 +191,9 @@ def mcdc(func: str,
     mcdc_tsnr: str = fslmaths(img=mcdc).Tmean().run(out=mcdc_tsnr, log=log)
 
     with TmpDir(src=mcdir) as tmp:
-        tmp.mkdir()
         brain: str = os.path.join(tmp.src,'brain.nii.gz')
         brain, _ = bet(img=mcdc_mean, out=brain, mask=False, frac_int=0.4, robust=True, log=log)
         mcdc_brainmask: str = fslmaths(img=brain).bin().run(out=mcdc_brainmask, log=log)
-        tmp.rmdir()
     
     # Create out-of-FOV masks (for EDDY)
     if os.path.exists(eddy_output_mask):
@@ -234,8 +232,8 @@ def mcflirt_mc(func: str,
     with File(src=func_mc, assert_exists=False) as f:
         outdir, _, _ = f.file_parts()
         func_mc: str = f.abspath()
-        with WorkDir(src=outdir) as d:
-            d.mkdir()
+        with WorkDir(src=outdir) as _:
+            pass
 
     if isinstance(ref, str):
         with NiiFile(src=ref, assert_exists=True, validate_nifti=True) as f:
@@ -258,7 +256,6 @@ def mcflirt_mc(func: str,
 
     if dc_warp:
         with TmpDir(src=outdir) as tmp:
-            tmp.mkdir()
             func_ref: str = fslroi(img=func_mc,
                                    out=os.path.join(tmp.abspath(),"func0_ref.nii.gz"),
                                    tmin=0,
@@ -304,10 +301,8 @@ def eddy_mcdc(func: str,
                 eddy_dir: str = os.path.join(outdir,"eddy")
                 eddy_basename: str = os.path.join(eddy_dir,"eddy_corr")
 
-                with WorkDir(src=eddy_dir) as d:
-                    if not d.exists(): 
-                        if log: log.log("Creating eddy output directory.")
-                        d.mkdir()
+                with WorkDir(src=eddy_dir) as _:
+                    if log: log.log("Creating eddy output directory.")
     
     # Define output files
     outputs: Dict[str,str] = {

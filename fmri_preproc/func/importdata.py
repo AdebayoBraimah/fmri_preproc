@@ -93,9 +93,6 @@ def import_info(outdir: str,
             logdir: str = os.path.join(ifd.src,'logs')
 
             with WorkDir(src=logdir) as logdr:
-
-                if not logdr.exists():
-                    logdr.mkdir()
                 
                 info_dir: str = ifd.abspath()
                 logdir: str = logdr.abspath()
@@ -153,7 +150,6 @@ def import_func(outdir: str,
         with WorkDir(src=importdir) as impd:
             if not impd.exists():
                 if log: log.log("Creating import data directory")
-                impd.mkdir()
             importdir: str = impd.abspath()
     
     # Check required inputs
@@ -198,11 +194,9 @@ def import_func(outdir: str,
             dirname, _, _ = fn.file_parts()
 
         with TmpDir(src=dirname) as tmp:
-            tmp.mkdir()
             brain: str = os.path.join(tmp.src, 'brain.nii.gz')
             brain, _ = bet(img=func_mean, out=brain, frac_int=0.4, mask=False, log=log)
             func_brainmask: str = fslmaths(img=brain).bin().run(out=outputs.get('func_brainmask'), log=log)
-            tmp.rmdir()
     
     # Create dilated brainmask
     func_dilated_brainmask: str = fslmaths(img=func_brainmask).dilM().dilM().bin().run(out=outputs.get('func_dil_brainmask'), log=log)
@@ -260,11 +254,9 @@ def import_func(outdir: str,
                 dirname, _, _ = fn.file_parts()
             
             with TmpDir(src=dirname) as tmp:
-                tmp.mkdir()
                 brain: str = os.path.join(tmp.src, 'brain.nii.gz')
                 brain, _ = bet(img=sbref, out=brain, frac_int=0.4, mask=False, log=log)
                 sbref_brainmask: str = fslmaths(img=brain).bin().run(out=outputs.get('sbref_brainmask'), log=log)
-                tmp.rmdir()
     return (func,
             func_mean, 
             func_brainmask, 
@@ -292,7 +284,6 @@ def import_struct(outdir: str,
         with WorkDir(src=importdir) as impd:
             if not impd.exists():
                 if log: log.log("Creating import data directory")
-                impd.mkdir()
             importdir: str = impd.abspath()
     
     # Check required inputs
@@ -369,13 +360,11 @@ def import_spinecho(outdir: str,
         with WorkDir(src=topup_dir) as td:
             if not td.exists(): 
                 if log: log.log(f"Making fieldmap directory: {od.src}.")
-                td.mkdir()
             outdir: str = od.abspath()
             topup_dir: str = td.abspath()
 
     # Check inputs to ensure that they are reversed phase encoded
     with TmpDir(src=topup_dir) as tmp:
-        tmp.mkdir()
         
         input_spinecho: str = os.path.join(topup_dir,'spinecho.nii.gz')
 
@@ -395,7 +384,6 @@ def import_spinecho(outdir: str,
 
             with NiiFile(src=spinecho, assert_exists=True, validate_nifti=True) as sp:
                 _, input_spinecho, _ = fslreorient2std(img=sp.abspath(), out=input_spinecho)
-                tmp.rmdir()
 
         elif ap_dir and pa_dir:
             if log:
@@ -412,7 +400,6 @@ def import_spinecho(outdir: str,
             
             spinecho_pedir: List[str] = [ "PA", "AP" ]
             input_spinecho: str = merge_rpe(out=input_spinecho, log=log, ap_dir=input_ap, pa_dir=input_pa)
-            tmp.rmdir()
 
         elif lr_dir and rl_dir:
             if log:
@@ -429,7 +416,6 @@ def import_spinecho(outdir: str,
             
             spinecho_pedir: List[str] = [ "LR", "RL" ]
             input_spinecho: str = merge_rpe(out=input_spinecho, log=log, lr_dir=input_lr, rl_dir=input_rl)
-            tmp.rmdir()
 
         elif is_dir and si_dir:
             if log:
@@ -446,7 +432,6 @@ def import_spinecho(outdir: str,
             
             spinecho_pedir: List[str] = [ "IS", "SI" ]
             input_spinecho: str = merge_rpe(out=input_spinecho, log=log, is_dir=input_is, si_dir=input_si)
-            tmp.rmdir()
 
         else:
             if log: log.error(f"AttributeError: Input images are not reversed phase encoded fieldmap EPIs: Spinecho: {spinecho} \nAP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}")

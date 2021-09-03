@@ -58,9 +58,7 @@ def fieldmap(outdir: str,
     with WorkDir(src=outdir) as od:
         topup_dir: str = os.path.join(od.src, "topup")
         with WorkDir(src=topup_dir) as td:
-            if not td.exists(): 
-                if log: log.log(f"Making fieldmap directory: {od.src}.")
-                td.mkdir()
+            if log: log.log(f"Making fieldmap directory: {od.src}.")
             outdir: str = od.abspath()
             topup_dir: str = td.abspath()
     
@@ -111,7 +109,6 @@ def fieldmap(outdir: str,
     if log: log.log("Creating fieldmap brain mask.")
 
     with TmpDir(src=os.path.join(topup_dir)) as tmp:
-        tmp.mkdir()
         brain: str = os.path.join(tmp.src,"brain")
         fmap_brain, _ = bet(img=mag,
                             out=brain,
@@ -119,7 +116,6 @@ def fieldmap(outdir: str,
                             robust=True,
                             log=log)
         fmap_mask: str = fslmaths(img=fmap_brain).bin().run(out=outputs.get('fmap_mask'),log=log)
-        tmp.rmdir()
     return fmap, mag, fmap_mask
 
 def _get_b0_conf(slices: int,

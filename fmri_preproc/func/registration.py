@@ -100,7 +100,6 @@ def fmap_to_struct(outdir: str,
     with WorkDir(src=outdir) as od:
         regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
         with WorkDir(src=regdir) as rd:
-            rd.mkdir()
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
             regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
@@ -135,7 +134,6 @@ def fmap_to_struct(outdir: str,
     init_affine: str = None
 
     with TmpDir(src=regdir) as tmp:
-        tmp.mkdir()
 
         # Brain extraction
         struct_brain: str = os.path.join(tmp.src, 'struct_brain.nii.gz')
@@ -168,8 +166,6 @@ def fmap_to_struct(outdir: str,
          inv_affine, 
          src2ref, 
          _) = epireg(**kwargs)
-
-        tmp.rmdir()
     
     return (affine,
             inv_affine,
@@ -205,7 +201,6 @@ def func_to_sbref(outdir: str,
     with WorkDir(src=outdir) as od:
         regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
         with WorkDir(src=regdir) as rd:
-            if not rd.exists(): rd.mkdir()
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
             regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
@@ -218,7 +213,6 @@ def func_to_sbref(outdir: str,
                              }
 
     with TmpDir(src=regdir) as tmp:
-        tmp.mkdir()
 
         func_brain: str = os.path.join(tmp.src, 'func_brain.nii.gz')
         func_brain: str = fslmaths(img=func).mas(func_brainmask).run(out=func_brain, log=log)
@@ -254,7 +248,6 @@ def func_to_sbref(outdir: str,
                     affine=outputs.get('affine'),
                     inv_affine=outputs.get('inv_affine'),
                     src2ref=outputs.get('resampled_image'))
-        tmp.rmdir()
     return src2ref, affine, inv_affine
 
 
@@ -895,7 +888,6 @@ def epireg(outdir: str,
             dc_warp: str = os.path.join(regdir, f'{src_space}_dc_warp.nii.gz')
     elif basename:
         with WorkDir(src=outdir) as od:
-            if not od.exists(): od.mkdir()
             regdir: str = od.abspath()
             basename: str = os.path.join(regdir,basename)
             dc_warp: str = os.path.join(regdir, f'{src_space}_dc_warp.nii.gz')
@@ -903,8 +895,6 @@ def epireg(outdir: str,
         with WorkDir(src=outdir) as od:
             regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
             with WorkDir(src=regdir) as rd:
-                if not rd.exists(): 
-                    rd.mkdir()
                 outdir: str = od.abspath()
                 regdir: str = rd.abspath()
                 basename: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
@@ -958,7 +948,6 @@ def epireg(outdir: str,
     sigloss2ref: str = None
 
     with TmpDir(src=regdir) as tmp:
-        tmp.mkdir()
 
         affine: str = None
         inv_affine: str = None
@@ -1071,7 +1060,6 @@ def epireg(outdir: str,
                                     out=src2ref,
                                     interp='spline',
                                     log=log)
-            tmp.rmdir()
             return affine, inv_affine, src2ref, warp, inv_warp
         
         # Perform distortion correction
@@ -1129,7 +1117,6 @@ def epireg(outdir: str,
                                  out=src2ref,
                                  interp='spline',
                                  log=log)
-        tmp.rmdir()
     return affine, inv_affine, src2ref, warp, inv_warp
 
 
@@ -1166,7 +1153,6 @@ def nonlinear_reg(outdir: str,
             basename: str = os.path.join(regdir,basename)
     elif basename:
         with WorkDir(src=outdir) as od:
-            if not od.exists(): od.mkdir()
             regdir: str = od.abspath()
             basename: str = os.path.join(regdir,basename)
     else: 
