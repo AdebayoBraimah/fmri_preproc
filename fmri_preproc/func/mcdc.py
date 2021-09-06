@@ -20,6 +20,7 @@ from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.enums import PhaseEncodeDirection
 from fmri_preproc.utils.acqparam import write_func_params
+from fmri_preproc.utils.outputs.mcdc import MCDCFiles
 
 from fmri_preproc.utils.fslpy import (
     applywarp,
@@ -113,24 +114,27 @@ def mcdc(func: str,
         raise RuntimeError('func_brainmask is required to use EDDY.')
     
     # Define output files
-    if use_mcflirt:
-        mc_name: str = 'mc'
-    else:
-        mc_name: str = 'mcdc'
+    # if use_mcflirt:
+    #     mc_name: str = 'mc'
+    # else:
+    #     mc_name: str = 'mcdc'
 
-    mcdir: str = os.path.join(outdir,f"{mc_name}")
-    outputs: Dict[str,str] = {
-                                "func_mcdc": os.path.join(mcdir,f"func_{mc_name}.nii.gz"),
-                                "func_mot": os.path.join(mcdir,f"func_{mc_name}_motion.tsv"),
-                                "func_metrics": os.path.join(mcdir,f"func_{mc_name}_regressors.tsv"),
-                                "func_out_plot": os.path.join(mcdir,f"func_{mc_name}_outliers.png"),
-                                "mcdc_mean": os.path.join(mcdir,f"func_{mc_name}_mean.nii.gz"),
-                                "mcdc_std": os.path.join(mcdir,f"func_{mc_name}_std.nii.gz"),
-                                "mcdc_tsnr": os.path.join(mcdir,f"func_{mc_name}_tsnr.nii.gz"),
-                                "mcdc_brainmask": os.path.join(mcdir,f"func_{mc_name}_brainmask.nii.gz"),
-                                "func_mcdc_fovmask": os.path.join(mcdir,f"func_{mc_name}_fovmask.nii.gz"),
-                                "func_mcdc_fovpercent": os.path.join(mcdir,f"func_{mc_name}_fovpercent.nii.gz")
-                            }
+    out: MCDCFiles = MCDCFiles(outdir=outdir)
+    outputs: Dict[str,str] = out.outputs(dc=(not use_mcflirt))
+    mcdir: str = outputs.get('mcdir')
+
+    # outputs: Dict[str,str] = {
+    #                             "func_mcdc": os.path.join(mcdir,f"func_{mc_name}.nii.gz"),
+    #                             "func_mot": os.path.join(mcdir,f"func_{mc_name}_motion.tsv"),
+    #                             "func_metrics": os.path.join(mcdir,f"func_{mc_name}_regressors.tsv"),
+    #                             "func_out_plot": os.path.join(mcdir,f"func_{mc_name}_outliers.png"),
+    #                             "mcdc_mean": os.path.join(mcdir,f"func_{mc_name}_mean.nii.gz"),
+    #                             "mcdc_std": os.path.join(mcdir,f"func_{mc_name}_std.nii.gz"),
+    #                             "mcdc_tsnr": os.path.join(mcdir,f"func_{mc_name}_tsnr.nii.gz"),
+    #                             "mcdc_brainmask": os.path.join(mcdir,f"func_{mc_name}_brainmask.nii.gz"),
+    #                             "func_mcdc_fovmask": os.path.join(mcdir,f"func_{mc_name}_fovmask.nii.gz"),
+    #                             "func_mcdc_fovpercent": os.path.join(mcdir,f"func_{mc_name}_fovpercent.nii.gz")
+    #                         }
 
     # Perform MCDC
     if use_mcflirt:
@@ -368,7 +372,8 @@ def eddy_mcdc(func: str,
     if s2v_corr:
         if func_sliceorder:
             with File(src=func_sliceorder, assert_exists=True) as f:
-                func_sliceorder: str = f.abspath()
+                # func_sliceorder: str = f.abspath()
+                func_sliceorder: str = f.copy(dst=outputs.get('slice_order'))
         else:
             func_sliceorder: str = write_slice_order(slices=slices, 
                                                      mb_factor=mb_factor, 
