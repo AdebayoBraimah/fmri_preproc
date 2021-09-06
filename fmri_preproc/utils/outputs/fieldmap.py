@@ -11,7 +11,7 @@ from typing import (
 from fmri_preproc.utils.outputs.outdict import OutDict
 from fmri_preproc.utils.workdir import WorkDir
 
-class FmapDict(OutDict):
+class FmapFiles(OutDict):
     """class doc-string.
     """
     def __init__(self,
