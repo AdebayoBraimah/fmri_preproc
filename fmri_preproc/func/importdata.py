@@ -84,6 +84,14 @@ def import_info(outdir: str,
             if 'sub' in item: subid: str = item[4:]
             if 'ses' in item: sesid: str = item[4:]
             if 'run' in item: runid: str = item[4:]
+        
+        if not runid:
+            runid: str = '01'
+        
+        if not subid:
+            raise RuntimeError("No subject ID can be inferred from the data. \
+                The input data should be in BIDS format, and prefixed with \
+                'sub-' in the filename.")
     
     with WorkDir(src=outdir) as od:
 
@@ -142,6 +150,7 @@ def import_func(outdir: str,
                 func_pedir: str,
                 func_brainmask: Optional[str] = None,
                 func_slorder: Optional[str] = None,
+                func_inplane_accel: Optional[float] = 1,
                 mb_factor: Optional[int] = None,
                 sbref: Optional[str] = None,
                 sbref_brainmask: Optional[str] = None,
@@ -173,8 +182,10 @@ def import_func(outdir: str,
         func: str = fn.abspath()
         _, func, _ = fslreorient2std(img=func, out=outputs.get('func'), log=log)
         _: str = update_sidecar(file=func, 
-                                echo_spacing=func_echospacing, 
-                                phase_encode_dir=func_pedir)
+                                echo_spacing=func_echospacing,
+                                mb_factor=mb_factor,
+                                phase_encode_dir=func_pedir,
+                                inplane_accel=float(func_inplane_accel))
 
     # Create func_mean
     func_mean: str = fslmaths(img=func).Tmean().run(out=outputs.get('func_mean'), log=log)
