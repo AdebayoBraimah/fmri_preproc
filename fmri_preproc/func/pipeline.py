@@ -45,6 +45,7 @@ from fmri_preproc.utils.outputs.importdata import (
     ImportStruct
 )
 
+from fmri_preproc.utils.outputs.outdict import key_to_none
 from fmri_preproc.utils.outputs.fieldmap import FmapFiles
 from fmri_preproc.utils.outputs.registration import MRreg
 
@@ -64,6 +65,8 @@ from fmri_preproc.func.registration import (
     func_to_struct_composite,
     sbref_to_struct,
 )
+
+from fmri_preproc.func.mcdc import mcdc
 
 # TODO: 
 #   * Create outputs module that handles output
@@ -91,6 +94,7 @@ class Pipeline:
                     log_level: str = 'info',
                     func_brainmask: Optional[str] = None,
                     func_slorder: Optional[str] = None,
+                    func_inplane_accel: Optional[float] = 1,
                     mb_factor: Optional[int] = None,
                     sbref: Optional[str] = None,
                     sbref_brainmask: Optional[str] = None,
@@ -159,6 +163,7 @@ class Pipeline:
                                         func_pedir=func_pedir,
                                         func_brainmask=func_brainmask,
                                         func_slorder=func_slorder,
+                                        func_inplane_accel=func_inplane_accel,
                                         mb_factor=mb_factor,
                                         sbref=sbref,
                                         sbref_brainmask=sbref_brainmask,
@@ -232,7 +237,7 @@ class Pipeline:
         }
         return self.outputs
 
-    def prepare_fieldmap(self) -> None:
+    def prepare_fieldmap(self) -> Dict[Any,str]:
         """doc-string
         """
         with WorkDir(src=self.logdir) as lgd:
@@ -316,13 +321,149 @@ class Pipeline:
                                               log=fmap_log)
         
         # func (distorted) -> sbref -> struct (composite)
+        (func2struct_affine,
+        func2struct_inv_affine,
+        func2struct_warp,
+        func2struct_inv_warp,
+        func_dc_warp,
+        func_dc_img,
+        func2struct_resamp_img) = func_to_struct_composite(outdir=self.outputs.get('workdir'),
+                                                           func=self.outputs.get('func0'),
+                                                           struct=self.outputs.get('T2w'),
+                                                           func2sbref_affine=func2sbref_affine,
+                                                           sbref2struct_affine=sbref2struct_affine,
+                                                           sbref2struct_warp=sbref2struct_warp,
+                                                           src_space='func',
+                                                           ref_space='struct',
+                                                           log=fmap_log)
+
         # fmap -> func (composite)
+        (fmap2func_affine, 
+        fmap2func_resamp_img) = fmap_to_func_composite(outdir=self.outputs.get('workdir'),
+                                                       fmap=self.outputs.get('fmap'),
+                                                       func=self.outputs.get('func0'),
+                                                       fmap2struct_affine=fmap2struct_affine,
+                                                       func2struct_invaffine=func2struct_inv_affine,
+                                                       src_space='fmap',
+                                                       ref_space='func',
+                                                       log=fmap_log)
 
-        # TODO: Add fmap/sbref reg outputs to class dict.
-        pass
+        # Update output dictionary
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
+            "fmap2struct_affine": fmap2struct_affine,
+            "fmap2struct_inv_affine": fmap2struct_inv_affine,
+            "fmap2struct_src2ref": fmap2struct_src2ref,
+            "fmap2struct_init_affine": fmap2struct_init_affine,
+            "func2sbref_src2ref": func2sbref_src2ref,
+            "func2sbref_affine": func2sbref_affine,
+            "func2sbref_inv_affine": func2sbref_inv_affine,
+            "sbref2struct_affine": sbref2struct_affine,
+            "sbref2struct_inv_affine": sbref2struct_inv_affine,
+            "sbref2struct_src2ref": sbref2struct_src2ref,
+            "sbref2struct_warp": sbref2struct_warp,
+            "sbref_dc_warp": sbref_dc_warp,
+            "sbref_dc_img": sbref_dc_img,
+            "sbref_dc_brainmask": sbref_dc_brainmask,
+            "func2struct_affine": func2struct_affine,
+            "func2struct_inv_affine": func2struct_inv_affine,
+            "func2struct_warp": func2struct_warp,
+            "func2struct_inv_warp": func2struct_inv_warp,
+            "func_dc_warp": func_dc_warp,
+            "func_dc_img": func_dc_img,
+            "func2struct_resamp_img": func2struct_resamp_img,
+            "fmap2func_affine": fmap2func_affine, 
+            "fmap2func_resamp_img": fmap2func_resamp_img
+        }
+        return self.outputs
 
-    def mcdc(self) -> None:
-        pass
+    def mcdc(self) -> Dict[Any,str]:
+        """doc-string
+        """
+        with WorkDir(src=self.logdir) as lgd:
+            _mcdc_log: str = lgd.join('mcdc.log')
+            mcdc_log: LogFile = LogFile(_mcdc_log, format_log_str=True)
+
+        func: str = self.outputs.get('func')
+        metadata: Dict[str,str] = load_sidecar(file=func)
+
+        assert 'echo_spacing' in metadata, "func sidecar must contain 'echo_spacing'."
+        assert 'phase_encode_dir' in metadata, "func sidecar must contain 'phase_encode_dir'."
+
+        kwargs: Dict[str,str] = {
+            "func": func,
+            "func_brainmask": self.outputs.get('func_brainmask'),
+            "fmap": self.outputs.get('fmap2func_resamp_img'),
+            # "fmap2func_affine": self.outputs.get('fmap2func_affine'),
+            "func_echospacing": metadata.get('echo_spacing'),
+            "func_pedir": metadata.get('phase_encode_dir'),
+            "func_slorder": self.outputs.get('func_slorder'),
+            "inplane_acc": self.outputs.get('inplane_accel'),
+        }
+
+        (func_mcdc,
+        mcf,
+        func_metrics,
+        mcdc_mean,
+        mcdc_std,
+        mcdc_tsnr,
+        mcdc_brainmask,
+        fov_mask,
+        fov_percent) = mcdc(**kwargs, log=mcdc_log)
+
+        # func (undistorted) -> sbref (undistorted)
+        (func_mcdc2sbref_dc_src2ref, 
+        func_mcdc2sbref_dc_affine, 
+        func_mcdc2sbref_dc_inv_affine) = func_to_sbref(outdir=self.outputs.get('workdir'),
+                                                       func=mcdc_mean,
+                                                       func_brainmask=mcdc_brainmask,
+                                                       sbref=self.outputs.get('sbref_dc_img'),
+                                                       sbref_brainmask=self.outputs.get('sbref_dc_brainmask'),
+                                                       src_space='func-mcdc',
+                                                       ref_space='sbref-dc',
+                                                       log=mcdc_log)
+
+        # func (undistorted) -> sbref (undistorted) -> struct (composite)
+        (func_mcdc2struct_affine,
+        func_mcdc2struct_inv_affine,
+        func_mcdc2struct_warp,
+        func_mcdc2struct_inv_warp,
+        func_mcdc2struct_dc_warp,
+        func_mcdc2struct_dc_img,
+        func_mcdc2struct_resamp_img) = func_to_struct_composite(outdir=self.outputs.get('workdir'),
+                                                                func=mcdc_mean,
+                                                                struct=self.outputs.get('T2w'),
+                                                                func2sbref_affine=func_mcdc2sbref_dc_affine,
+                                                                sbref2struct_affine=self.outputs.get('sbref2struct_affine'),
+                                                                sbref2struct_warp=self.outputs.get('sbref2struct_warp'),
+                                                                src_space='func-mcdc',
+                                                                ref_space='struct',
+                                                                log=mcdc_log)
+
+        # Update output dictionary
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
+            "func_mcdc": func_mcdc,
+            "mcf": mcf,
+            "func_metrics": func_metrics,
+            "mcdc_mean": mcdc_mean,
+            "mcdc_std": mcdc_std,
+            "mcdc_tsnr": mcdc_tsnr,
+            "mcdc_brainmask": mcdc_brainmask,
+            "fov_mask": fov_mask,
+            "fov_percent": fov_percent,
+            "func_mcdc2sbref_dc_src2ref": func_mcdc2sbref_dc_src2ref,
+            "func_mcdc2sbref_dc_affine": func_mcdc2sbref_dc_affine,
+            "func_mcdc2sbref_dc_inv_affine": func_mcdc2sbref_dc_inv_affine,
+            "func_mcdc2struct_affine": func_mcdc2struct_affine,
+            "func_mcdc2struct_inv_affine": func_mcdc2struct_inv_affine,
+            "func_mcdc2struct_warp": func_mcdc2struct_warp,
+            "func_mcdc2struct_inv_warp": func_mcdc2struct_inv_warp,
+            "func_mcdc2struct_dc_warp": func_mcdc2struct_dc_warp,
+            "func_mcdc2struct_dc_img": func_mcdc2struct_dc_img,
+            "func_mcdc2struct_resamp_img": func_mcdc2struct_resamp_img,
+        }
+        return self.outputs,
 
     def standard(self) -> None:
         pass
