@@ -5,6 +5,7 @@ import os
 from abc import ABC
 
 from typing import (
+    Any,
     Dict,
     KeysView
 )
@@ -35,3 +36,21 @@ class OutDict(ABC):
             if not os.path.exists(file):
                 return False
         return True
+    
+    def set_key_to_none(self) -> Dict:
+        """Sets values of keys to ``None`` IF the value is a 
+        file or directory that does not exist.
+        """
+        return key_to_none(d=self.output)
+
+
+def key_to_none(d: Dict[Any,Any]) -> Dict[Any,Any]:
+    """Iterates through some input dictionary's keys, determines if the associated
+    key-mapped value is a directory or file. If the value is a directory or file that
+    DOES NOT EXIST, then it is set to ``None``.
+    """
+    for key,val in d.items():
+        if os.path.isfile(val) or os.path.isdir(val):
+            if not os.path.exists(val):
+                d[key] = None
+    return d
