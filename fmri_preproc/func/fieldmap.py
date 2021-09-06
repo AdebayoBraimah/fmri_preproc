@@ -15,11 +15,11 @@ from typing import (
     Union
 )
 
+from fmri_preproc.utils.outputs.fieldmap import FmapDict
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.acqparam import write_func_params
-from fmri_preproc.utils.enums import PhaseEncodeDirection
 
 from fmri_preproc.utils.fslpy import (
     bet,
@@ -61,10 +61,11 @@ def fieldmap(outdir: str,
             topup_dir: str = td.abspath()
     
     # Define output files
+    out: FmapDict = FmapDict(outdir=outdir)
+    outputs: Dict[str,str] = out.outputs()
+
     outputs: Dict[str,str] = {
-                                "fmap": os.path.join(outdir,"fieldmap.nii.gz"),
-                                "fmap_mag": os.path.join(outdir,"fieldmap_magnitude.nii.gz"),
-                                "fmap_mask": os.path.join(outdir,"fieldmap_brainmask.nii.gz"),
+                                **outputs,
                                 "topup_out": os.path.join(topup_dir, "topup_dist_corr"),
                              }
     
