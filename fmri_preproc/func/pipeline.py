@@ -37,6 +37,7 @@ from typing import (
 
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
+from fmri_preproc.utils.util import load_sidecar
 
 from fmri_preproc.utils.outputs.importdata import (
     ImportFunc,
@@ -44,11 +45,24 @@ from fmri_preproc.utils.outputs.importdata import (
     ImportStruct
 )
 
+from fmri_preproc.utils.outputs.fieldmap import FmapFiles
+from fmri_preproc.utils.outputs.registration import MRreg
+
 from fmri_preproc.func.importdata import (
     import_func,
     import_info,
     import_spinecho,
     import_struct
+)
+
+from fmri_preproc.func.fieldmap import fieldmap
+
+from fmri_preproc.func.registration import (
+    fmap_to_struct,
+    fmap_to_func_composite,
+    func_to_sbref,
+    func_to_struct_composite,
+    sbref_to_struct,
 )
 
 # TODO: 
@@ -104,6 +118,8 @@ class Pipeline:
         """Import data class-function.
         """
         # Import information
+        self.verbose: bool = verbose
+
         (sub_workdir, 
         logdir, 
         sub_json, 
@@ -112,14 +128,16 @@ class Pipeline:
                                 scan_pma=scan_pma,
                                 birth_ga=birth_ga,
                                 log=None,
-                                verbose=verbose,
+                                verbose=self.verbose,
                                 log_datetime=True,
                                 log_level=log_level,
                                 **kwargs)
         
-        with WorkDir(src=logdir) as lgd:
+        self.logdir: str = logdir
+        
+        with WorkDir(src=self.logdir) as lgd:
             _import_log: str = lgd.join('import.log')
-            import_log: LogFile = LogFile(_import_log, format_log_str=True)
+            import_log: LogFile = LogFile(_import_log, format_log_str=True, print_to_screen=self.verbose)
         
         # Check if func has been imported
         out_func: ImportFunc = ImportFunc(outdir=outdir)
@@ -184,18 +202,18 @@ class Pipeline:
                 (lr_dir and rl_dir) or
                 (is_dir and si_dir)):
                 (spinecho, spinecho_pedir) = import_spinecho(outdir=sub_workdir,
-                                                            spinecho=spinecho,
-                                                            spinecho_echospacing=spinecho_echospacing,
-                                                            spinecho_pedir=spinecho_pedir,
-                                                            ap_dir=ap_dir,
-                                                            pa_dir=pa_dir,
-                                                            lr_dir=lr_dir,
-                                                            rl_dir=rl_dir,
-                                                            is_dir=is_dir,
-                                                            si_dir=si_dir,
-                                                            spinecho_epifactor=spinecho_epifactor,
-                                                            spinecho_inplaneacc=spinecho_inplaneacc,
-                                                            log=import_log)
+                                                             spinecho=spinecho,
+                                                             spinecho_echospacing=spinecho_echospacing,
+                                                             spinecho_pedir=spinecho_pedir,
+                                                             ap_dir=ap_dir,
+                                                             pa_dir=pa_dir,
+                                                             lr_dir=lr_dir,
+                                                             rl_dir=rl_dir,
+                                                             is_dir=is_dir,
+                                                             si_dir=si_dir,
+                                                             spinecho_epifactor=spinecho_epifactor,
+                                                             spinecho_inplaneacc=spinecho_inplaneacc,
+                                                             log=import_log)
             else:
                 spinecho: str = None
                 spinecho_pedir: str = None
@@ -207,6 +225,7 @@ class Pipeline:
             **sub_dict,
             **func_info_dict,
             **struct_info_dict,
+            "workdir": sub_workdir,
             "func_json": sub_json,
             "spinecho": spinecho,
             "spinecho_pedir": spinecho_pedir
@@ -214,6 +233,92 @@ class Pipeline:
         return self.outputs
 
     def prepare_fieldmap(self) -> None:
+        """doc-string
+        """
+        with WorkDir(src=self.logdir) as lgd:
+            _fmap_log: str = lgd.join('fmap.log')
+            fmap_log: LogFile = LogFile(_fmap_log, format_log_str=True)
+        
+        spinecho: str = self.outputs.get('spinecho')
+        metadata: Dict[str,str] = load_sidecar(file=spinecho)
+
+        fmap_out: FmapFiles = FmapFiles(outdir=self.outputs.get('workdir'))
+        fmap_info_dict: Dict[str,str] = fmap_out.outputs()
+
+        _: Tuple[str] = fieldmap(outdir=self.outputs.get('workdir'),
+                                 spinecho=spinecho,
+                                 echo_spacing=metadata.get('echo_spacing'),
+                                 pedir=metadata.get('phase_encode_dir'),
+                                 epifactor=metadata.get('epi_factor'),
+                                 inplane_acc=metadata.get('inplane_accel',1.0),
+                                 verbose=self.verbose,
+                                 log=fmap_log)
+        
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
+            **fmap_info_dict,
+        }
+
+        # fmap -> struct
+        
+        (fmap2struct_affine,
+        fmap2struct_inv_affine,
+        fmap2struct_src2ref,
+        fmap2struct_init_affine) = fmap_to_struct(outdir=self.outputs.get('workdir'),
+                                                  fmap=self.outputs.get('fmap'),
+                                                  fmap_magnitude=self.outputs.get('fmap_mag'),
+                                                  fmap_brainmask=self.outputs.get('fmap_mask'),
+                                                  struct=self.outputs.get('T2w'),
+                                                  struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                                  struct_boundarymask=self.outputs.get('T2w_wmmask'),
+                                                  src_space='fmap',
+                                                  ref_space='struct',
+                                                  bbr=True,
+                                                  log=fmap_log)
+
+        # func -> sbref (distorted)
+        (func2sbref_src2ref, 
+        func2sbref_affine, 
+        func2sbref_inv_affine) = func_to_sbref(outdir=self.outputs.get('workdir'),
+                                               func=self.outputs.get('func0'),
+                                               func_brainmask=self.outputs.get('func_brainmask'),
+                                               sbref=self.outputs.get('sbref'),
+                                               sbref_brainmask=self.outputs.get('sbref_brainmask'),
+                                               src_space='func',
+                                               ref_space='sbref',
+                                               log=fmap_log)
+
+        # sbref -> struct (with BBR and DC)
+        sbref: str = self.outputs.get('sbref')
+        sbref_meta: Dict[str,str] = load_sidecar(file=sbref)
+
+        (sbref2struct_affine, 
+        sbref2struct_inv_affine, 
+        sbref2struct_src2ref, 
+        sbref2struct_warp,
+        sbref_dc_warp, 
+        sbref_dc_img, 
+        sbref_dc_brainmask) = sbref_to_struct(outdir=self.outputs.get('workdir'),
+                                              sbref=sbref,
+                                              sbref_brainmask=self.outputs.get('sbref_brainmask'),
+                                              struct=self.outputs.get('T2w'),
+                                              struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                              dc=True,
+                                              fmap=self.outputs.get('fmap'),
+                                              fmap_brainmask=self.outputs.get('fmap_mask'),
+                                              fmap2struct_xfm=fmap2struct_affine,
+                                              sbref_pedir=sbref_meta.get('phase_encode_dir'),
+                                              sbref_echospacing=sbref_meta.get('echo_spacing'),
+                                              struct_boundarymask=self.outputs.get('T2w_wmmask'),
+                                              bbr=True,
+                                              src_space='sbref',
+                                              ref_space='struct',
+                                              log=fmap_log)
+        
+        # func (distorted) -> sbref -> struct (composite)
+        # fmap -> func (composite)
+
+        # TODO: Add fmap/sbref reg outputs to class dict.
         pass
 
     def mcdc(self) -> None:

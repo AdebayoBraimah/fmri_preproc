@@ -15,7 +15,7 @@ from typing import (
     Union
 )
 
-from fmri_preproc.utils.outputs.fieldmap import FmapDict
+from fmri_preproc.utils.outputs.fieldmap import FmapFiles
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
@@ -54,14 +54,14 @@ def fieldmap(outdir: str,
 
     outdir: str = os.path.join(outdir,"fmap")
     with WorkDir(src=outdir) as od:
-        topup_dir: str = os.path.join(od.src, "topup")
+        topup_dir: str = od.join("topup")
         with WorkDir(src=topup_dir) as td:
             if log: log.log(f"Making fieldmap directory: {od.src}.")
             outdir: str = od.abspath()
             topup_dir: str = td.abspath()
     
     # Define output files
-    out: FmapDict = FmapDict(outdir=outdir)
+    out: FmapFiles = FmapFiles(outdir=outdir)
     outputs: Dict[str,str] = out.outputs()
 
     outputs: Dict[str,str] = {
