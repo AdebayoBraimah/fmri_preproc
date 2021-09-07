@@ -65,7 +65,7 @@ log: LogFile = None
 @timeops()
 def import_info(outdir: str,
                 func: str,
-                scan_pma: float,
+                scan_pma: Union[int,float,str],
                 birth_ga: Optional[float] = None,
                 log: Optional[LogFile] = None,
                 verbose: bool = False,
@@ -133,7 +133,7 @@ def import_info(outdir: str,
                             **info,
                             "subid": subid,
                             "sesid": sesid,
-                            "scan_pma": float(scan_pma),
+                            "scan_pma": scan_pma,
                             "birth_ga": birth_ga,
                             **kwargs,
                           }
