@@ -50,7 +50,10 @@ def key_to_none(d: Dict[Any,Any]) -> Dict[Any,Any]:
     DOES NOT EXIST, then it is set to ``None``.
     """
     for key,val in d.items():
-        if os.path.isfile(val) or os.path.isdir(val):
-            if not os.path.exists(val):
-                d[key] = None
+        try:
+            if os.path.isfile(val) or os.path.isdir(val):
+                if not os.path.exists(val):
+                    d[key] = None
+        except TypeError:
+            d[key] = None
     return d

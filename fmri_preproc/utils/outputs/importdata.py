@@ -22,6 +22,7 @@ class ImportFunc(OutDict):
         NOTE: ``outdir`` should be subject working directory.
         """
         self.outdir: Union[WorkDir,str] = outdir
+        super(ImportFunc, self).__init__()
     
     def outputs(self) -> Dict[str,str]:
         """doc-string.
@@ -31,7 +32,9 @@ class ImportFunc(OutDict):
         else:
             outdir: str = self.outdir
         
-        with WorkDir(src=outdir) as od:
+        importdir: str = os.path.join(outdir,'import')
+        
+        with WorkDir(src=importdir) as od:
             self.output: Dict[str,str] = {
                                 "func": od.join('func.nii.gz'),
                                 "func_mean": od.join('func_mean.nii.gz'),
@@ -59,6 +62,7 @@ class ImportStruct(OutDict):
         NOTE: ``outdir`` should be subject working directory.
         """
         self.outdir: Union[WorkDir,str] = outdir
+        super(ImportStruct, self).__init__()
 
     def outputs(self) -> Dict[str,str]:
         """doc-string.
@@ -68,7 +72,9 @@ class ImportStruct(OutDict):
         else:
             outdir: str = self.outdir
         
-        with WorkDir(src=outdir) as od:
+        importdir: str = os.path.join(outdir,'import')
+        
+        with WorkDir(src=importdir) as od:
             self.output: Dict[str,str] = {
                 "T1w": od.join('T1w.nii.gz'),
                 "T2w": od.join('T2w.nii.gz'),
@@ -90,6 +96,7 @@ class ImportSpinEcho(OutDict):
         NOTE: ``outdir`` should be subject working directory.
         """
         self.outdir: Union[WorkDir,str] = outdir
+        super(ImportSpinEcho, self).__init__()
 
     def outputs(self) -> Dict[str,str]:
         """doc-string.

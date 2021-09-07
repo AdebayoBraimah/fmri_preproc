@@ -94,6 +94,7 @@ class Pipeline:
     def __init__(self) -> None:
         """Constructor for pipeline class.
         """
+        # TODO: move import_info function here
         self.outputs: Dict[str,str] = {}
         return None
     
@@ -271,7 +272,7 @@ class Pipeline:
 
         # Set files that do not exist to None
         self.outputs: Dict[str,str] = key_to_none(d=self.outputs)
-        self.proc: str = dict2json(dict=self.outputs)
+        self.proc: str = dict2json(dict=self.outputs, jsonfile=self.proc)
         return self.outputs
 
     def prepare_fieldmap(self) -> Dict[Any,str]:
