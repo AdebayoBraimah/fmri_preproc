@@ -25,6 +25,7 @@
 # 7. QC
 #   a. PENDING
 import os
+import numpy as np
 
 from typing import (
     Any,
@@ -59,11 +60,15 @@ from fmri_preproc.func.importdata import (
 from fmri_preproc.func.fieldmap import fieldmap
 
 from fmri_preproc.func.registration import (
+    # ATLASDIR,
     fmap_to_struct,
     fmap_to_func_composite,
     func_to_sbref,
     func_to_struct_composite,
+    func_to_template_composite,
     sbref_to_struct,
+    struct_to_template_composite,
+    template_to_struct
 )
 
 from fmri_preproc.func.mcdc import mcdc
@@ -235,6 +240,9 @@ class Pipeline:
             "spinecho": spinecho,
             "spinecho_pedir": spinecho_pedir
         }
+
+        # Set files that do not exist to None
+        self.outputs: Dict[str,str] = key_to_none(d=self.outputs)
         return self.outputs
 
     def prepare_fieldmap(self) -> Dict[Any,str]:
@@ -465,7 +473,38 @@ class Pipeline:
         }
         return self.outputs,
 
-    def standard(self) -> None:
+    def standard(self,
+                 standard_age: Union[int,str],
+                 quick: bool = False
+                ) -> Dict[Any,str]:
+        """doc-string
+        """
+        with WorkDir(src=self.logdir) as lgd:
+            _std_log: str = lgd.join('standard.log')
+            std_log: LogFile = LogFile(_std_log, format_log_str=True)
+
+        try:
+            scan_pma: Union[float,str] = self.outputs.get('scan_pma')
+            age: int = int(np.round(scan_pma))
+        except (TypeError,ValueError):
+            age: Union[int,float,str] = scan_pma
+        
+        #  template -> struct
+        (template2struct_warp,
+        template2struct_inv_warp,
+        template2struct_affine,
+        template2struct_src2ref) = template_to_struct(outdir=self.outputs.get('workdir'),
+                                                      age=age,
+                                                      struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                                      struct_T2w=self.outputs.get('T2w'),
+                                                      struct_T1w=self.outputs.get('T1w'),
+                                                      quick=quick,
+                                                      src_space=f'template-{age}wks',
+                                                      ref_space='struct',
+                                                      log=std_log)
+
+        # struct -> age-matched template -> standard template (composite)
+        # func (undistorted) -> struct -> age-matched template -> standard template (composite)
         pass
 
     def ica(self) -> None:
