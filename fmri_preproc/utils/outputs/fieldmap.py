@@ -21,6 +21,7 @@ class FmapFiles(OutDict):
         NOTE: ``outdir`` should be subject working directory.
         """
         self.outdir: Union[WorkDir,str] = outdir
+        super(FmapFiles, self).__init__()
     
     def outputs(self) -> Dict[str,str]:
         """doc-string.

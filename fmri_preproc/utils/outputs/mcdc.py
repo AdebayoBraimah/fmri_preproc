@@ -21,6 +21,7 @@ class MCDCFiles(OutDict):
         NOTE: ``outdir`` should be subject working directory.
         """
         self.outdir: Union[WorkDir,str] = outdir
+        super(MCDCFiles, self).__init__()
     
     def outputs(self,
                 dc: bool = False) -> Dict[str,str]:
