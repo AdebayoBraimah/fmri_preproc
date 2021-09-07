@@ -20,7 +20,6 @@ from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.mask import convert_to_fsl_fast
 from fmri_preproc.utils.fixlabels import loadLabelFile
 from fmri_preproc.func.ica import ica
-from fmri_preproc.func.mcdc import brain_extract
 
 from fmri_preproc.utils.fileio import (
     File,
@@ -29,6 +28,7 @@ from fmri_preproc.utils.fileio import (
 
 from fmri_preproc.utils.fslpy import (
     applyxfm,
+    bet,
     invxfm,
     fslmaths,
 )
@@ -136,7 +136,7 @@ def fix_extract(func_filt: str,
         example_func: str = fr.sym_link(dst=example_func, relative=True)
     
     highres: str = fslmaths(img=struct).mul(struct_brainmask).run(out=highres, log=log)
-    highres2examp: str = invxfm(inmat=func2struct_mat,outmat=highres2examp, log=log)
+    highres2examp: str = invxfm(inmat=func2struct_mat, outmat=highres2examp, log=log)
     funcmask: str = applyxfm(src=struct_brainmask, ref=example_func, mat=highres2examp, out=funcmask)
     funcmask: str = fslmaths(img=funcmask).thr(0.5).bin().run(out=funcmask, log=log)
 
@@ -209,7 +209,7 @@ def fix_classify(rdata: str,
         rdata: str = rd.abspath()
     
     with WorkDir(src=outdir) as od:
-        denoisedir: str = os.path.join(od.src,'denoise')
+        denoisedir: str = od.join('denoise')
         fixdir: str = os.path.join(denoisedir,'fix')
         with WorkDir(src=fixdir) as fd:
             if not fd.exists():
@@ -280,7 +280,6 @@ def fix_apply(outdir: str,
     func_stdev: str = outputs.get('func_clean_std')
     func_tsnr: str = outputs.get('func_clean_tsnr')
 
-
     # FIX apply
     if log: log.log("Performing FIX noise/nuissance regression")
     cmd: Command = Command("fix")
@@ -303,3 +302,29 @@ def fix_apply(outdir: str,
             func_mean,
             func_stdev,
             func_tsnr)
+
+
+def brain_extract(img: str,
+                  out: str,
+                  mask: Optional[str] = None,
+                  robust: bool = False,
+                  seg: bool = True,
+                  frac_int: Optional[float] = None,
+                  log: Optional[LogFile] = None
+                 ) -> Tuple[str,str]:
+    """Performs brain extraction.
+    """
+    if mask:
+        mask_bool: bool = True
+    else:
+        mask_bool: bool = False
+
+    brain, _ = bet(img=img,
+                   out=out,
+                   mask=mask_bool,
+                   robust=robust,
+                   seg=seg,
+                   frac_int=frac_int,
+                   log=log)
+    mask: str = fslmaths(img=brain).bin().run(out=mask, log=log)
+    return brain, mask
