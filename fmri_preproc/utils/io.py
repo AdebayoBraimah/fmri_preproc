@@ -69,7 +69,7 @@ class IOBaseObj(ABC):
     
     def __repr__(self):
         """Representation request method."""
-        return self.src
+        return f"<{self.__class__.__name__} {self.src}>"
     
     def relpath(self, 
                 dst: str) -> str:
@@ -333,7 +333,7 @@ class IOBaseObj(ABC):
             ... 
             >>> # Using class object as context manager
             >>> with SomeFileClass("file_name.txt") as file:
-            ...     print(file.move("file2.txt))
+            ...     print(file.move("file2.txt"))
             ...
             "file2.txt"
             >>>
@@ -354,3 +354,41 @@ class IOBaseObj(ABC):
         elif os.path.isdir(src):
             return os.path.abspath(move(src=src, dst=dst, copy_function=copytree))
     
+    def join(self, *args) -> str:
+        """Joins directory or dirname of a file with additional pathname 
+        components.
+
+        Usage example:
+            >>> # Initialize child class and inherit 
+            >>> #   from IOBaseObj ABC
+            >>> class SomeFileClass(IOBaseObj):
+            ...     def __init__(self, src: str):
+            ...         super().__init__(src)
+            ...
+            ...     # Overwrite IOBaseObj ABC method
+            ...     def copy(self, dst: str):
+            ...         return super().copy(dst)
+            ... 
+            >>> # Using class object as context manager
+            >>> with SomeFileClass("file_name.txt") as file:
+            ...     print(file.join("file2.txt"))
+            ...
+            "/abs/path/to/dirname/file1/file2.txt"
+            >>>
+            >>> # OR
+            >>> file = SomeFileClass("file_name.txt")
+            >>> file.join("file2.txt")
+            "/abs/path/to/dirname/file1/file2.txt"
+
+        Arguments:
+            *args: Variable length argument list.
+
+        Returns:
+            str: New file path with the specified directories.
+        """
+        src: str = self.abspath(follow_sym_links=False)
+        if os.path.isfile(src):
+            src: str = os.path.split(src)[0]
+            return os.path.join(src, *args)
+        elif os.path.isdir(src):
+            return os.path.join(src, *args)

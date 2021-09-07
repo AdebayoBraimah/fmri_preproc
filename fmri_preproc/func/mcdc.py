@@ -20,6 +20,7 @@ from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.enums import PhaseEncodeDirection
 from fmri_preproc.utils.acqparam import write_func_params
+from fmri_preproc.utils.outputs.mcdc import MCDCFiles
 
 from fmri_preproc.utils.fslpy import (
     applywarp,
@@ -41,9 +42,6 @@ from fmri_preproc.utils.enums import (
     SliceAcqOrder
 )
 
-# TODO: 
-#   * Import brain_extract to other modules
-#   * Replace ``bet`` with brain_extract function
 
 def mcdc(func: str,
          outdir: str,
@@ -98,8 +96,6 @@ def mcdc(func: str,
     if (dc & use_mcflirt) | (s2v & use_mcflirt) | (mbs & use_mcflirt):
         if log: log.warning("WARNING: MCFLIRT enabled. This has disabled dc, s2v and/or mbs.")
         warn("WARNING: MCFLIRT enabled. This has disabled dc, s2v and/or mbs.")
-        # if log: log.error("RuntimeError: Cannot use MCFLIRT with dc, s2v and/or mbs.")
-        # raise RuntimeError('Cannot use MCFLIRT with dc, s2v and/or mbs.')
 
     if dc and not (_has_fmap & _has_acqp):
         if log: log.error("RuntimeError: fmap, fmap2func_affine, func_pedir, and func_echospacing are required for DC.")
@@ -118,24 +114,27 @@ def mcdc(func: str,
         raise RuntimeError('func_brainmask is required to use EDDY.')
     
     # Define output files
-    if use_mcflirt:
-        mc_name: str = 'mc'
-    else:
-        mc_name: str = 'mcdc'
+    # if use_mcflirt:
+    #     mc_name: str = 'mc'
+    # else:
+    #     mc_name: str = 'mcdc'
 
-    mcdir: str = os.path.join(outdir,f"{mc_name}")
-    outputs: Dict[str,str] = {
-                                "func_mcdc": os.path.join(mcdir,f"func_{mc_name}.nii.gz"),
-                                "func_mot": os.path.join(mcdir,f"func_{mc_name}_motion.tsv"),
-                                "func_metrics": os.path.join(mcdir,f"func_{mc_name}_regressors.tsv"),
-                                "func_out_plot": os.path.join(mcdir,f"func_{mc_name}_outliers.png"),
-                                "mcdc_mean": os.path.join(mcdir,f"func_{mc_name}_mean.nii.gz"),
-                                "mcdc_std": os.path.join(mcdir,f"func_{mc_name}_std.nii.gz"),
-                                "mcdc_tsnr": os.path.join(mcdir,f"func_{mc_name}_tsnr.nii.gz"),
-                                "mcdc_brainmask": os.path.join(mcdir,f"func_{mc_name}_brainmask.nii.gz"),
-                                "func_mcdc_fovmask": os.path.join(mcdir,f"func_{mc_name}_fovmask.nii.gz"),
-                                "func_mcdc_fovpercent": os.path.join(mcdir,f"func_{mc_name}_fovpercent.nii.gz")
-                            }
+    out: MCDCFiles = MCDCFiles(outdir=outdir)
+    outputs: Dict[str,str] = out.outputs(dc=(not use_mcflirt))
+    mcdir: str = outputs.get('mcdir')
+
+    # outputs: Dict[str,str] = {
+    #                             "func_mcdc": os.path.join(mcdir,f"func_{mc_name}.nii.gz"),
+    #                             "func_mot": os.path.join(mcdir,f"func_{mc_name}_motion.tsv"),
+    #                             "func_metrics": os.path.join(mcdir,f"func_{mc_name}_regressors.tsv"),
+    #                             "func_out_plot": os.path.join(mcdir,f"func_{mc_name}_outliers.png"),
+    #                             "mcdc_mean": os.path.join(mcdir,f"func_{mc_name}_mean.nii.gz"),
+    #                             "mcdc_std": os.path.join(mcdir,f"func_{mc_name}_std.nii.gz"),
+    #                             "mcdc_tsnr": os.path.join(mcdir,f"func_{mc_name}_tsnr.nii.gz"),
+    #                             "mcdc_brainmask": os.path.join(mcdir,f"func_{mc_name}_brainmask.nii.gz"),
+    #                             "func_mcdc_fovmask": os.path.join(mcdir,f"func_{mc_name}_fovmask.nii.gz"),
+    #                             "func_mcdc_fovpercent": os.path.join(mcdir,f"func_{mc_name}_fovpercent.nii.gz")
+    #                         }
 
     # Perform MCDC
     if use_mcflirt:
@@ -191,11 +190,9 @@ def mcdc(func: str,
     mcdc_tsnr: str = fslmaths(img=mcdc).Tmean().run(out=mcdc_tsnr, log=log)
 
     with TmpDir(src=mcdir) as tmp:
-        tmp.mkdir()
         brain: str = os.path.join(tmp.src,'brain.nii.gz')
         brain, _ = bet(img=mcdc_mean, out=brain, mask=False, frac_int=0.4, robust=True, log=log)
         mcdc_brainmask: str = fslmaths(img=brain).bin().run(out=mcdc_brainmask, log=log)
-        tmp.rmdir()
     
     # Create out-of-FOV masks (for EDDY)
     if os.path.exists(eddy_output_mask):
@@ -218,6 +215,7 @@ def mcdc(func: str,
             fov_mask,
             fov_percent)
 
+
 def mcflirt_mc(func: str,
                func_mc: str,
                ref: Optional[Union[int, str]] = None,
@@ -234,8 +232,8 @@ def mcflirt_mc(func: str,
     with File(src=func_mc, assert_exists=False) as f:
         outdir, _, _ = f.file_parts()
         func_mc: str = f.abspath()
-        with WorkDir(src=outdir) as d:
-            d.mkdir()
+        with WorkDir(src=outdir) as _:
+            pass
 
     if isinstance(ref, str):
         with NiiFile(src=ref, assert_exists=True, validate_nifti=True) as f:
@@ -258,7 +256,6 @@ def mcflirt_mc(func: str,
 
     if dc_warp:
         with TmpDir(src=outdir) as tmp:
-            tmp.mkdir()
             func_ref: str = fslroi(img=func_mc,
                                    out=os.path.join(tmp.abspath(),"func0_ref.nii.gz"),
                                    tmin=0,
@@ -271,6 +268,7 @@ def mcflirt_mc(func: str,
     return (func_mc, 
             parfile, 
             matsdir)
+
 
 def eddy_mcdc(func: str,
               func_brainmask: str,
@@ -304,10 +302,8 @@ def eddy_mcdc(func: str,
                 eddy_dir: str = os.path.join(outdir,"eddy")
                 eddy_basename: str = os.path.join(eddy_dir,"eddy_corr")
 
-                with WorkDir(src=eddy_dir) as d:
-                    if not d.exists(): 
-                        if log: log.log("Creating eddy output directory.")
-                        d.mkdir()
+                with WorkDir(src=eddy_dir) as _:
+                    if log: log.log("Creating eddy output directory.")
     
     # Define output files
     outputs: Dict[str,str] = {
@@ -376,7 +372,8 @@ def eddy_mcdc(func: str,
     if s2v_corr:
         if func_sliceorder:
             with File(src=func_sliceorder, assert_exists=True) as f:
-                func_sliceorder: str = f.abspath()
+                # func_sliceorder: str = f.abspath()
+                func_sliceorder: str = f.copy(dst=outputs.get('slice_order'))
         else:
             func_sliceorder: str = write_slice_order(slices=slices, 
                                                      mb_factor=mb_factor, 
@@ -467,6 +464,7 @@ def eddy_mcdc(func: str,
             mot_params,
             eddy_mask)
 
+
 def write_bvals(num_frames: int,
                 out_file: str = 'file.bval'
                ) -> str:
@@ -499,6 +497,7 @@ def write_bvals(num_frames: int,
     out_file: str = os.path.abspath(out_file)
     return out_file
 
+
 def write_bvecs(num_frames: int,
                 out_file: str = 'file.bvec'
                ) -> str:
@@ -529,6 +528,7 @@ def write_bvecs(num_frames: int,
     out_file: str = os.path.abspath(out_file)
     return out_file
 
+
 def write_index(num_frames: int,
                 out_file: str = 'file.idx'
                ) -> str:
@@ -552,6 +552,7 @@ def write_index(num_frames: int,
     np.savetxt(out_file, np.ones((1, num_frames)).T, fmt="%i")
     out_file: str = os.path.abspath(out_file)
     return out_file
+
 
 def write_slice_order(slices: int,
                       mb_factor: int = 1,
@@ -632,6 +633,7 @@ def write_slice_order(slices: int,
                fmt="%i")
     out_file: str = os.path.abspath(out_file)
     return out_file
+
 
 def _dvars(img: nib.Nifti1Header) -> np.array:
     """Calculates DVARS.
@@ -747,30 +749,33 @@ def motion_outlier(func: str,
 
     return outlier, metric_data, thr, metric_name, plot_name
 
-def brain_extract(img: str,
-                  out: str,
-                  mask: Optional[str] = None,
-                  robust: bool = False,
-                  seg: bool = True,
-                  frac_int: Optional[float] = None,
-                  log: Optional[LogFile] = None
-                 ) -> Tuple[str,str]:
-    """Performs brain extraction.
-    """
-    if mask:
-        mask_bool: bool = True
-    else:
-        mask_bool: bool = False
-
-    brain, _ = bet(img=img,
-                   out=out,
-                   mask=mask_bool,
-                   robust=robust,
-                   seg=seg,
-                   frac_int=frac_int,
-                   log=log)
-    mask: str = fslmaths(img=brain).bin().run(out=mask, log=log)
-    return brain, mask
+# This function is not necessilary needed as the import
+#   module handles this.
+# 
+# def brain_extract(img: str,
+#                   out: str,
+#                   mask: Optional[str] = None,
+#                   robust: bool = False,
+#                   seg: bool = True,
+#                   frac_int: Optional[float] = None,
+#                   log: Optional[LogFile] = None
+#                  ) -> Tuple[str,str]:
+#     """Performs brain extraction.
+#     """
+#     if mask:
+#         mask_bool: bool = True
+#     else:
+#         mask_bool: bool = False
+# 
+#     brain, _ = bet(img=img,
+#                    out=out,
+#                    mask=mask_bool,
+#                    robust=robust,
+#                    seg=seg,
+#                    frac_int=frac_int,
+#                    log=log)
+#     mask: str = fslmaths(img=brain).bin().run(out=mask, log=log)
+#     return brain, mask
 
 # This function should be used elsewhere, perhaps outside of this
 #   package.

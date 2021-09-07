@@ -33,6 +33,7 @@ from fmri_preproc.utils.fslpy import (
     fslmaths,
 )
 
+
 def fix_extract(func_filt: str,
                 func_ref: str,
                 struct: str,
@@ -69,7 +70,6 @@ def fix_extract(func_filt: str,
         denoisedir: str = os.path.join(od.src,'denoise')
         fixdir: str = os.path.join(denoisedir,'fix')
         with WorkDir(src=fixdir) as fx:
-            fx.mkdir()
             denoisedir: str = os.path.abspath(denoisedir)
             fixdir: str = fx.abspath()
     
@@ -86,8 +86,8 @@ def fix_extract(func_filt: str,
             tmp_ica: str = icd.sym_link(dst=tmp_ica, relative=True)
     else:
         icadir: str = os.path.join(fixdir,'filtered_func_data.ica')
-        with WorkDir(src=icadir) as icd:
-            icd.mkdir()
+        with WorkDir(src=icadir) as _:
+            pass
         
         if func_brainmask:
             with NiiFile(src=func_brainmask, assert_exists=True, validate_nifti=True) as fnb:
@@ -111,8 +111,8 @@ def fix_extract(func_filt: str,
 
     mcdir: str = os.path.join(fixdir,'mc')
     parfile: str = os.path.join(mcdir,'prefiltered_func_data_mcf.par')
-    with WorkDir(src=mcdir) as mcd:
-        mcd.mkdir()
+    with WorkDir(src=mcdir) as _:
+        pass
     
     mp: pd.DataFrame = pd.read_csv(mot_param, delimiter='\t', index_col=None)
     np.savetxt(parfile, 
@@ -124,8 +124,8 @@ def fix_extract(func_filt: str,
     mean_func: str = fslmaths(img=func_filt).Tmean().run(out=mean_func, log=log)
 
     fixregdir: str = os.path.join(fixdir, 'reg')
-    with WorkDir(src=fixregdir) as fr:
-        fr.mkdir()
+    with WorkDir(src=fixregdir) as _:
+        pass
     
     example_func: str = os.path(fixdir, 'example_func.nii.gz')
     highres: str = os.path(fixdir, 'highres.nii.gz')
@@ -154,6 +154,7 @@ def fix_extract(func_filt: str,
     cmd.run(log=log)
 
     return fixdir
+
 
 def _classify(fixdir: str,
               rdata: str,
@@ -194,6 +195,7 @@ def _classify(fixdir: str,
         raise RuntimeError(s)
 
     return fixdir
+
 
 def fix_classify(rdata: str,
                  thr: int,
@@ -246,6 +248,7 @@ def fix_classify(rdata: str,
     
     return fix_labels, fix_reg
 
+
 def fix_apply(outdir: str,
               temporal_fwhm: Optional[float] = 150.0,
               log: Optional[LogFile] = None
@@ -256,7 +259,6 @@ def fix_apply(outdir: str,
         denoisedir: str = os.path.join(od.src,'denoise')
         fixdir: str = os.path.join(denoisedir,'fix')
         with WorkDir(src=fixdir) as fx:
-            if not fx.exists(): fx.mkdir()
             denoisedir: str = os.path.abspath(denoisedir)
             fixdir: str = fx.abspath()
 

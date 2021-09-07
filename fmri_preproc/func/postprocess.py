@@ -39,7 +39,6 @@ def postprocess(func: str,
     if log: log.log("Post-processing: spatial smoothing and/or intensity normalization")
 
     with WorkDir(src=outdir) as od:
-        if not od.exists(): od.mkdir()
         outdir: str = od.abspath()
 
     if basename:

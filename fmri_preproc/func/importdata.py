@@ -20,6 +20,12 @@ from fmri_preproc.utils.mask import create_mask
 from fmri_preproc.utils.enums import SegType
 from fmri_preproc.func.fieldmap import _merge_rpe as merge_rpe
 
+from fmri_preproc.utils.outputs.importdata import (
+    ImportFunc,
+    ImportSpinEcho,
+    ImportStruct
+)
+
 from fmri_preproc.utils.util import (
     dict2json,
     json2dict,
@@ -50,14 +56,16 @@ from fmri_preproc.func.mcdc import (
     write_slice_order
 )
 
+
 # Globlally define log file object
 log: LogFile = None
+
 
 # @timeops(log)
 @timeops()
 def import_info(outdir: str,
                 func: str,
-                scan_pma: float,
+                scan_pma: Union[int,float,str],
                 birth_ga: Optional[float] = None,
                 log: Optional[LogFile] = None,
                 verbose: bool = False,
@@ -76,26 +84,31 @@ def import_info(outdir: str,
             if 'sub' in item: subid: str = item[4:]
             if 'ses' in item: sesid: str = item[4:]
             if 'run' in item: runid: str = item[4:]
+        
+        if not runid:
+            runid: str = '01'
+        
+        if not subid:
+            raise RuntimeError("No subject ID can be inferred from the data. \
+                The input data should be in BIDS format, and prefixed with \
+                'sub-' in the filename.")
     
     with WorkDir(src=outdir) as od:
 
         if sesid:
-            info_dir: str = os.path.join(od.src,f'sub-{subid}',f'ses-{sesid}',f'run-{runid}')
+            info_dir: str = od.join(f'sub-{subid}',f'ses-{sesid}',f'run-{runid}')
             info_data: str = f'sub-{subid}_ses-{sesid}'
             sub_info: str = f"\nSubject information \nsub: {subid} \nses: {sesid} \nrun: {runid}"
         else:
-            info_dir: str = os.path.join(od.src,f'sub-{subid}',f'run-{runid}')
+            info_dir: str = od.join(f'sub-{subid}',f'run-{runid}')
             info_data: str = f'sub-{subid}'
             sub_info: str = f"\nSubject information \nsub: {subid} \nrun: {runid}"
 
         with WorkDir(src=info_dir) as ifd:
 
-            logdir: str = os.path.join(ifd.src,'logs')
+            logdir: str = ifd.join('logs')
 
             with WorkDir(src=logdir) as logdr:
-
-                if not logdr.exists():
-                    logdr.mkdir()
                 
                 info_dir: str = ifd.abspath()
                 logdir: str = logdr.abspath()
@@ -120,13 +133,14 @@ def import_info(outdir: str,
                             **info,
                             "subid": subid,
                             "sesid": sesid,
-                            "scan_pma": float(scan_pma),
+                            "scan_pma": scan_pma,
                             "birth_ga": birth_ga,
                             **kwargs,
                           }
     info_name: str = dict2json(dict=info, jsonfile=info_name)
 
     return info_dir, logdir, info_name, info
+
 
 # @timeops(log)
 @timeops()
@@ -136,6 +150,7 @@ def import_func(outdir: str,
                 func_pedir: str,
                 func_brainmask: Optional[str] = None,
                 func_slorder: Optional[str] = None,
+                func_inplane_accel: Optional[float] = 1,
                 mb_factor: Optional[int] = None,
                 sbref: Optional[str] = None,
                 sbref_brainmask: Optional[str] = None,
@@ -143,17 +158,15 @@ def import_func(outdir: str,
                 sbref_pedir: Optional[str] = None,
                 mask_func: bool = False,
                 log: Optional[LogFile] = None
-               ) -> Tuple[str]:
+               ) -> Tuple[str,Dict[str,str]]:
     """Import function EP image data into the preprocessing pipeline, in addition to:
         * Slice order file (optional)
         * Single-band reference (optional)
     """
     with WorkDir(src=outdir) as od:
-        importdir: str = os.path.join(od.src, 'import')
+        importdir: str = od.join('import')
         with WorkDir(src=importdir) as impd:
-            if not impd.exists():
-                if log: log.log("Creating import data directory")
-                impd.mkdir()
+            if log: log.log("Creating import data directory")
             importdir: str = impd.abspath()
     
     # Check required inputs
@@ -161,28 +174,18 @@ def import_func(outdir: str,
     func_pedir: str = PhaseEncodeDirection(func_pedir.upper()).name
     
     # Define outputs
-    outputs: Dict[str,str] = {
-                                "func": os.path.join(importdir,'func.nii.gz'),
-                                "func_mean": os.path.join(importdir,'func_mean.nii.gz'),
-                                "func_brainmask": os.path.join(importdir,'func_brainmask.nii.gz'),
-                                "func_slorder": os.path.join(importdir,'func.slorder'),
-                                "sbref": os.path.join(importdir,'sbref.nii.gz'),
-                                "sbref_brainmask": os.path.join(importdir,'sbref_brainmask.nii.gz'),
-                                "func_std": os.path.join(importdir,'func_std.nii.gz'),
-                                "func_tsnr": os.path.join(importdir,'func_tsnr.nii.gz'),
-                                "func0": os.path.join(importdir,'func0.nii.gz'),
-                                "func_dil_brainmask": os.path.join(importdir,'func_dilated_brainmask.nii.gz'),
-                                "func_metrics": os.path.join(importdir,'func_regressors.tsv'),
-                                "func_out_plot": os.path.join(importdir,'func_outliers.png'),
-                             }
+    out: ImportFunc = ImportFunc(outdir=outdir)
+    outputs: Dict[str,str] = out.outputs()
 
     # Import functional EP image data
     with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
         func: str = fn.abspath()
         _, func, _ = fslreorient2std(img=func, out=outputs.get('func'), log=log)
         _: str = update_sidecar(file=func, 
-                                echo_spacing=func_echospacing, 
-                                phase_encode_dir=func_pedir)
+                                echo_spacing=func_echospacing,
+                                mb_factor=mb_factor,
+                                phase_encode_dir=func_pedir,
+                                inplane_accel=float(func_inplane_accel))
 
     # Create func_mean
     func_mean: str = fslmaths(img=func).Tmean().run(out=outputs.get('func_mean'), log=log)
@@ -198,11 +201,9 @@ def import_func(outdir: str,
             dirname, _, _ = fn.file_parts()
 
         with TmpDir(src=dirname) as tmp:
-            tmp.mkdir()
             brain: str = os.path.join(tmp.src, 'brain.nii.gz')
             brain, _ = bet(img=func_mean, out=brain, frac_int=0.4, mask=False, log=log)
             func_brainmask: str = fslmaths(img=brain).bin().run(out=outputs.get('func_brainmask'), log=log)
-            tmp.rmdir()
     
     # Create dilated brainmask
     func_dilated_brainmask: str = fslmaths(img=func_brainmask).dilM().dilM().bin().run(out=outputs.get('func_dil_brainmask'), log=log)
@@ -260,17 +261,17 @@ def import_func(outdir: str,
                 dirname, _, _ = fn.file_parts()
             
             with TmpDir(src=dirname) as tmp:
-                tmp.mkdir()
                 brain: str = os.path.join(tmp.src, 'brain.nii.gz')
                 brain, _ = bet(img=sbref, out=brain, frac_int=0.4, mask=False, log=log)
                 sbref_brainmask: str = fslmaths(img=brain).bin().run(out=outputs.get('sbref_brainmask'), log=log)
-                tmp.rmdir()
     return (func,
             func_mean, 
             func_brainmask, 
             func_slorder, 
             sbref, 
-            sbref_brainmask)
+            sbref_brainmask,
+            outputs)
+
 
 # @timeops(log)
 @timeops()
@@ -284,15 +285,13 @@ def import_struct(outdir: str,
                   wmmask: Optional[str] = None,
                   T1w: Optional[str] = None,
                   log: Optional[LogFile] = None
-                 ) -> Tuple[str,str,str]:
+                 ) -> Tuple[str,str,str,Dict[str,str]]:
     """Import anatomical/structural neuroimages into the preprecossing pipeline.
     """
     with WorkDir(src=outdir) as od:
-        importdir: str = os.path.join(od.src, 'import')
+        importdir: str = od.join('import')
         with WorkDir(src=importdir) as impd:
-            if not impd.exists():
-                if log: log.log("Creating import data directory")
-                impd.mkdir()
+            if log: log.log("Creating import data directory")
             importdir: str = impd.abspath()
     
     # Check required inputs
@@ -300,14 +299,8 @@ def import_struct(outdir: str,
     probseg_type: str = SegType(probseg_type.lower()).name
 
     # Define outputs
-    outputs: Dict[str,str] = {
-                                "T1w": os.path.join(importdir,'T1w.nii.gz'),
-                                "T2w": os.path.join(importdir,'T2w.nii.gz'),
-                                "T2w_brainmask": os.path.join(importdir,'T2w_brainmask.nii.gz'),
-                                "T2w_dseg": os.path.join(importdir,'T2w_dseg.nii.gz'),
-                                "T2w_wmmask": os.path.join(importdir,'T2w_wmmask.nii.gz'),
-                                "T2w_probseg": os.path.join(importdir,'T2w_probseg.nii.gz'),
-                             }
+    out: ImportStruct = ImportStruct(outdir=outdir)
+    outputs: Dict[str,str] = out.outputs()
 
     # Import anatomical data
 
@@ -341,7 +334,11 @@ def import_struct(outdir: str,
         with NiiFile(src=T1w, assert_exists=True, validate_nifti=True) as t1:
             _, T1w, _ = fslreorient2std(img=t1.abspath(), out=outputs.get('T1w'), log=log)   
     
-    return T2w, wmmask, dseg
+    return (T2w, 
+            wmmask, 
+            dseg, 
+            outputs)
+
 
 # @timeops(log)
 @timeops()
@@ -363,21 +360,23 @@ def import_spinecho(outdir: str,
     """
     if log: log.log("Importing field map.")
 
+    # Define outputs
+    out: ImportSpinEcho = ImportSpinEcho(outdir=outdir)
+    outputs: Dict[str,str] = out.outputs()
+
     outdir: str = os.path.join(outdir,"fmap")
     with WorkDir(src=outdir) as od:
-        topup_dir: str = os.path.join(od.src, "topup")
+        topup_dir: str = od.join("topup")
         with WorkDir(src=topup_dir) as td:
-            if not td.exists(): 
-                if log: log.log(f"Making fieldmap directory: {od.src}.")
-                td.mkdir()
+            if log: log.log(f"Making fieldmap directory: {od.src}.")
             outdir: str = od.abspath()
             topup_dir: str = td.abspath()
 
     # Check inputs to ensure that they are reversed phase encoded
     with TmpDir(src=topup_dir) as tmp:
-        tmp.mkdir()
         
-        input_spinecho: str = os.path.join(topup_dir,'spinecho.nii.gz')
+        # input_spinecho: str = os.path.join(topup_dir,'spinecho.nii.gz')
+        input_spinecho: str = outputs.get('spinecho')
 
         if spinecho:
             if log: log.log(f"Input spinecho fieldmap(_epi): {spinecho}.")
@@ -395,7 +394,6 @@ def import_spinecho(outdir: str,
 
             with NiiFile(src=spinecho, assert_exists=True, validate_nifti=True) as sp:
                 _, input_spinecho, _ = fslreorient2std(img=sp.abspath(), out=input_spinecho)
-                tmp.rmdir()
 
         elif ap_dir and pa_dir:
             if log:
@@ -412,7 +410,6 @@ def import_spinecho(outdir: str,
             
             spinecho_pedir: List[str] = [ "PA", "AP" ]
             input_spinecho: str = merge_rpe(out=input_spinecho, log=log, ap_dir=input_ap, pa_dir=input_pa)
-            tmp.rmdir()
 
         elif lr_dir and rl_dir:
             if log:
@@ -429,7 +426,6 @@ def import_spinecho(outdir: str,
             
             spinecho_pedir: List[str] = [ "LR", "RL" ]
             input_spinecho: str = merge_rpe(out=input_spinecho, log=log, lr_dir=input_lr, rl_dir=input_rl)
-            tmp.rmdir()
 
         elif is_dir and si_dir:
             if log:
@@ -446,7 +442,6 @@ def import_spinecho(outdir: str,
             
             spinecho_pedir: List[str] = [ "IS", "SI" ]
             input_spinecho: str = merge_rpe(out=input_spinecho, log=log, is_dir=input_is, si_dir=input_si)
-            tmp.rmdir()
 
         else:
             if log: log.error(f"AttributeError: Input images are not reversed phase encoded fieldmap EPIs: Spinecho: {spinecho} \nAP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}")

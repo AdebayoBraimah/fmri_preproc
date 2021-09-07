@@ -15,6 +15,7 @@ from typing import (
 
 from fmri_preproc.utils.enums import PhaseEncodeDirection
 
+
 def write_func_params(epi: str,
                       echospacing: float,
                       pedir: Union[str,List[str]],
@@ -73,6 +74,7 @@ def write_func_params(epi: str,
 
     return out, out_flirt
 
+
 def _dict2json(dict: Dict, 
                jsonfile: str, 
                indent: int = 4
@@ -81,6 +83,7 @@ def _dict2json(dict: Dict,
     with open(jsonfile, 'w') as outfile:
         json.dump(dict, outfile, indent=indent)
     return jsonfile
+
 
 def _get_axis(epi: Union[str, nib.Nifti1Image],
               pedir: str,
@@ -118,10 +121,12 @@ def _get_axis(epi: Union[str, nib.Nifti1Image],
     
     return ax, axidx, axdir
 
+
 def _flip(d: str) -> str:
     """doc
     """
     return d[::-1]
+
 
 def _get_orientation(epi: nib.Nifti1Image) -> nib.orientations:
     """doc
@@ -129,6 +134,7 @@ def _get_orientation(epi: nib.Nifti1Image) -> nib.orientations:
     labels: Tuple[str,str] = (('RL', 'LR'), ('AP', 'PA'), ('SI', 'IS'))
     code: nib.orientations = nib.orientations.aff2axcodes(aff=epi.affine, labels=labels)
     return code
+
 
 def phase_encode_dict() -> Dict[str,Tuple[int,str]]:
     """doc

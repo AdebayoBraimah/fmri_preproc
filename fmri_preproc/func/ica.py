@@ -41,7 +41,6 @@ def ica(outdir: str,
         with WorkDir(src=icadir) as icd:
             meldir: str = os.path.join(icadir,'func_filtered.ica')
             with WorkDir(src=meldir) as mel:
-                mel.mkdir()
                 icadir: str = icd.abspath()
                 outdir: str = od.abspath()
                 meldir: str = mel.abspath()
@@ -61,14 +60,12 @@ def ica(outdir: str,
         # sigma: float = np.round(temporal_fwhm / (2 * func_tr))  # 150 second filter
 
         with TmpDir(src=icadir) as tmp:
-            tmp.mkdir()
             func_mean: str = os.path.join(tmp,'func_mean.nii.gz')
             func_mean: str = fslmaths(img=func).Tmean().run(out=func_mean, log=log)
             func_filt: str = fslmaths(img=func).bptf(high_pass=temporal_fwhm, 
                                                      low_pass=-1, 
                                                      tr=func_tr, 
                                                      input_is_sec=True).add(input=func_mean).run(out=func_filt, log=log)
-            tmp.rmdir()
     else:
         with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
             # func_filt: str = fn.copy(dst=func_filt)
