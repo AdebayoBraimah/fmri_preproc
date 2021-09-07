@@ -879,20 +879,17 @@ def struct_to_template_composite(outdir: str,
                                  atlasdir: Optional[str] = None,
                                  standarddir: Optional[str] = None,
                                  log: Optional[LogFile] = None
-                                ) -> Tuple[str,str,str]:
+                                ) -> Tuple[Union[str,None]]:
     """Create composite transform struct -> age-matched template -> standard template.
     """
     atlas: Dict[str,str] = _select_atlas(age=age, atlasdir=atlasdir, standard_age=standard_age)
     standard_atlas: Dict[str,str] = _select_atlas(age=standard_age, atlasdir=standarddir, standard_age=standard_age)
     
-    # if ((age != standard_age) and 
-    #     (atlas.get('atlas_name') == standard_atlas.get('atlas_name'))): 
-    #     pass
-    # elif (atlas.get('atlas_name') == standard_atlas.get('atlas_name')):
-    #     pass
-    # else:
-    #     resamp_img, inv_warp, warp = None, None, None
-    #     return resamp_img, inv_warp, warp
+    if (atlas.get('atlas_name') == standard_atlas.get('atlas_name')):
+        pass
+    else:
+        resamp_img, inv_warp, warp = None, None, None
+        return resamp_img, inv_warp, warp
 
     with NiiFile(src=standard_atlas.get('template_T2'), assert_exists=True, validate_nifti=True) as std:
         with NiiFile(src=atlas.get('template_T2'), assert_exists=True, validate_nifti=True) as ats:
@@ -977,6 +974,12 @@ def func_to_template_composite(outdir: str,
     atlas: Dict[str,str] = _select_atlas(age=age, atlasdir=atlasdir, standard_age=standard_age)
     standard_atlas: Dict[str,str] = _select_atlas(age=standard_age, atlasdir=standarddir, standard_age=standard_age)
 
+    if (atlas.get('atlas_name') == standard_atlas.get('atlas_name')):
+        pass
+    else:
+        resamp_img, inv_warp, warp = None, None, None
+        return resamp_img, inv_warp, warp
+    
     with NiiFile(src=standard_atlas.get('template_T2'), assert_exists=True, validate_nifti=True) as std:
         with NiiFile(src=atlas.get('template_T2'), assert_exists=True, validate_nifti=True) as ats:
             standard: str = std.abspath()
