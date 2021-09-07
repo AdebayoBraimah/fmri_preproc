@@ -91,25 +91,70 @@ from fmri_preproc.func.denoise import (
 #   * Import the dictionaries from the outputs modules.
 
 class Pipeline:
-    def __init__(self) -> None:
+    """class doc-string
+    """
+    def __init__(self,
+                 outdir: str,
+                 func: str,
+                 scan_pma: float,
+                 birth_ga: Optional[float] = None,
+                 verbose: bool = False,
+                 log_level: str = 'info',
+                 **kwargs
+                ) -> None:
         """Constructor for pipeline class.
         """
-        # TODO: move import_info function here
-        self.outputs: Dict[str,str] = {}
+        # Import information
+        self.verbose: bool = verbose
+
+        (sub_workdir, 
+        logdir, 
+        sub_json, 
+        sub_dict) = import_info(outdir=outdir,
+                                func=func,
+                                scan_pma=scan_pma,
+                                birth_ga=birth_ga,
+                                log=None,
+                                verbose=verbose,
+                                log_datetime=True,
+                                log_level=log_level,
+                                **kwargs)
+        
+        # Define additional class variables
+        self.logdir: str = logdir
+        self.verbose: bool = verbose
+        self.workdir: str = sub_workdir
+        self.sub_json: str = sub_json
+        self.sub_dict: str = sub_dict
+        self.outdir: str = outdir
+        self.func: str = func
+        
+        with WorkDir(src=self.logdir) as lgd:
+            _import_log: str = lgd.join('import.log')
+            import_log: LogFile = LogFile(_import_log, format_log_str=True, print_to_screen=self.verbose)
+            self.import_log: LogFile = import_log
+
+            subid: str = sub_dict.get('subid')
+            sesid: str = sub_dict.get('sesid')
+
+            if sesid:
+                self.proc: str = lgd.join(f'sub-{subid}_ses-{sesid}_fmripreproc.json')
+            else:
+                self.proc: str = lgd.join(f'sub-{subid}_fmripreproc.json')
+            
+            if os.path.exists(self.proc):
+                self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
+                self.outputs: Dict[str,str] = key_to_none(d=self.outputs)
+            else:
+                self.outputs: Dict[str,str] = {}
         return None
     
     def import_data(self,
-                    outdir: str,
-                    func: str,
                     func_echospacing: float,
                     func_pedir: str,
                     T2w: str,
                     T2w_brainmask: str,
                     dseg: str,
-                    scan_pma: float,
-                    birth_ga: Optional[float] = None,
-                    verbose: bool = False,
-                    log_level: str = 'info',
                     func_brainmask: Optional[str] = None,
                     func_slorder: Optional[str] = None,
                     func_inplane_accel: Optional[float] = 1,
@@ -134,45 +179,22 @@ class Pipeline:
                     is_dir: Optional[str] = None,
                     si_dir: Optional[str] = None,
                     spinecho_epifactor: Optional[int] = None,
-                    spinecho_inplaneacc: Optional[float] = 1,
-                    **kwargs
+                    spinecho_inplaneacc: Optional[float] = 1
                    ) -> Dict[Any,str]:
         """Import data class-function.
         """
         # Import information
-        self.verbose: bool = verbose
+        sub_workdir: str = self.workdir
+        import_log: str = self.import_log
+        sub_dict: Dict[Any,Any] = self.sub_dict
+        sub_json: str = self.sub_json
+        outdir: str = self.outdir
+        func: str = self.func
 
-        (sub_workdir, 
-        logdir, 
-        sub_json, 
-        sub_dict) = import_info(outdir=outdir,
-                                func=func,
-                                scan_pma=scan_pma,
-                                birth_ga=birth_ga,
-                                log=None,
-                                verbose=self.verbose,
-                                log_datetime=True,
-                                log_level=log_level,
-                                **kwargs)
-        
-        self.logdir: str = logdir
-        
-        with WorkDir(src=self.logdir) as lgd:
-            _import_log: str = lgd.join('import.log')
-            import_log: LogFile = LogFile(_import_log, format_log_str=True, print_to_screen=self.verbose)
+        attrs: Tuple[str] = ('func','workdir', 'import_log', 'sub_dict', 'sub_json')
 
-            subid: str = sub_dict.get('subid')
-            sesid: str = sub_dict.get('sesid')
-
-            if sesid:
-                self.proc: str = lgd.join(f'sub-{subid}_ses-{sesid}_fmripreproc.json')
-            else:
-                self.proc: str = lgd.join(f'sub-{subid}_fmripreproc.json')
-            
-            if os.path.exists(self.proc):
-                self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
-                self.outputs: Dict[str,str] = key_to_none(d=self.outputs)
-                return self.outputs
+        for attr in attrs:
+            self.__dict__.pop(attr, None) 
         
         # Check if func has been imported
         out_func: ImportFunc = ImportFunc(outdir=outdir)
@@ -262,13 +284,9 @@ class Pipeline:
             **func_info_dict,
             **struct_info_dict,
             "workdir": sub_workdir,
-            "func_json": sub_json,
             "spinecho": spinecho,
-            "spinecho_pedir": spinecho_pedir
+            # "spinecho_pedir": spinecho_pedir
         }
-
-        # TODO: Add read/writing of outputs dict to json - then read in json
-        #   for cases when pipeline has stopped.
 
         # Set files that do not exist to None
         self.outputs: Dict[str,str] = key_to_none(d=self.outputs)
