@@ -38,7 +38,12 @@ from typing import (
 
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
-from fmri_preproc.utils.util import load_sidecar
+from fmri_preproc.utils.util import (
+    dict2json,
+    json2dict,
+    load_sidecar, 
+    update_sidecar
+)
 
 from fmri_preproc.utils.outputs.importdata import (
     ImportFunc,
@@ -60,7 +65,7 @@ from fmri_preproc.func.importdata import (
 from fmri_preproc.func.fieldmap import fieldmap
 
 from fmri_preproc.func.registration import (
-    # ATLASDIR,
+    ATLASDIR,
     fmap_to_struct,
     fmap_to_func_composite,
     func_to_sbref,
@@ -72,6 +77,13 @@ from fmri_preproc.func.registration import (
 )
 
 from fmri_preproc.func.mcdc import mcdc
+from fmri_preproc.func.ica import ica
+
+from fmri_preproc.func.denoise import (
+    fix_apply,
+    fix_classify,
+    fix_extract
+)
 
 # TODO: 
 #   * Create outputs module that handles output
@@ -147,6 +159,19 @@ class Pipeline:
         with WorkDir(src=self.logdir) as lgd:
             _import_log: str = lgd.join('import.log')
             import_log: LogFile = LogFile(_import_log, format_log_str=True, print_to_screen=self.verbose)
+
+            subid: str = sub_dict.get('subid')
+            sesid: str = sub_dict.get('sesid')
+
+            if sesid:
+                self.proc: str = lgd.join(f'sub-{subid}_ses-{sesid}_fmripreproc.json')
+            else:
+                self.proc: str = lgd.join(f'sub-{subid}_fmripreproc.json')
+            
+            if os.path.exists(self.proc):
+                self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
+                self.outputs: Dict[str,str] = key_to_none(d=self.outputs)
+                return self.outputs
         
         # Check if func has been imported
         out_func: ImportFunc = ImportFunc(outdir=outdir)
@@ -241,8 +266,12 @@ class Pipeline:
             "spinecho_pedir": spinecho_pedir
         }
 
+        # TODO: Add read/writing of outputs dict to json - then read in json
+        #   for cases when pipeline has stopped.
+
         # Set files that do not exist to None
         self.outputs: Dict[str,str] = key_to_none(d=self.outputs)
+        self.proc: str = dict2json(dict=self.outputs)
         return self.outputs
 
     def prepare_fieldmap(self) -> Dict[Any,str]:
@@ -383,9 +412,12 @@ class Pipeline:
             "fmap2func_affine": fmap2func_affine, 
             "fmap2func_resamp_img": fmap2func_resamp_img
         }
+        self.proc: str = dict2json(dict=self.outputs)
         return self.outputs
 
-    def mcdc(self) -> Dict[Any,str]:
+    def mcdc(self,
+             use_mcflirt: bool = False
+            ) -> Dict[Any,str]:
         """doc-string
         """
         with WorkDir(src=self.logdir) as lgd:
@@ -410,14 +442,16 @@ class Pipeline:
         }
 
         (func_mcdc,
-        mcf,
+        motparams,
         func_metrics,
         mcdc_mean,
         mcdc_std,
         mcdc_tsnr,
         mcdc_brainmask,
         fov_mask,
-        fov_percent) = mcdc(**kwargs, log=mcdc_log)
+        fov_percent) = mcdc(**kwargs,
+                            use_mcflirt=use_mcflirt,
+                            log=mcdc_log)
 
         # func (undistorted) -> sbref (undistorted)
         (func_mcdc2sbref_dc_src2ref, 
@@ -452,7 +486,7 @@ class Pipeline:
         self.outputs: Dict[str,str] = {
             **self.outputs,
             "func_mcdc": func_mcdc,
-            "mcf": mcf,
+            "motparams": motparams,
             "func_metrics": func_metrics,
             "mcdc_mean": mcdc_mean,
             "mcdc_std": mcdc_std,
@@ -471,11 +505,14 @@ class Pipeline:
             "func_mcdc2struct_dc_img": func_mcdc2struct_dc_img,
             "func_mcdc2struct_resamp_img": func_mcdc2struct_resamp_img,
         }
+        self.proc: str = dict2json(dict=self.outputs)
         return self.outputs,
 
     def standard(self,
-                 standard_age: Union[int,str],
-                 quick: bool = False
+                 standard_age: Union[int,str] = 40,
+                 quick: bool = False,
+                #  template_ages: Optional[Union[List[int,str],int,str]] = None,
+                 atlasdir: Optional[str] = None
                 ) -> Dict[Any,str]:
         """doc-string
         """
@@ -483,11 +520,30 @@ class Pipeline:
             _std_log: str = lgd.join('standard.log')
             std_log: LogFile = LogFile(_std_log, format_log_str=True)
 
+        # if not isinstance(template_ages, list):
+        #     template_ages: List[int,str] = [template_ages]
+        
+        # for template_age in template_ages:
+        #     try:
+        #         template_age: int = int(template_age)
+        #     except(TypeError,ValueError):
+        #         template_age: str = template_age
+        
+        # try:
+        #     template_ages.remove(standard_age)
+        # except ValueError:
+        #     pass
+
+        # template_ages.append(standard_age)
+        
         try:
             scan_pma: Union[float,str] = self.outputs.get('scan_pma')
             age: int = int(np.round(scan_pma))
         except (TypeError,ValueError):
             age: Union[int,float,str] = scan_pma
+        
+        if atlasdir is None:
+            atlasdir: str = ATLASDIR
         
         #  template -> struct
         (template2struct_warp,
@@ -499,34 +555,198 @@ class Pipeline:
                                                       struct_T2w=self.outputs.get('T2w'),
                                                       struct_T1w=self.outputs.get('T1w'),
                                                       quick=quick,
-                                                      src_space=f'template-{age}wks',
+                                                      src_space=f'template-{age}',
                                                       ref_space='struct',
+                                                      atlasdir=atlasdir,
                                                       log=std_log)
 
         # struct -> age-matched template -> standard template (composite)
+        (struct2std_warp, 
+        struct2std_inv_warp, 
+        struct2std_resamp_img) = struct_to_template_composite(outdir=self.outputs.get('workdir'),
+                                                              age=age,
+                                                              standard_age=standard_age,
+                                                              struct=self.outputs.get('T2w'),
+                                                              struct2template_warp=template2struct_inv_warp,
+                                                              atlasdir=atlasdir,
+                                                              src_space='struct',
+                                                              ref_space='standard',
+                                                              log=std_log)
+
         # func (undistorted) -> struct -> age-matched template -> standard template (composite)
-        pass
+        (func2std_warp, 
+        func2std_inv_warp, 
+        func2std_resamp_img) = func_to_template_composite(outdir=self.outputs.get('workdir'),
+                                                          age=age,
+                                                          standard_age=standard_age,
+                                                          func=self.outputs.get('mcdc_mean'),
+                                                          struct2template_warp=struct2std_warp,
+                                                          atlasdir=atlasdir,
+                                                          standarddir=atlasdir,
+                                                          src_space='func-mcdc',
+                                                          ref_space='standard',
+                                                          log=std_log)
+        # Update output dictionary
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
+            "template2struct_warp": template2struct_warp,
+            "template2struct_inv_warp": template2struct_inv_warp,
+            "template2struct_affine": template2struct_affine,
+            "template2struct_src2ref": template2struct_src2ref,
+            "struct2std_warp": struct2std_warp,
+            "struct2std_inv_warp": struct2std_inv_warp,
+            "struct2std_resamp_img": struct2std_resamp_img,
+            "func2std_warp": func2std_warp,
+            "func2std_inv_warp": func2std_inv_warp,
+            "func2std_resamp_img": func2std_resamp_img,
+        }
+        self.proc: str = dict2json(dict=self.outputs)
+        return self.outputs
 
-    def ica(self) -> None:
-        pass
+    def ica(self,
+            temporal_fwhm: float = 150.0,
+            icadim: Optional[int] = None
+           ) -> Dict[Any,str]:
+        """Perform single-subject ICA.
+        """
+        with WorkDir(src=self.logdir) as lgd:
+            _ica_log: str = lgd.join('ica.log')
+            ica_log: LogFile = LogFile(_ica_log, format_log_str=True)
+        
+        temporal_fwhm: float = float(temporal_fwhm)
 
-    def denoise(self) -> None:
-        pass
+        func_filt, icadir = ica(outdir=self.outputs.get('workdir'),
+                                func=self.outputs.get('func_mcdc'),
+                                func_brainmask=self.outputs.get('mcdc_brainmask'),
+                                icadim=icadim,
+                                temporal_fwhm=temporal_fwhm,
+                                log=ica_log)
+        
+        _: str = update_sidecar(file=func_filt,
+                                temporal_fwhm=temporal_fwhm)
 
-    def report(self) -> None:
-        pass
+        # Update output dictionary
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
+            "func_filt": func_filt,
+            "icadir": icadir,
+        }
+        self.proc: str = dict2json(dict=self.outputs)
+        return self.outputs
 
-    def qc(self) -> None:
-        pass
+    def denoise(self,
+                rdata: Optional[str] = None,
+                fix_threshold: Optional[int] = None
+               ) -> Dict[Any,str]:
+        """Perform FIX-based denoising.
+        """
+        with WorkDir(src=self.logdir) as lgd:
+            _fix_log: str = lgd.join('fix.log')
+            fix_log: LogFile = LogFile(_fix_log, format_log_str=True)
 
-    def pre_mcdc(self) -> None:
+        struct_dseg: str = self.outputs.get('T2w_dseg')
+        dseg_type: str = load_sidecar(struct_dseg).get('dseg_type')
+
+        func_filt: str = self.outputs.get('func_filt')
+        temporal_fwhm: float = load_sidecar(func_filt).get('temporal_fwhm')
+
+        fixdir: str = fix_extract(outdir=self.outputs.get('workdir'),
+                                  func_filt=func_filt,
+                                  func_ref=self.outputs.get('mcdc_mean'),
+                                  struct=self.outputs.get('T2w'),
+                                  struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                  struct_dseg=struct_dseg,
+                                  dseg_type=dseg_type,
+                                  func2struct_mat=self.outputs.get('func_mcdc2struct_affine'),
+                                  mot_param=self.outputs.get('motparams'),
+                                  icadir=self.outputs.get('icadir'),
+                                  temporal_fwhm=temporal_fwhm,
+                                  log=fix_log)
+
+        if rdata is None:
+            # Raise exception for now.
+            raise RuntimeError ("Rdata file is required.")
+        
+        if fix_threshold is None:
+            # Raise exception for now - grab this from settings file.
+            raise RuntimeError("Must define FIX threshold.")
+        
+        if (rdata is not None) and (fix_threshold is not None):
+            fix_labels, fix_reg = fix_classify(outdir=self.outputs.get('workdir'),
+                                               rdata=rdata,
+                                               thr=fix_threshold,
+                                               log=fix_log)
+
+            (func_clean,
+            func_mean,
+            func_stdev,
+            func_tsnr) = fix_apply(outdir=self.outputs.get('workdir'),
+                                   temporal_fwhm=temporal_fwhm,
+                                   log=fix_log)
+        # Update output dictionary
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
+            "fixdir": fixdir,
+            "fix_labels": fix_labels,
+            "fix_reg": fix_reg,
+            "func_clean": func_clean,
+            "func_mean": func_mean,
+            "func_stdev": func_stdev,
+            "func_tsnr": func_tsnr
+        }
+        self.proc: str = dict2json(dict=self.outputs)
+        return self.outputs
+    
+    # TODO: Work on these class function later
+    # 
+    # def report(self) -> None:
+    #     pass
+    # 
+    # def qc(self) -> None:
+    #     pass
+
+    def pre_mcdc(self) -> Dict[Any,str]:
         """Perform all pre-motion-and-distortion-correction stages of the preprocessing pipeline."""
-        pass
+        self.outputs: Dict[Any,str] = self.prepare_fieldmap()
+        return self.outputs
 
-    def post_mcdc(self) -> None:
+    def post_mcdc(self,
+                  standard_age: Union[int,str] = 40,
+                  temporal_fwhm: float = 150.0,
+                  icadim: Optional[int] = None,
+                  rdata: Optional[str] = None,
+                  fix_threshold: Optional[int] = None,
+                  atlasdir: Optional[str] = None
+                 ) -> Dict[Any,str]:
         """Perform all post-motion-and-distortion-correction stages of the preprocessing pipeline."""
-        pass
+        self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
+                                                    quick=True, # Remove this later after testing
+                                                    atlasdir=atlasdir)
 
-    def run_all(self) -> None:
+        self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
+                                               icadim=icadim)
+
+        self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
+                                                   fix_threshold=fix_threshold)
+        return self.outputs
+
+    def run_all(self,
+                standard_age: Union[int,str] = 40,
+                temporal_fwhm: float = 150.0,
+                use_mcflirt: bool = False,
+                icadim: Optional[int] = None,
+                rdata: Optional[str] = None,
+                fix_threshold: Optional[int] = None,
+                atlasdir: Optional[str] = None
+               ) -> None:
         """Perform all stages of the preprocessing pipeline."""
-        pass
+        self.outputs: Dict[Any,str] = self.prepare_fieldmap()
+        self.outputs: Dict[Any,str] = self.mcdc(use_mcflirt=use_mcflirt)
+        self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
+                                                    atlasdir=atlasdir)
+        self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
+                                               icadim=icadim)
+
+        self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
+                                                   fix_threshold=fix_threshold)
+        return self.outputs
