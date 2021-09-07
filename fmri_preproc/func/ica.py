@@ -37,9 +37,9 @@ def ica(outdir: str,
             func_brainmask: str = fb.abspath()
     
     with WorkDir(src=outdir) as od:
-        icadir: str = os.path.join(od.src,'ica')
+        icadir: str = od.join('ica')
         with WorkDir(src=icadir) as icd:
-            meldir: str = os.path.join(icadir,'func_filtered.ica')
+            meldir: str = icd.join('func_filtered.ica')
             with WorkDir(src=meldir) as mel:
                 icadir: str = icd.abspath()
                 outdir: str = od.abspath()
