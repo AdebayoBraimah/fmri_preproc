@@ -52,9 +52,9 @@ def fieldmap(outdir: str,
     """
     if log: log.log("Preparing fieldmaps")
 
-    outdir: str = os.path.join(outdir,"fmap")
+    # outdir: str = os.path.join(outdir,"fmap")
     with WorkDir(src=outdir) as od:
-        topup_dir: str = od.join("topup")
+        topup_dir: str = od.join("fmap","topup")
         with WorkDir(src=topup_dir) as td:
             if log: log.log(f"Making fieldmap directory: {od.src}.")
             outdir: str = od.abspath()

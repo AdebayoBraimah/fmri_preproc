@@ -31,7 +31,9 @@ class FmapFiles(OutDict):
         else:
             outdir: str = self.outdir
         
-        with WorkDir(src=outdir) as od:
+        fmapdir: str = os.path.join(outdir,'fmap')
+
+        with WorkDir(src=fmapdir) as od:
             self.output: Dict[str,str] = {
                 "fmap": od.join("fieldmap.nii.gz"),
                 "fmap_mag": od.join("fieldmap_magnitude.nii.gz"),
