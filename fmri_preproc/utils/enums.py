@@ -83,11 +83,11 @@ class FSLDataType(Enum):
 @unique
 class RegInterp(Enum):
     """``FSL`` registration interpolation methods."""
-    nn:         str = "nn"                  # applywarp exclusive option
-    trilinear:  str = "trilinear"
-    sinc:       str = "sinc"
-    spline:     str = "spline"
-    nearest:    str = "nearestneighbour"
+    nn:                 str = "nn"                  # applywarp exclusive option
+    trilinear:          str = "trilinear"
+    sinc:               str = "sinc"
+    spline:             str = "spline"
+    nearestneighbour:   str = "nearestneighbour"
 
 
 @unique

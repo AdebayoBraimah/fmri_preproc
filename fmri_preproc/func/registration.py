@@ -93,7 +93,7 @@ def fmap_to_struct(outdir: str,
                 _, ref_space, _ = stc.file_parts()
 
     with WorkDir(src=outdir) as od:
-        regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+        regdir: str = od.join('reg',f'{src_space}_to_{ref_space}')
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
@@ -141,13 +141,15 @@ def fmap_to_struct(outdir: str,
 
         # Perform registration
         kwargs: Dict[str,str] = { 
-                                    "outdir": regdir,
+                                    "outdir": outdir,
                                     "log": log,
                                     "src": fmap_brain,
                                     "ref": struct_brain,
                                     "affine": affine,
                                     "inv_affine": inv_affine,
                                     "src2ref": src2ref,
+                                    "src_space": src_space,
+                                    "ref_space": ref_space
                                 }
         if bbr:
             init_affine: str = outputs.get('init_affine')
@@ -160,9 +162,10 @@ def fmap_to_struct(outdir: str,
                                     }
 
         (affine, 
-         inv_affine, 
-         src2ref, 
-         _) = epireg(**kwargs)
+        inv_affine, 
+        src2ref, 
+        _, 
+        _) = epireg(**kwargs)
     
     return (affine,
             inv_affine,
@@ -233,6 +236,8 @@ def func_to_sbref(outdir: str,
                     src=func_brain,
                     ref=sbref_brain,
                     affine=init_affine,
+                    src_space=src_space,
+                    ref_space=ref_space,
                     inv_affine=os.path.join(tmp.src, 'init_inv.mat'),
                     src2ref=os.path.join(tmp.src, 'init.nii.gz'))
         
@@ -243,6 +248,8 @@ def func_to_sbref(outdir: str,
         _) = epireg(outdir=tmp.src,
                     src=func,
                     ref=sbref,
+                    src_space=src_space,
+                    ref_space=ref_space,
                     init_xfm=init_affine,
                     affine=outputs.get('affine'),
                     inv_affine=outputs.get('inv_affine'),
@@ -323,7 +330,7 @@ def sbref_to_struct(outdir: str,
                 fmap_brainmask: str = fb.abspath()
 
                 sbref_echospacing: float = float(sbref_echospacing)
-                sbref_pedir: str = PhaseEncodeDirection(sbref_pedir.lower()).name
+                sbref_pedir: str = PhaseEncodeDirection(sbref_pedir.upper()).name
     
     # Define outputs
     # outputs: Dict[str, str] = {
@@ -353,7 +360,11 @@ def sbref_to_struct(outdir: str,
             "ref": struct_brain,
             "affine": outputs.get('affine'),
             "inv_affine": outputs.get('inv_affine'),
-            "src2ref": outputs.get('resampled_image')
+            "src2ref": outputs.get('resampled_image'),
+            "src_space": src_space,
+            "ref_space": ref_space,
+            "outdir": outdir,
+            "log": log
         }
 
         if bbr:
@@ -700,6 +711,8 @@ def _select_atlas(age: Union[int,str],
 
                 if t2 == "":
                     raise FileNotFoundError(f"Unable to find T2w image template for the specified age: {age} and atlas directory: {td.abspath()}")
+                else:
+                    t2: str = td.join(t2)
                 
                 if xfm == "":
                     xfm: str = None
@@ -850,12 +863,15 @@ def template_to_struct(outdir: str,
     src2ref) = nonlinear_reg(src=template,
                             ref=struct,
                             quick=quick,
+                            outdir=outdir,
                             ref_brainmask=struct_brainmask,
                             antsout=antsout_dir + '.ants/output_',
                             affine=outputs.get('affine'),
                             warp=outputs.get('warp'),
                             inv_warp=outputs.get('inv_warp'),
                             src2ref=outputs.get('resampled_image'),
+                            src_space=src_space,
+                            ref_space=ref_space,
                             log=log)
     
     inv_warp: str = invwarp(inwarp=warp,
@@ -1083,8 +1099,8 @@ def epireg(outdir: str,
             with WorkDir(src=regdir) as rd:
                 outdir: str = od.abspath()
                 regdir: str = rd.abspath()
-                basename: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
-                dc_warp: str = os.path.join(regdir, f'{src_space}_dc_warp.nii.gz')
+                basename: str = rd.join(f'{src_space}_to_{ref_space}')
+                dc_warp: str = rd.join(f'{src_space}_dc_warp.nii.gz')
     
     # Define outputs
     outputs: Dict[str,str] = {
@@ -1291,7 +1307,7 @@ def epireg(outdir: str,
                              log=log)
         ## Inverse warp
         inv_warp: str = outputs.get('inv_warp')
-        inv_warp: str = inv_warp(inwarp=warp,
+        inv_warp: str = invwarp(inwarp=warp,
                                  ref=src,
                                  outwarp=inv_warp,
                                  log=log)

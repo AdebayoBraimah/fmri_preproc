@@ -125,7 +125,7 @@ def mcdc(func: str,
 
     # outputs: Dict[str,str] = {
     #                             "func_mcdc": os.path.join(mcdir,f"func_{mc_name}.nii.gz"),
-    #                             "func_mot": os.path.join(mcdir,f"func_{mc_name}_motion.tsv"),
+    #                             "motparams": os.path.join(mcdir,f"func_{mc_name}_motion.tsv"),
     #                             "func_metrics": os.path.join(mcdir,f"func_{mc_name}_regressors.tsv"),
     #                             "func_out_plot": os.path.join(mcdir,f"func_{mc_name}_outliers.png"),
     #                             "mcdc_mean": os.path.join(mcdir,f"func_{mc_name}_mean.nii.gz"),
@@ -167,8 +167,8 @@ def mcdc(func: str,
     # Write motion regressors
     mcf: np.array = np.loadtxt(motfile)
     mcf: pd.DataFrame = pd.DataFrame(mcf, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
-    mcf.to_csv(outputs.get('func_mot'), sep='\t', index=None)
-    mcf: str = outputs.get('func_mot')
+    mcf.to_csv(outputs.get('motparams'), sep='\t', index=None)
+    mcf: str = outputs.get('motparams')
     
     # Calculate post-mc motion outliers
     _: Tuple[str,int] = motion_outlier(func=func_mcdc,

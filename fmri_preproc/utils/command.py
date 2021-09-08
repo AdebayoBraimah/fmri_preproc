@@ -85,7 +85,7 @@ class Command:
     
     def __repr__(self):
         """NOTE: This returns a string represnted as a joined list of strings."""
-        return ' '.join(self.cmd_list)
+        return f"<{self.__class__.__name__} {' '.join(self.cmd_list)}>"
     
     def opt(self,
             cmd: str
@@ -153,7 +153,8 @@ class Command:
             path_envs: List[str] = [],
             env: Dict = {},
             stdout: str = "",
-            shell: bool = False
+            shell: bool = False,
+            raise_exc: bool = True
            ) -> Tuple[int,Union[str,None]]:
         """Uses python's built-in subprocess class to execute (run) a command from an input command list.
         The standard output and error can optionally be written to file.
@@ -180,12 +181,16 @@ class Command:
             env: Dictionary of environment variables to add to subshell.
             stdout: Output file to write standard output to.
             shell: Use shell to execute command.
+            raise_exec: If true, raises ``RuntimeError`` exception if the return code of the command is not 0.
             
         Returns:
             Tuple:
-                * Return code for command execution.
-                * Standard output writtent to file should the 'stdout' option be used.
-                * Standard error writtent to file should the 'stdout' option be used.
+                * str: return code for command execution.
+                * str: standard output writtent to file should the 'stdout' option be used.
+                * str: standard error writtent to file should the 'stdout' option be used.
+        
+        Raises:
+            RuntimeError: Exception that is raised if the return code of the command is not 0 and the ``raise_exc`` argument is set to ``True``.
         """
         # Create command str for log
         cmd: str = ' '.join(self.cmd_list)      # Join list for logging purposes
@@ -248,6 +253,9 @@ class Command:
                 log.error(f"command: {cmd} \n Failed with returncode {p.returncode}")
             else:
                 print(f"command: {cmd} \n Failed with returncode {p.returncode}")
+            
+            if raise_exc:
+                raise RuntimeError(f"command: {cmd} \n Failed with returncode {p.returncode}")
 
         if len(out) > 0:
             if log:

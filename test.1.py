@@ -10,6 +10,13 @@ from fmri_preproc.func.pipeline import Pipeline
 
 # Global variables
 
+# Echospacing (ms) calculation
+# 
+# echospacing = 1/1844.5 * 1000
+# 
+# echospacing = 0.54 # (ms)
+# echospacing/1000 = 0.00054 (sec)
+
 # Directory variables
 outdir: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc/test/test.1"
 
@@ -26,7 +33,7 @@ pa: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc/data/sub-194/func
 
 # Numerical and misc. variables
 scan_pma: float = 44
-echospacing: float = 0.54
+echospacing: float = 0.54/1000
 func_pedir: str = "pa"
 mb_factor: int = 3
 epifactor: int = 63

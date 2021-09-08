@@ -27,6 +27,8 @@
 import os
 import numpy as np
 
+from io import TextIOWrapper
+
 from typing import (
     Any,
     Dict,
@@ -54,6 +56,7 @@ from fmri_preproc.utils.outputs.importdata import (
 from fmri_preproc.utils.outputs.outdict import key_to_none
 from fmri_preproc.utils.outputs.fieldmap import FmapFiles
 from fmri_preproc.utils.outputs.registration import MRreg
+from fmri_preproc.utils.outputs.mcdc import MCDCFiles
 
 from fmri_preproc.func.importdata import (
     import_func,
@@ -124,7 +127,6 @@ class Pipeline:
         self.logdir: str = logdir
         self.verbose: bool = verbose
         self.workdir: str = sub_workdir
-        self.sub_json: str = sub_json
         self.sub_dict: str = sub_dict
         self.outdir: str = outdir
         self.func: str = func
@@ -138,9 +140,9 @@ class Pipeline:
             sesid: str = sub_dict.get('sesid')
 
             if sesid:
-                self.proc: str = lgd.join(f'sub-{subid}_ses-{sesid}_fmripreproc.json')
+                self.proc: TextIOWrapper = lgd.join(f'sub-{subid}_ses-{sesid}_fmripreproc.json')
             else:
-                self.proc: str = lgd.join(f'sub-{subid}_fmripreproc.json')
+                self.proc: TextIOWrapper = lgd.join(f'sub-{subid}_fmripreproc.json')
             
             if os.path.exists(self.proc):
                 self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
@@ -187,7 +189,6 @@ class Pipeline:
         sub_workdir: str = self.workdir
         import_log: str = self.import_log
         sub_dict: Dict[Any,Any] = self.sub_dict
-        sub_json: str = self.sub_json
         outdir: str = self.outdir
         func: str = self.func
 
@@ -205,7 +206,7 @@ class Pipeline:
 
         if not out_func.check_exists(*func_files):
             (func,
-            func_mean, 
+            _, 
             func_brainmask, 
             func_slorder, 
             sbref, 
@@ -284,13 +285,12 @@ class Pipeline:
             **func_info_dict,
             **struct_info_dict,
             "workdir": sub_workdir,
-            "spinecho": spinecho,
-            # "spinecho_pedir": spinecho_pedir
+            "spinecho": spinecho
         }
 
         # Set files that do not exist to None
         self.outputs: Dict[str,str] = key_to_none(d=self.outputs)
-        self.proc: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
         return self.outputs
 
     def prepare_fieldmap(self) -> Dict[Any,str]:
@@ -300,20 +300,26 @@ class Pipeline:
             _fmap_log: str = lgd.join('fmap.log')
             fmap_log: LogFile = LogFile(_fmap_log, format_log_str=True)
         
+        self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
+        
         spinecho: str = self.outputs.get('spinecho')
         metadata: Dict[str,str] = load_sidecar(file=spinecho)
 
         fmap_out: FmapFiles = FmapFiles(outdir=self.outputs.get('workdir'))
         fmap_info_dict: Dict[str,str] = fmap_out.outputs()
+        fmap_files: Tuple[str] = ('fmap',
+                                 'fmap_mag',
+                                 'fmap_mask')
 
-        _: Tuple[str] = fieldmap(outdir=self.outputs.get('workdir'),
-                                 spinecho=spinecho,
-                                 echo_spacing=metadata.get('echo_spacing'),
-                                 pedir=metadata.get('phase_encode_dir'),
-                                 epifactor=metadata.get('epi_factor'),
-                                 inplane_acc=metadata.get('inplane_accel',1.0),
-                                 verbose=self.verbose,
-                                 log=fmap_log)
+        if not fmap_out.check_exists(*fmap_files):
+            _: Tuple[str] = fieldmap(outdir=self.outputs.get('workdir'),
+                                    spinecho=spinecho,
+                                    echo_spacing=metadata.get('echo_spacing'),
+                                    pedir=metadata.get('phase_encode_dir'),
+                                    epifactor=metadata.get('epi_factor'),
+                                    inplane_acc=metadata.get('inplane_accel',1.0),
+                                    verbose=self.verbose,
+                                    log=fmap_log)
         
         self.outputs: Dict[str,str] = {
             **self.outputs,
@@ -322,116 +328,225 @@ class Pipeline:
 
         # fmap -> struct
         
-        (fmap2struct_affine,
-        fmap2struct_inv_affine,
-        fmap2struct_src2ref,
-        fmap2struct_init_affine) = fmap_to_struct(outdir=self.outputs.get('workdir'),
-                                                  fmap=self.outputs.get('fmap'),
-                                                  fmap_magnitude=self.outputs.get('fmap_mag'),
-                                                  fmap_brainmask=self.outputs.get('fmap_mask'),
-                                                  struct=self.outputs.get('T2w'),
-                                                  struct_brainmask=self.outputs.get('T2w_brainmask'),
-                                                  struct_boundarymask=self.outputs.get('T2w_wmmask'),
-                                                  src_space='fmap',
-                                                  ref_space='struct',
-                                                  bbr=True,
-                                                  log=fmap_log)
+        src_space='fmap'
+        ref_space='struct'
 
-        # func -> sbref (distorted)
-        (func2sbref_src2ref, 
-        func2sbref_affine, 
-        func2sbref_inv_affine) = func_to_sbref(outdir=self.outputs.get('workdir'),
-                                               func=self.outputs.get('func0'),
-                                               func_brainmask=self.outputs.get('func_brainmask'),
-                                               sbref=self.outputs.get('sbref'),
-                                               sbref_brainmask=self.outputs.get('sbref_brainmask'),
-                                               src_space='func',
-                                               ref_space='sbref',
-                                               log=fmap_log)
+        fm2st_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        fm2st_dict: Dict[str,str] = fm2st_reg.outputs(src_space=src_space, ref_space=ref_space)
+        fm2st_files: Tuple[str] = ('affine',
+                                   'inv_affine',
+                                   'resampled_image',
+                                   'init_affine')
 
-        # sbref -> struct (with BBR and DC)
-        sbref: str = self.outputs.get('sbref')
-        sbref_meta: Dict[str,str] = load_sidecar(file=sbref)
-
-        (sbref2struct_affine, 
-        sbref2struct_inv_affine, 
-        sbref2struct_src2ref, 
-        sbref2struct_warp,
-        sbref_dc_warp, 
-        sbref_dc_img, 
-        sbref_dc_brainmask) = sbref_to_struct(outdir=self.outputs.get('workdir'),
-                                              sbref=sbref,
-                                              sbref_brainmask=self.outputs.get('sbref_brainmask'),
-                                              struct=self.outputs.get('T2w'),
-                                              struct_brainmask=self.outputs.get('T2w_brainmask'),
-                                              dc=True,
-                                              fmap=self.outputs.get('fmap'),
-                                              fmap_brainmask=self.outputs.get('fmap_mask'),
-                                              fmap2struct_xfm=fmap2struct_affine,
-                                              sbref_pedir=sbref_meta.get('phase_encode_dir'),
-                                              sbref_echospacing=sbref_meta.get('echo_spacing'),
-                                              struct_boundarymask=self.outputs.get('T2w_wmmask'),
-                                              bbr=True,
-                                              src_space='sbref',
-                                              ref_space='struct',
-                                              log=fmap_log)
+        if not fm2st_reg.check_exists(*fm2st_files):
+            (fmap2struct_affine,
+            fmap2struct_inv_affine,
+            fmap2struct_src2ref,
+            fmap2struct_init_affine) = fmap_to_struct(outdir=self.outputs.get('workdir'),
+                                                    fmap=self.outputs.get('fmap'),
+                                                    fmap_magnitude=self.outputs.get('fmap_mag'),
+                                                    fmap_brainmask=self.outputs.get('fmap_mask'),
+                                                    struct=self.outputs.get('T2w'),
+                                                    struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                                    struct_boundarymask=self.outputs.get('T2w_wmmask'),
+                                                    src_space=src_space,
+                                                    ref_space=ref_space,
+                                                    bbr=True,
+                                                    log=fmap_log)
+        else:
+            fmap2struct_affine: str = fm2st_dict.get('affine')
+            fmap2struct_inv_affine: str = fm2st_dict.get('inv_affine')
+            fmap2struct_src2ref: str = fm2st_dict.get('resampled_image')
+            fmap2struct_init_affine: str = fm2st_dict.get('init_affine')
         
-        # func (distorted) -> sbref -> struct (composite)
-        (func2struct_affine,
-        func2struct_inv_affine,
-        func2struct_warp,
-        func2struct_inv_warp,
-        func_dc_warp,
-        func_dc_img,
-        func2struct_resamp_img) = func_to_struct_composite(outdir=self.outputs.get('workdir'),
-                                                           func=self.outputs.get('func0'),
-                                                           struct=self.outputs.get('T2w'),
-                                                           func2sbref_affine=func2sbref_affine,
-                                                           sbref2struct_affine=sbref2struct_affine,
-                                                           sbref2struct_warp=sbref2struct_warp,
-                                                           src_space='func',
-                                                           ref_space='struct',
-                                                           log=fmap_log)
-
-        # fmap -> func (composite)
-        (fmap2func_affine, 
-        fmap2func_resamp_img) = fmap_to_func_composite(outdir=self.outputs.get('workdir'),
-                                                       fmap=self.outputs.get('fmap'),
-                                                       func=self.outputs.get('func0'),
-                                                       fmap2struct_affine=fmap2struct_affine,
-                                                       func2struct_invaffine=func2struct_inv_affine,
-                                                       src_space='fmap',
-                                                       ref_space='func',
-                                                       log=fmap_log)
-
-        # Update output dictionary
         self.outputs: Dict[str,str] = {
             **self.outputs,
             "fmap2struct_affine": fmap2struct_affine,
             "fmap2struct_inv_affine": fmap2struct_inv_affine,
             "fmap2struct_src2ref": fmap2struct_src2ref,
-            "fmap2struct_init_affine": fmap2struct_init_affine,
+            "fmap2struct_init_affine": fmap2struct_init_affine
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # func -> sbref (distorted)
+
+        src_space='func'
+        ref_space='sbref'
+
+        fn2sb_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        fn2sb_dict: Dict[str,str] = fn2sb_reg.outputs(src_space=src_space, ref_space=ref_space)
+        fn2sb_files: Tuple[str] = ('resampled_image',
+                                   'affine',
+                                   'inv_affine')
+
+        if not fn2sb_reg.check_exists(*fn2sb_files):
+            (func2sbref_src2ref, 
+            func2sbref_affine, 
+            func2sbref_inv_affine) = func_to_sbref(outdir=self.outputs.get('workdir'),
+                                                func=self.outputs.get('func0'),
+                                                func_brainmask=self.outputs.get('func_brainmask'),
+                                                sbref=self.outputs.get('sbref'),
+                                                sbref_brainmask=self.outputs.get('sbref_brainmask'),
+                                                src_space=src_space,
+                                                ref_space=ref_space,
+                                                log=fmap_log)
+        else:
+            func2sbref_src2ref: str = fn2sb_dict.get('resampled_image')
+            func2sbref_affine: str = fn2sb_dict.get('affine')
+            func2sbref_inv_affine: str = fn2sb_dict.get('inv_affine')
+        
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
             "func2sbref_src2ref": func2sbref_src2ref,
             "func2sbref_affine": func2sbref_affine,
-            "func2sbref_inv_affine": func2sbref_inv_affine,
+            "func2sbref_inv_affine": func2sbref_inv_affine
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # sbref -> struct (with BBR and DC)
+
+        sbref: str = self.outputs.get('sbref')
+        sbref_meta: Dict[str,str] = load_sidecar(file=sbref)
+
+        src_space='sbref'
+        ref_space='struct'
+
+        sb2st_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        sb2st_dict: Dict[str,str] = sb2st_reg.outputs(src_space=src_space, ref_space=ref_space)
+        sb2st_files: Tuple[str] = ('affine',
+                                   'inv_affine',
+                                   'resampled_image',
+                                   'warp',
+                                   'dc_warp',
+                                   'dc_image',
+                                   'dc_brainmask')
+
+        if not sb2st_reg.check_exists(*sb2st_files):
+            (sbref2struct_affine, 
+            sbref2struct_inv_affine, 
+            sbref2struct_src2ref, 
+            sbref2struct_warp,
+            sbref_dc_warp, 
+            sbref_dc_img, 
+            sbref_dc_brainmask) = sbref_to_struct(outdir=self.outputs.get('workdir'),
+                                                sbref=sbref,
+                                                sbref_brainmask=self.outputs.get('sbref_brainmask'),
+                                                struct=self.outputs.get('T2w'),
+                                                struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                                dc=True,
+                                                fmap=self.outputs.get('fmap'),
+                                                fmap_brainmask=self.outputs.get('fmap_mask'),
+                                                fmap2struct_xfm=fmap2struct_affine,
+                                                sbref_pedir=sbref_meta.get('phase_encode_dir'),
+                                                sbref_echospacing=sbref_meta.get('echo_spacing'),
+                                                struct_boundarymask=self.outputs.get('T2w_wmmask'),
+                                                bbr=True,
+                                                src_space=src_space,
+                                                ref_space=ref_space,
+                                                log=fmap_log)
+        else:
+            sbref2struct_affine: str = sb2st_dict.get('affine')
+            sbref2struct_inv_affine: str = sb2st_dict.get('inv_affine')
+            sbref2struct_src2ref: str = sb2st_dict.get('resampled_image')
+            sbref2struct_warp: str = sb2st_dict.get('warp')
+            sbref_dc_warp: str = sb2st_dict.get('dc_warp')
+            sbref_dc_img: str = sb2st_dict.get('dc_image')
+            sbref_dc_brainmask: str = sb2st_dict.get('dc_brainmask')
+        
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
             "sbref2struct_affine": sbref2struct_affine,
             "sbref2struct_inv_affine": sbref2struct_inv_affine,
             "sbref2struct_src2ref": sbref2struct_src2ref,
             "sbref2struct_warp": sbref2struct_warp,
             "sbref_dc_warp": sbref_dc_warp,
             "sbref_dc_img": sbref_dc_img,
-            "sbref_dc_brainmask": sbref_dc_brainmask,
+            "sbref_dc_brainmask": sbref_dc_brainmask
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+        
+        # func (distorted) -> sbref -> struct (composite)
+
+        src_space='func'
+        ref_space='struct'
+
+        fn2st_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        fn2st_dict: Dict[str,str] = fn2st_reg.outputs(src_space=src_space, ref_space=ref_space)
+        fn2st_files: Tuple[str] = ('affine',
+                                   'inv_affine',
+                                   'warp',
+                                   'inv_warp',
+                                   'dc_warp',
+                                   'dc_image',
+                                   'resampled_image')
+
+        if not fn2st_reg.check_exists(*fn2st_files):
+            (func2struct_affine,
+            func2struct_inv_affine,
+            func2struct_warp,
+            func2struct_inv_warp,
+            func_dc_warp,
+            func_dc_img,
+            func2struct_resamp_img) = func_to_struct_composite(outdir=self.outputs.get('workdir'),
+                                                            func=self.outputs.get('func0'),
+                                                            struct=self.outputs.get('T2w'),
+                                                            func2sbref_affine=func2sbref_affine,
+                                                            sbref2struct_affine=sbref2struct_affine,
+                                                            sbref2struct_warp=sbref2struct_warp,
+                                                            src_space=src_space,
+                                                            ref_space=ref_space,
+                                                            log=fmap_log)
+        else:
+            func2struct_affine: str = fn2st_dict.get('affine')
+            func2struct_inv_affine: str = fn2st_dict.get('inv_affine')
+            func2struct_warp: str = fn2st_dict.get('warp')
+            func2struct_inv_warp: str = fn2st_dict.get('inv_warp')
+            func_dc_warp: str = fn2st_dict.get('dc_warp')
+            func_dc_img: str = fn2st_dict.get('dc_image')
+            func2struct_resamp_img: str = fn2st_dict.get('resampled_image')
+        
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
             "func2struct_affine": func2struct_affine,
             "func2struct_inv_affine": func2struct_inv_affine,
             "func2struct_warp": func2struct_warp,
             "func2struct_inv_warp": func2struct_inv_warp,
             "func_dc_warp": func_dc_warp,
             "func_dc_img": func_dc_img,
-            "func2struct_resamp_img": func2struct_resamp_img,
-            "fmap2func_affine": fmap2func_affine, 
+            "func2struct_resamp_img": func2struct_resamp_img
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # fmap -> func (composite)
+
+        src_space='fmap'
+        ref_space='func'
+
+        fm2fn_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        fm2fn_dict: Dict[str,str] = fm2fn_reg.outputs(src_space=src_space, ref_space=ref_space)
+        fm2fn_files: Tuple[str] = ('affine', 'resampled_image')
+
+        if not fm2fn_reg.check_exists(*fm2fn_files):
+            (fmap2func_affine, 
+            fmap2func_resamp_img) = fmap_to_func_composite(outdir=self.outputs.get('workdir'),
+                                                           fmap=self.outputs.get('fmap'),
+                                                           func=self.outputs.get('func0'),
+                                                           fmap2struct_affine=fmap2struct_affine,
+                                                           func2struct_invaffine=func2struct_inv_affine,
+                                                           src_space=src_space,
+                                                           ref_space=ref_space,
+                                                           log=fmap_log)
+        else:
+            fmap2func_affine: str = fm2fn_dict.get('affine')
+            fmap2func_resamp_img: str = fm2fn_dict.get('resampled_image')
+        
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
+            "fmap2func_affine": fmap2func_affine,
             "fmap2func_resamp_img": fmap2func_resamp_img
         }
-        self.proc: str = dict2json(dict=self.outputs)
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+        
         return self.outputs
 
     def mcdc(self,
@@ -442,6 +557,8 @@ class Pipeline:
         with WorkDir(src=self.logdir) as lgd:
             _mcdc_log: str = lgd.join('mcdc.log')
             mcdc_log: LogFile = LogFile(_mcdc_log, format_log_str=True)
+        
+        self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
 
         func: str = self.outputs.get('func')
         metadata: Dict[str,str] = load_sidecar(file=func)
@@ -458,50 +575,40 @@ class Pipeline:
             "func_pedir": metadata.get('phase_encode_dir'),
             "func_slorder": self.outputs.get('func_slorder'),
             "inplane_acc": self.outputs.get('inplane_accel'),
+            "outdir": self.outputs.get('workdir'),
         }
 
-        (func_mcdc,
-        motparams,
-        func_metrics,
-        mcdc_mean,
-        mcdc_std,
-        mcdc_tsnr,
-        mcdc_brainmask,
-        fov_mask,
-        fov_percent) = mcdc(**kwargs,
-                            use_mcflirt=use_mcflirt,
-                            log=mcdc_log)
+        # Check if mc(dc) files exist
+        outmcdc: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
+        outmcdc_dict: Dict[str,str] = outmcdc.outputs()
+        outmcdc_files: Tuple[str] = ('func_mcdc', 
+                                     'mcdc_mean',
+                                     'motparams',
+                                     'mcdc_brainmask')
 
-        # func (undistorted) -> sbref (undistorted)
-        (func_mcdc2sbref_dc_src2ref, 
-        func_mcdc2sbref_dc_affine, 
-        func_mcdc2sbref_dc_inv_affine) = func_to_sbref(outdir=self.outputs.get('workdir'),
-                                                       func=mcdc_mean,
-                                                       func_brainmask=mcdc_brainmask,
-                                                       sbref=self.outputs.get('sbref_dc_img'),
-                                                       sbref_brainmask=self.outputs.get('sbref_dc_brainmask'),
-                                                       src_space='func-mcdc',
-                                                       ref_space='sbref-dc',
-                                                       log=mcdc_log)
-
-        # func (undistorted) -> sbref (undistorted) -> struct (composite)
-        (func_mcdc2struct_affine,
-        func_mcdc2struct_inv_affine,
-        func_mcdc2struct_warp,
-        func_mcdc2struct_inv_warp,
-        func_mcdc2struct_dc_warp,
-        func_mcdc2struct_dc_img,
-        func_mcdc2struct_resamp_img) = func_to_struct_composite(outdir=self.outputs.get('workdir'),
-                                                                func=mcdc_mean,
-                                                                struct=self.outputs.get('T2w'),
-                                                                func2sbref_affine=func_mcdc2sbref_dc_affine,
-                                                                sbref2struct_affine=self.outputs.get('sbref2struct_affine'),
-                                                                sbref2struct_warp=self.outputs.get('sbref2struct_warp'),
-                                                                src_space='func-mcdc',
-                                                                ref_space='struct',
-                                                                log=mcdc_log)
-
-        # Update output dictionary
+        if not outmcdc.check_exists(*outmcdc_files):
+            (func_mcdc,
+            motparams,
+            func_metrics,
+            mcdc_mean,
+            mcdc_std,
+            mcdc_tsnr,
+            mcdc_brainmask,
+            fov_mask,
+            fov_percent) = mcdc(**kwargs,
+                                use_mcflirt=use_mcflirt,
+                                log=mcdc_log)
+        else:
+            func_mcdc: str = outmcdc_dict.get('func_mcdc')
+            motparams: str = outmcdc_dict.get('motparams')
+            func_metrics: str = outmcdc_dict.get('func_metrics')
+            mcdc_mean: str = outmcdc_dict.get('mcdc_mean')
+            mcdc_std: str = outmcdc_dict.get('mcdc_std')
+            mcdc_tsnr: str = outmcdc_dict.get('mcdc_tsnr')
+            mcdc_brainmask: str = outmcdc_dict.get('mcdc_brainmask')
+            fov_mask: str = outmcdc_dict.get('fov_mask')
+            fov_percent: str = outmcdc_dict.get('fov_percent')
+        
         self.outputs: Dict[str,str] = {
             **self.outputs,
             "func_mcdc": func_mcdc,
@@ -512,20 +619,98 @@ class Pipeline:
             "mcdc_tsnr": mcdc_tsnr,
             "mcdc_brainmask": mcdc_brainmask,
             "fov_mask": fov_mask,
-            "fov_percent": fov_percent,
+            "fov_percent": fov_percent
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # func (undistorted) -> sbref (undistorted)
+
+        src_space: str = 'func-mcdc'
+        ref_space: str = 'sbref-dc'
+
+        mc2sb_dc: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        mc2sb_dict: Dict[str,str] = mc2sb_dc.outputs(src_space=src_space, ref_space=ref_space)
+        mc2sb_files: Tuple[str] = ('affine',
+                                   'resampled_image',
+                                   'inv_affine')
+
+        if not mc2sb_dc.check_exists(*mc2sb_files):
+            (func_mcdc2sbref_dc_src2ref, 
+            func_mcdc2sbref_dc_affine, 
+            func_mcdc2sbref_dc_inv_affine) = func_to_sbref(outdir=self.outputs.get('workdir'),
+                                                           func=mcdc_mean,
+                                                           func_brainmask=mcdc_brainmask,
+                                                           sbref=self.outputs.get('sbref_dc_img'),
+                                                           sbref_brainmask=self.outputs.get('sbref_dc_brainmask'),
+                                                           src_space=src_space,
+                                                           ref_space=ref_space,
+                                                           log=mcdc_log)
+        else:
+            func_mcdc2sbref_dc_src2ref: str = mc2sb_dict.get('resampled_image')
+            func_mcdc2sbref_dc_affine: str = mc2sb_dict.get('affine')
+            func_mcdc2sbref_dc_inv_affine: str = mc2sb_dict.get('inv_affine')
+
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
             "func_mcdc2sbref_dc_src2ref": func_mcdc2sbref_dc_src2ref,
             "func_mcdc2sbref_dc_affine": func_mcdc2sbref_dc_affine,
-            "func_mcdc2sbref_dc_inv_affine": func_mcdc2sbref_dc_inv_affine,
-            "func_mcdc2struct_affine": func_mcdc2struct_affine,
-            "func_mcdc2struct_inv_affine": func_mcdc2struct_inv_affine,
-            "func_mcdc2struct_warp": func_mcdc2struct_warp,
-            "func_mcdc2struct_inv_warp": func_mcdc2struct_inv_warp,
-            "func_mcdc2struct_dc_warp": func_mcdc2struct_dc_warp,
-            "func_mcdc2struct_dc_img": func_mcdc2struct_dc_img,
-            "func_mcdc2struct_resamp_img": func_mcdc2struct_resamp_img,
+            "func_mcdc2sbref_dc_inv_affine": func_mcdc2sbref_dc_inv_affine
         }
-        self.proc: str = dict2json(dict=self.outputs)
-        return self.outputs,
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # func (undistorted) -> sbref (undistorted) -> struct (composite)
+
+        src_space: str = 'func-mcdc'
+        ref_space: str = 'struct'
+
+        mc2st: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        mc2st_dict: Dict[str,str] = mc2sb_dc.outputs(src_space=src_space, ref_space=ref_space)
+        mc2st_files: Tuple[str] = ('affine',
+                                   'inv_affine',
+                                   'warp',
+                                   'inv_warp',
+                                   'dc_warp',
+                                   'dc_image',
+                                   'resampled_image')
+
+        if mc2st.check_exists(*mc2st_files):
+            (func_mcdc2struct_affine,
+            func_mcdc2struct_inv_affine,
+            func_mcdc2struct_warp,
+            func_mcdc2struct_inv_warp,
+            func_mcdc2struct_dc_warp,
+            func_mcdc2struct_dc_img,
+            func_mcdc2struct_resamp_img) = func_to_struct_composite(outdir=self.outputs.get('workdir'),
+                                                                    func=mcdc_mean,
+                                                                    struct=self.outputs.get('T2w'),
+                                                                    func2sbref_affine=func_mcdc2sbref_dc_affine,
+                                                                    sbref2struct_affine=self.outputs.get('sbref2struct_affine'),
+                                                                    sbref2struct_warp=self.outputs.get('sbref2struct_warp'),
+                                                                    src_space='func-mcdc',
+                                                                    ref_space='struct',
+                                                                    log=mcdc_log)
+        else:
+            func_mcdc2struct_affine: str = mc2st_dict.get('affine')
+            func_mcdc2struct_inv_affine: str = mc2st_dict.get('inv_affine')
+            func_mcdc2struct_warp: str = mc2st_dict.get('warp')
+            func_mcdc2struct_inv_warp: str = mc2st_dict.get('inv_warp')
+            func_mcdc2struct_dc_warp: str = mc2st_dict.get('dc_warp')
+            func_mcdc2struct_dc_img: str = mc2st_dict.get('dc_image')
+            func_mcdc2struct_resamp_img: str = mc2st_dict.get('resampled_image')
+
+        self.outputs: Dict[str,str] = {
+        **self.outputs,
+        "func_mcdc2struct_affine": func_mcdc2struct_affine,
+        "func_mcdc2struct_inv_affine": func_mcdc2struct_inv_affine,
+        "func_mcdc2struct_warp": func_mcdc2struct_warp,
+        "func_mcdc2struct_inv_warp": func_mcdc2struct_inv_warp,
+        "func_mcdc2struct_dc_warp": func_mcdc2struct_dc_warp,
+        "func_mcdc2struct_dc_img": func_mcdc2struct_dc_img,
+        "func_mcdc2struct_resamp_img": func_mcdc2struct_resamp_img
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        return self.outputs
 
     def standard(self,
                  standard_age: Union[int,str] = 40,
@@ -561,8 +746,10 @@ class Pipeline:
         except (TypeError,ValueError):
             age: Union[int,float,str] = scan_pma
         
-        if atlasdir is None:
-            atlasdir: str = ATLASDIR
+        # if atlasdir is None:
+        #     atlasdir: str = ATLASDIR
+
+        # TODO: Add file checks for each registration step
         
         #  template -> struct
         (template2struct_warp,
@@ -619,7 +806,7 @@ class Pipeline:
             "func2std_inv_warp": func2std_inv_warp,
             "func2std_resamp_img": func2std_resamp_img,
         }
-        self.proc: str = dict2json(dict=self.outputs)
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
         return self.outputs
 
     def ica(self,
@@ -650,7 +837,7 @@ class Pipeline:
             "func_filt": func_filt,
             "icadir": icadir,
         }
-        self.proc: str = dict2json(dict=self.outputs)
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
         return self.outputs
 
     def denoise(self,
@@ -713,7 +900,7 @@ class Pipeline:
             "func_stdev": func_stdev,
             "func_tsnr": func_tsnr
         }
-        self.proc: str = dict2json(dict=self.outputs)
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
         return self.outputs
     
     # TODO: Work on these class function later
@@ -739,7 +926,6 @@ class Pipeline:
                  ) -> Dict[Any,str]:
         """Perform all post-motion-and-distortion-correction stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
-                                                    quick=True, # Remove this later after testing
                                                     atlasdir=atlasdir)
 
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
@@ -762,6 +948,7 @@ class Pipeline:
         self.outputs: Dict[Any,str] = self.prepare_fieldmap()
         self.outputs: Dict[Any,str] = self.mcdc(use_mcflirt=use_mcflirt)
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
+                                                    quick=True, # Remove this later after testing
                                                     atlasdir=atlasdir)
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
                                                icadim=icadim)
