@@ -944,7 +944,7 @@ def struct_to_template_composite(outdir: str,
     if ((age != standard_age) and 
         (atlas.get('atlas_name') == standard_atlas.get('atlas_name'))): 
         
-        template2standard_warp: str = atlas.get(['xfm'])
+        template2standard_warp: str = atlas.get('xfm')
 
         warp: str = convertwarp(out=outputs.get('warp'),
                                 ref=standard,
@@ -1010,6 +1010,7 @@ def func_to_template_composite(outdir: str,
             with File(src=func2struct_affine, assert_exists=True) as fsa:
                 func: str = fn.abspath()
                 struct2template_warp: str = stw.abspath()
+                func2struct_affine: fsa.abspath()
 
                 if not src_space: _, src_space, _ = fn.file_parts()
     

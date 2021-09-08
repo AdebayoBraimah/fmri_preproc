@@ -673,7 +673,7 @@ class Pipeline:
                                    'dc_image',
                                    'resampled_image')
 
-        if mc2st.check_exists(*mc2st_files):
+        if not mc2st.check_exists(*mc2st_files):
             (func_mcdc2struct_affine,
             func_mcdc2struct_inv_affine,
             func_mcdc2struct_warp,
@@ -786,6 +786,7 @@ class Pipeline:
                                                           age=age,
                                                           standard_age=standard_age,
                                                           func=self.outputs.get('mcdc_mean'),
+                                                          func2struct_affine=self.outputs.get('func_mcdc2struct_affine'),
                                                           struct2template_warp=struct2std_warp,
                                                           atlasdir=atlasdir,
                                                           standarddir=atlasdir,
