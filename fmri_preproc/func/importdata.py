@@ -13,6 +13,7 @@ from typing import (
     Union
 )
 
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.logutil import LogFile
@@ -57,12 +58,13 @@ from fmri_preproc.func.mcdc import (
 )
 
 
-# Globlally define log file object
-log: LogFile = None
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile(log_file=tmpf.src)
 
 
-# @timeops(log)
-@timeops()
+@timeops(log)
 def import_info(outdir: str,
                 func: str,
                 scan_pma: Union[int,float,str],
@@ -142,8 +144,7 @@ def import_info(outdir: str,
     return info_dir, logdir, info_name, info
 
 
-# @timeops(log)
-@timeops()
+@timeops(log)
 def import_func(outdir: str,
                 func: str,
                 func_echospacing: float,
@@ -273,8 +274,7 @@ def import_func(outdir: str,
             outputs)
 
 
-# @timeops(log)
-@timeops()
+@timeops(log)
 def import_struct(outdir: str,
                   T2w: str,
                   brainmask: str,
@@ -340,8 +340,7 @@ def import_struct(outdir: str,
             outputs)
 
 
-# @timeops(log)
-@timeops()
+@timeops(log)
 def import_spinecho(outdir: str,
                     spinecho: Optional[str] = None,
                     spinecho_echospacing: Optional[float] = 0.1,
