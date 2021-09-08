@@ -1649,8 +1649,7 @@ class fslmaths:
                 * https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=fsl;fc5b33c5.1205
                 * https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=FSL;f6fd75a6.1709
             """
-            if ((isinstance(tr,int) or isinstance(tr,float)) and
-                    (isinstance(hz,int) or isinstance(hz,float))):
+            if (isinstance(float(tr),float) and isinstance(float(hz),float)):
 
                 if compute_low_pass:
                     fwhm_kernel: float = float(18)
@@ -1684,8 +1683,7 @@ class fslmaths:
                                               hz=low_pass,
                                               compute_low_pass=True)
 
-        if ((isinstance(high_pass,int) or isinstance(high_pass,float)) and
-                (isinstance(low_pass,int) or isinstance(low_pass,float))):
+        if (isinstance(float(high_pass),float) and isinstance(float(low_pass),float)):
             self._cmds.opt("-bptf")
             self._cmds.opt(f"{high_pass}")
             self._cmds.opt(f"{low_pass}")

@@ -100,11 +100,11 @@ def import_info(outdir: str,
         if sesid:
             info_dir: str = od.join(f'sub-{subid}',f'ses-{sesid}',f'run-{runid}')
             info_data: str = f'sub-{subid}_ses-{sesid}'
-            sub_info: str = f"\nSubject information \nsub: {subid} \nses: {sesid} \nrun: {runid}"
+            sub_info: str = f"\n\nSubject information:\n \nsub: {subid} \nses: {sesid} \nrun: {runid}"
         else:
             info_dir: str = od.join(f'sub-{subid}',f'run-{runid}')
             info_data: str = f'sub-{subid}'
-            sub_info: str = f"\nSubject information \nsub: {subid} \nrun: {runid}"
+            sub_info: str = f"\n\nSubject information:\n \nsub: {subid} \nrun: {runid}"
 
         with WorkDir(src=info_dir) as ifd:
 
@@ -313,13 +313,13 @@ def import_struct(outdir: str,
     with NiiFile(src=dseg, assert_exists=True, validate_nifti=True) as ds:
         _, dseg, _ = fslreorient2std(img=ds.abspath(), out=outputs.get('T2w_dseg'), log=log)
         _: str = update_sidecar(file=dseg,
-                                seg_type=dseg_type)
+                                dseg_type=dseg_type)
     
     if probseg:
         with NiiFile(src=probseg, assert_exists=True, validate_nifti=True) as pb:
             _, probseg, _ = fslreorient2std(img=pb.abspath(), out=outputs.get('T2w_probseg'), log=log)
             _: str = update_sidecar(file=probseg,
-                                    seg_type=probseg_type)
+                                    probseg_type=probseg_type)
     
     if wmmask:
         with NiiFile(src=wmmask, assert_exists=True, validate_nifti=True) as wm:

@@ -50,10 +50,10 @@ class Command:
     Returns:
         Mutable list that can be appended to.
     """
-    __slots__ = [ 
+    __slots__ = (
                     "command", 
                     "cmd_list"
-                ]
+                )
 
     def __init__(self,
                  command: str
@@ -255,7 +255,7 @@ class Command:
                 print(f"command: {cmd} \n Failed with returncode {p.returncode}")
             
             if raise_exc:
-                raise RuntimeError(f"command: {cmd} \n Failed with returncode {p.returncode}")
+                raise RuntimeError(f"command: {cmd} \n\nFailed with returncode {p.returncode}")
 
         if len(out) > 0:
             if log:

@@ -58,6 +58,11 @@ from fmri_preproc.utils.outputs.fieldmap import FmapFiles
 from fmri_preproc.utils.outputs.registration import MRreg
 from fmri_preproc.utils.outputs.mcdc import MCDCFiles
 from fmri_preproc.utils.outputs.ica import ICAFiles
+from fmri_preproc.utils.outputs.denoise import (
+    FIXApply,
+    FIXClassify,
+    FIXExtract
+)
 
 from fmri_preproc.func.importdata import (
     import_func,
@@ -800,7 +805,7 @@ class Pipeline:
         ref_space: str = 'standard'
 
         st2std_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
-        st2std_dict: Dict[str,str] = st2std_reg.outputs()
+        st2std_dict: Dict[str,str] = st2std_reg.outputs(src_space=src_space, ref_space=ref_space)
         st2std_files: Tuple[str] = ('warp',
                                     'inv_warp',
                                     'resampled_image')
@@ -930,51 +935,97 @@ class Pipeline:
         func_filt: str = self.outputs.get('func_filt')
         temporal_fwhm: float = load_sidecar(func_filt).get('temporal_fwhm')
 
-        fixdir: str = fix_extract(outdir=self.outputs.get('workdir'),
-                                  func_filt=func_filt,
-                                  func_ref=self.outputs.get('mcdc_mean'),
-                                  struct=self.outputs.get('T2w'),
-                                  struct_brainmask=self.outputs.get('T2w_brainmask'),
-                                  struct_dseg=struct_dseg,
-                                  dseg_type=dseg_type,
-                                  func2struct_mat=self.outputs.get('func_mcdc2struct_affine'),
-                                  mot_param=self.outputs.get('motparams'),
-                                  icadir=self.outputs.get('icadir'),
-                                  temporal_fwhm=temporal_fwhm,
-                                  log=fix_log)
+        # Check if FIX feature extraction has been performed
 
-        if rdata is None:
-            # Raise exception for now.
-            raise RuntimeError ("Rdata file is required.")
-        
-        if fix_threshold is None:
-            # Raise exception for now - grab this from settings file.
-            raise RuntimeError("Must define FIX threshold.")
-        
-        if (rdata is not None) and (fix_threshold is not None):
-            fix_labels, fix_reg = fix_classify(outdir=self.outputs.get('workdir'),
-                                               rdata=rdata,
-                                               thr=fix_threshold,
-                                               log=fix_log)
+        outfix1: FIXExtract = FIXExtract(outdir=self.outputs.get('workdir'))
+        outdict1: Dict[str,str] = outfix1.outputs()
+        outfiles1: Tuple[str] = ('fixdir')
 
-            (func_clean,
-            func_mean,
-            func_stdev,
-            func_tsnr) = fix_apply(outdir=self.outputs.get('workdir'),
-                                   temporal_fwhm=temporal_fwhm,
-                                   log=fix_log)
-        # Update output dictionary
+        if not outfix1.check_exists(*outfiles1):
+            fixdir: str = fix_extract(outdir=self.outputs.get('workdir'),
+                                    func_filt=func_filt,
+                                    func_ref=self.outputs.get('mcdc_mean'),
+                                    struct=self.outputs.get('T2w'),
+                                    struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                    struct_dseg=struct_dseg,
+                                    dseg_type=dseg_type,
+                                    func2struct_mat=self.outputs.get('func_mcdc2struct_affine'),
+                                    mot_param=self.outputs.get('motparams'),
+                                    icadir=self.outputs.get('icadir'),
+                                    temporal_fwhm=temporal_fwhm,
+                                    log=fix_log)
+        else:
+            fixdir: str = outdict1.get('fixdr')
+        
         self.outputs: Dict[str,str] = {
             **self.outputs,
             "fixdir": fixdir,
-            "fix_labels": fix_labels,
-            "fix_reg": fix_reg,
-            "func_clean": func_clean,
-            "func_mean": func_mean,
-            "func_stdev": func_stdev,
-            "func_tsnr": func_tsnr
         }
         _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # Check if FIX feature classification has been performed
+
+        outfix2: FIXClassify = FIXClassify(outdir=self.outputs.get('workdir'))
+        outdict2: Dict[str,str] = outfix2.outputs()
+        outfiles2: Tuple[str] = ('fix_labels', 'fix_regressors')
+
+        if not outfix2.check_exists(*outfiles2):
+
+            if rdata is None:
+                # Raise exception for now.
+                raise RuntimeError ("Rdata file is required.")
+            
+            if fix_threshold is None:
+                # Raise exception for now - grab this from settings file.
+                raise RuntimeError("Must define FIX threshold.")
+            
+            if (rdata is not None) and (fix_threshold is not None):
+                fix_labels, fix_reg = fix_classify(outdir=self.outputs.get('workdir'),
+                                                rdata=rdata,
+                                                thr=fix_threshold,
+                                                log=fix_log)
+        else:
+            fix_labels: str = outdict2.get('fix_labels')
+            fix_regressors: str = outdict2.get('fix_regressors')
+        
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
+            "fix_labels": fix_labels,
+            "fix_regressors": fix_regressors,
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # Check if FIX ICA data cleaning has been performed
+
+        outfix3: FIXApply = FIXApply(outdir=self.outputs.get('workdir'))
+        outdict3: Dict[str,str] = outfix3.outputs()
+        outfiles3: Tuple[str] = ('func_clean',
+                                 'func_clean_mean',
+                                 'func_clean_std',
+                                 'func_clean_tsnr')
+
+        if not outfix3.check_exists(*outfiles3):
+            (func_clean,
+            func_clean_mean,
+            func_clean_std,
+            func_clean_tsnr) = fix_apply(outdir=self.outputs.get('workdir'),
+                                    temporal_fwhm=temporal_fwhm,
+                                    log=fix_log)
+        else:
+            func_clean: str = outdict3.get('func_clean')
+            func_clean_mean: str = outdict3.get('func_clean_mean')
+            func_clean_std: str = outdict3.get('func_clean_std')
+            func_clean_tsnr: str = outdict3.get('func_clean_tsnr')
+
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
+            "func_clean": func_clean,
+            "func_clean_mean": func_clean_mean,
+            "func_clean_std": func_clean_std,
+            "func_clean_tsnr": func_clean_tsnr
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
         return self.outputs
     
     # TODO: Work on these class function later

@@ -42,10 +42,10 @@ class File(IOBaseObj):
         ext: File extension of input file. If no extension is provided, it is inferred.
         assert_exists: Asserts that the specified input file must exist. 
     """
-    __slots__ = [ 
+    __slots__ = ( 
                     "src", 
                     "ext"
-                ]
+                )
     
     def __init__(self,
                  src: str,

@@ -23,6 +23,12 @@ from fmri_preproc.utils.mask import convert_to_fsl_fast
 from fmri_preproc.utils.fixlabels import loadLabelFile
 from fmri_preproc.func.ica import ica
 
+from fmri_preproc.utils.outputs.denoise import (
+    FIXApply,
+    FIXClassify,
+    FIXExtract
+)
+
 from fmri_preproc.utils.fileio import (
     File,
     NiiFile
@@ -75,12 +81,13 @@ def fix_extract(func_filt: str,
             func2struct_mat: str = fm.abspath()
             mot_param: str = mt.abspath()
     
+    # Define outputs
     with WorkDir(src=outdir) as od:
-        denoisedir: str = os.path.join(od.src,'denoise')
-        fixdir: str = os.path.join(denoisedir,'fix')
-        with WorkDir(src=fixdir) as fx:
-            denoisedir: str = os.path.abspath(denoisedir)
-            fixdir: str = fx.abspath()
+        outfix: FIXExtract = FIXExtract(outdir=od.abspath())
+        outputs: Dict[str,str] = outfix.outputs()
+        with WorkDir(src=outputs.get('fixdir')) as fd:
+            # denoisedir: str = outputs.get('denoisedir')
+            fixdir: str = fd.abspath()
     
     # Setup fake FIX directory
     if log: log.log("Setting up FIX directory")
@@ -136,10 +143,10 @@ def fix_extract(func_filt: str,
     with WorkDir(src=fixregdir) as _:
         pass
     
-    example_func: str = os.path(fixdir, 'example_func.nii.gz')
-    highres: str = os.path(fixdir, 'highres.nii.gz')
-    highres2examp: str = os.path(fixdir, 'highres2example_func.nii.gz')
-    funcmask: str = os.path(fixdir, 'mask.nii.gz')
+    example_func: str = os.path.join(fixregdir, 'example_func.nii.gz')
+    highres: str = os.path.join(fixregdir, 'highres.nii.gz')
+    highres2examp: str = os.path.join(fixregdir, 'highres2example_func.mat')
+    funcmask: str = os.path.join(fixdir, 'mask.nii.gz')
 
     with File(src=func_ref) as fr:
         example_func: str = fr.sym_link(dst=example_func, relative=True)
@@ -151,7 +158,7 @@ def fix_extract(func_filt: str,
 
     fsl_labels: str = os.path.join(fixregdir,'highres_pveseg.nii.gz')
     fsl_labels: str = convert_to_fsl_fast(dseg=struct_dseg,
-                                          dseg_type=dseg_type,
+                                          seg_type=dseg_type,
                                           out=fsl_labels)
 
     # Extract FIX features
@@ -228,10 +235,8 @@ def fix_classify(rdata: str,
             fixdir: fd.abspath()
     
     # Define outputs
-    outputs: Dict[str,str] = {
-                                "fix_labels": os.path.join(denoisedir,'fix_labels.txt'),
-                                "fix_regressors": os.path.join(denoisedir,'fix_regressors.tsv'),
-                             }
+    outfix: FIXClassify = FIXClassify(outdir=outdir)
+    outputs: Dict[str,str] = outfix.outputs()
     
     # FIX feature classification
     if log: log.log("Performing FIX feature classification.")
@@ -274,15 +279,9 @@ def fix_apply(outdir: str,
             fixdir: str = fx.abspath()
 
     # Define outputs
-    outputs: Dict[str,str] = {
-                                "fix_labels": os.path.join(denoisedir,'fix_labels.txt'),
-                                "func_clean": os.path.join(denoisedir,'func_clean.nii.gz'),
-                                "func_clean_mean": os.path.join(denoisedir,'func_clean_mean.nii.gz'),
-                                "func_clean_std": os.path.join(denoisedir,'func_clean_std.nii.gz'),
-                                "func_clean_tsnr": os.path.join(denoisedir,'func_clean_tsnr.nii.gz'),
-                                "fix_clean": os.path.join(fixdir,'filtered_func_data_clean.nii.gz')
-                             }
-
+    outfix: FIXApply = FIXApply(outdir=outdir)
+    outputs: Dict[str,str] = outfix.outputs()
+    
     # Output variables
     labels: str = outputs.get('fix_labels')
     fix_clean: str = outputs.get('fix_clean')

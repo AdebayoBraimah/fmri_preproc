@@ -13,7 +13,7 @@ from fmri_preproc.utils.workdir import WorkDir
 
 
 class FIXClassify(OutDict):
-    """class doc-string.
+    """class doc-string
     """
     def __init__(self,
                  outdir: Union[WorkDir,str]
@@ -42,6 +42,47 @@ class FIXClassify(OutDict):
         return self.output
 
 
+class FIXExtract(OutDict):
+    """class doc-string.
+    """
+    def __init__(self,
+                 outdir: Union[WorkDir,str]
+                ) -> None:
+        """Class constructor method.
+        NOTE: ``outdir`` should be subject working directory.
+        """
+        self.outdir: Union[WorkDir,str] = outdir
+        super(FIXExtract, self).__init__()
+    
+    def outputs(self) -> Dict[str,str]:
+        """doc-string.
+        """
+        if isinstance(self.outdir,WorkDir):
+            outdir: str = self.outdir.src
+        else:
+            outdir: str = self.outdir
+        
+        denoisedir: str = os.path.join(outdir,'denoise')
+
+        if os.path.exists(denoisedir):
+            remove_dir: bool = False
+        else:
+            remove_dir: bool = True
+
+        with WorkDir(src=denoisedir) as od:
+            fixdir: str = od.join('fix')
+            with WorkDir(src=fixdir) as fd:
+                self.output: Dict[str,str] = {
+                    "denoisedir": od.abspath(),
+                    "fixdir": fd.abspath()
+                }
+
+            if remove_dir: 
+                od.rmdir()
+
+        return self.output
+
+
 class FIXApply(OutDict):
     """class doc-string.
     """
@@ -52,7 +93,7 @@ class FIXApply(OutDict):
         NOTE: ``outdir`` should be subject working directory.
         """
         self.outdir: Union[WorkDir,str] = outdir
-        super(FIXClassify, self).__init__()
+        super(FIXApply, self).__init__()
     
     def outputs(self) -> Dict[str,str]:
         """doc-string.

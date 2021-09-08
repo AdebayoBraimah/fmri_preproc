@@ -13,7 +13,7 @@ from typing import (
 class OutDict(ABC):
     """Abstract base class doc-string.
     """
-    __slots__ = [ "output" ]
+    __slots__ = ( "output" )
 
     def __init__(self) -> None:
         """Abstract base class constructor.
