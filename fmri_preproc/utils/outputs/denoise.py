@@ -11,6 +11,7 @@ from typing import (
 from fmri_preproc.utils.outputs.outdict import OutDict
 from fmri_preproc.utils.workdir import WorkDir
 
+
 class FIXClassify(OutDict):
     """class doc-string.
     """
