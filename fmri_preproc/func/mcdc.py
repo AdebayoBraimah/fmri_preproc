@@ -15,6 +15,7 @@ from typing import (
     Union
 )
 
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
@@ -42,7 +43,13 @@ from fmri_preproc.utils.enums import (
     SliceAcqOrder
 )
 
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
 
+
+@timeops(log)
 def mcdc(func: str,
          outdir: str,
          func_echospacing: Optional[float] = 0.1,
@@ -216,6 +223,7 @@ def mcdc(func: str,
             fov_percent)
 
 
+@timeops(log)
 def mcflirt_mc(func: str,
                func_mc: str,
                ref: Optional[Union[int, str]] = None,
@@ -270,6 +278,7 @@ def mcflirt_mc(func: str,
             matsdir)
 
 
+@timeops(log)
 def eddy_mcdc(func: str,
               func_brainmask: str,
               func_mcdc: str,
@@ -749,33 +758,6 @@ def motion_outlier(func: str,
 
     return outlier, metric_data, thr, metric_name, plot_name
 
-# This function is not necessilary needed as the import
-#   module handles this.
-# 
-# def brain_extract(img: str,
-#                   out: str,
-#                   mask: Optional[str] = None,
-#                   robust: bool = False,
-#                   seg: bool = True,
-#                   frac_int: Optional[float] = None,
-#                   log: Optional[LogFile] = None
-#                  ) -> Tuple[str,str]:
-#     """Performs brain extraction.
-#     """
-#     if mask:
-#         mask_bool: bool = True
-#     else:
-#         mask_bool: bool = False
-# 
-#     brain, _ = bet(img=img,
-#                    out=out,
-#                    mask=mask_bool,
-#                    robust=robust,
-#                    seg=seg,
-#                    frac_int=frac_int,
-#                    log=log)
-#     mask: str = fslmaths(img=brain).bin().run(out=mask, log=log)
-#     return brain, mask
 
 # This function should be used elsewhere, perhaps outside of this
 #   package.

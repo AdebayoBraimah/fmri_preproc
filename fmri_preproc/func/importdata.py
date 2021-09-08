@@ -61,7 +61,7 @@ from fmri_preproc.func.mcdc import (
 # Globlally define (temporary) log file object
 with TmpDir(src=os.getcwd()) as tmpd:
     with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
-        log: LogFile(log_file=tmpf.src)
+        log: LogFile = LogFile(log_file=tmpf.src)
 
 
 @timeops(log)

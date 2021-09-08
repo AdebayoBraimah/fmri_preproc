@@ -14,9 +14,11 @@ from typing import (
     Tuple
 )
 
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.command import Command
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
+from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.mask import convert_to_fsl_fast
 from fmri_preproc.utils.fixlabels import loadLabelFile
 from fmri_preproc.func.ica import ica
@@ -34,6 +36,13 @@ from fmri_preproc.utils.fslpy import (
 )
 
 
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
+
+
+@timeops(log)
 def fix_extract(func_filt: str,
                 func_ref: str,
                 struct: str,
@@ -197,6 +206,7 @@ def _classify(fixdir: str,
     return fixdir
 
 
+@timeops(log)
 def fix_classify(rdata: str,
                  thr: int,
                  outdir: str,
@@ -249,6 +259,7 @@ def fix_classify(rdata: str,
     return fix_labels, fix_reg
 
 
+@timeops(log)
 def fix_apply(outdir: str,
               temporal_fwhm: Optional[float] = 150.0,
               log: Optional[LogFile] = None
@@ -304,6 +315,7 @@ def fix_apply(outdir: str,
             func_tsnr)
 
 
+@timeops(log)
 def brain_extract(img: str,
                   out: str,
                   mask: Optional[str] = None,

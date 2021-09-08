@@ -11,6 +11,7 @@ from typing import (
 )
 
 from fmri_preproc.utils.outputs.ica import ICAFiles
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.logutil import LogFile
@@ -21,6 +22,14 @@ from fmri_preproc.utils.fslpy import (
     melodic
 )
 
+
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
+
+
+@timeops(log)
 def ica(outdir: str,
         func: str,
         func_brainmask: str,

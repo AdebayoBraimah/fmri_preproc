@@ -4,7 +4,6 @@
 import os
 import json
 from time import time
-# import logging
 
 from typing import (
     Any,
@@ -17,14 +16,10 @@ from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.tempdir import TmpDir
 
 
-# TODO: Remove LogFile dependency and just 
-#   logger class from logging module.
-# logger = logging.getLogger(__name__)
-
 # Globlally define (temporary) log file object
 with TmpDir(src=os.getcwd()) as tmpd:
     with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
-        log: LogFile(log_file=tmpf.src)
+        log: LogFile = LogFile(log_file=tmpf.src)
 
 
 # def timeops() -> Any:
@@ -55,7 +50,7 @@ def timeops(log: Optional[LogFile] = None) -> Any:
             """Nested decorator function the performs timing of an operation.
             """
             start: float = time()
-            if log: log.log(f"BEGIN {func.__name__}", use_header=True)
+            if log: log.log(f"BEGIN: {func.__name__}", use_header=True)
             # logger.info(f"BEGIN: {func.__name__}")
             result: Any = func(*args,**kwargs)
             end: float = time()

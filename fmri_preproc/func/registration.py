@@ -20,6 +20,7 @@ from typing import (
 
 from fmri_preproc import _resourcedir
 from fmri_preproc.utils.outputs.registration import MRreg
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.command import Command
@@ -55,9 +56,16 @@ from fmri_preproc.utils.fslpy import (
 )
 
 
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
+
+
 ATLASDIR: str = os.path.join(_resourcedir,'atlases')
 
 
+@timeops(log)
 def fmap_to_struct(outdir: str,
                    fmap: str,
                    fmap_magnitude: str,
@@ -173,6 +181,7 @@ def fmap_to_struct(outdir: str,
             init_affine)
 
 
+@timeops(log)
 def func_to_sbref(outdir: str,
                   func: str,
                   func_brainmask: str,
@@ -257,6 +266,7 @@ def func_to_sbref(outdir: str,
     return src2ref, affine, inv_affine
 
 
+@timeops(log)
 def sbref_to_struct(outdir: str,
                     sbref: str,
                     sbref_brainmask: str,
@@ -434,6 +444,7 @@ def sbref_to_struct(outdir: str,
             dc_brainmask)
 
 
+@timeops(log)
 def func_to_struct_composite(outdir: str,
                              func: str,
                              struct: str,
@@ -555,6 +566,7 @@ def func_to_struct_composite(outdir: str,
             resamp_img)
 
 
+@timeops(log)
 def fmap_to_func_composite(outdir: str,
                            fmap: str,
                            func: str,
@@ -744,6 +756,7 @@ def _select_atlas(age: Union[int,str],
     return atlasdict
 
 
+@timeops(log)
 def template_to_struct(outdir: str,
                        age: Union[int,str],
                        struct_brainmask: str,
@@ -885,6 +898,7 @@ def template_to_struct(outdir: str,
             src2ref)
 
 
+@timeops(log)
 def struct_to_template_composite(outdir: str,
                                  struct: str,
                                  struct2template_warp: str,
@@ -971,6 +985,7 @@ def struct_to_template_composite(outdir: str,
     return warp, inv_warp, resamp_img
 
 
+@timeops(log)
 def func_to_template_composite(outdir: str,
                                func: str,
                                func2struct_affine: str,
@@ -1053,6 +1068,7 @@ def func_to_template_composite(outdir: str,
     return warp, inv_warp, resamp_img
 
 
+@timeops(log)
 def epireg(outdir: str,
            src: str,
            ref: str,
@@ -1323,6 +1339,7 @@ def epireg(outdir: str,
     return affine, inv_affine, src2ref, warp, inv_warp
 
 
+@timeops(log)
 def nonlinear_reg(outdir: str,
                   src: Union[str,List[str]],
                   ref: Union[str,List[str]],
@@ -1349,6 +1366,8 @@ def nonlinear_reg(outdir: str,
         ref: List[str] = [ ref ]
     else:
         raise TypeError(f"Input for 'ref' is not a list or string: {ref}")
+    
+    if log: log.log(f"Performing nonlinear registration: Register {src} to {ref} ")
     
     if basename and src_space and ref_space:
         with WorkDir(src=outdir) as od:
@@ -1451,6 +1470,7 @@ def nonlinear_reg(outdir: str,
             src2ref)
 
 
+@timeops(log)
 def antsRegistrationSyN(fixed: Union[List[str],str],
                         moving: Union[List[str],str],
                         dim: int,
@@ -1473,6 +1493,8 @@ def antsRegistrationSyN(fixed: Union[List[str],str],
         moving: List[str] = [ moving ]
     else:
         raise TypeError(f"Input for 'moving' is not a list or string: {moving}")
+
+    if log: log.log(f"Performing nonlinear registration with antsRegistrationSyN(Quick).sh: Register {fixed} to {moving} ")
     
     assert len(fixed) == len(moving), 'The same number of fixed and moving images must be provided'
 
