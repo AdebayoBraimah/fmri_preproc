@@ -4,7 +4,7 @@
 import os
 import json
 from time import time
-import logging
+# import logging
 
 from typing import (
     Any,
@@ -14,15 +14,21 @@ from typing import (
 
 from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.logutil import LogFile
+from fmri_preproc.utils.tempdir import TmpDir
 
 
 # TODO: Remove LogFile dependency and just 
 #   logger class from logging module.
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
+
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile(log_file=tmpf.src)
 
 
-# def timeops(log: Optional[LogFile] = None) -> Any:
-def timeops() -> Any:
+# def timeops() -> Any:
+def timeops(log: Optional[LogFile] = None) -> Any:
     """Decorator function that times some operation and writes that time to
     a log file object.
 
@@ -49,12 +55,12 @@ def timeops() -> Any:
             """Nested decorator function the performs timing of an operation.
             """
             start: float = time()
-            # if log: log.log(f"BEGIN {func.__name__}", use_header=True)
-            logger.info(f"BEGIN: {func.__name__}")
+            if log: log.log(f"BEGIN {func.__name__}", use_header=True)
+            # logger.info(f"BEGIN: {func.__name__}")
             result: Any = func(*args,**kwargs)
             end: float = time()
-            logger.info(f"END: {func.__name__}  |  Time elapsed: {(end - start):2f} sec.")
-            # if log: log.log(f"END: {func.__name__}  |  Time elapsed: {(end - start):2f} sec.", use_header=True)
+            # logger.info(f"END: {func.__name__}  |  Time elapsed: {(end - start):2f} sec.")
+            if log: log.log(f"END: {func.__name__}  |  Time elapsed: {(end - start):2f} sec.", use_header=True)
             return result
         return timed
     return decor
