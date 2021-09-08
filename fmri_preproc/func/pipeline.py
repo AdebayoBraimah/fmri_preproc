@@ -57,6 +57,7 @@ from fmri_preproc.utils.outputs.outdict import key_to_none
 from fmri_preproc.utils.outputs.fieldmap import FmapFiles
 from fmri_preproc.utils.outputs.registration import MRreg
 from fmri_preproc.utils.outputs.mcdc import MCDCFiles
+from fmri_preproc.utils.outputs.ica import ICAFiles
 
 from fmri_preproc.func.importdata import (
     import_func,
@@ -68,7 +69,6 @@ from fmri_preproc.func.importdata import (
 from fmri_preproc.func.fieldmap import fieldmap
 
 from fmri_preproc.func.registration import (
-    ATLASDIR,
     fmap_to_struct,
     fmap_to_func_composite,
     func_to_sbref,
@@ -294,7 +294,7 @@ class Pipeline:
         return self.outputs
 
     def prepare_fieldmap(self) -> Dict[Any,str]:
-        """doc-string
+        """Prepare fieldmaps for additional preprocessing steps.
         """
         with WorkDir(src=self.logdir) as lgd:
             _fmap_log: str = lgd.join('fmap.log')
@@ -328,8 +328,8 @@ class Pipeline:
 
         # fmap -> struct
         
-        src_space='fmap'
-        ref_space='struct'
+        src_space: str = 'fmap'
+        ref_space: str = 'struct'
 
         fm2st_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
         fm2st_dict: Dict[str,str] = fm2st_reg.outputs(src_space=src_space, ref_space=ref_space)
@@ -370,8 +370,8 @@ class Pipeline:
 
         # func -> sbref (distorted)
 
-        src_space='func'
-        ref_space='sbref'
+        src_space: str = 'func'
+        ref_space: str = 'sbref'
 
         fn2sb_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
         fn2sb_dict: Dict[str,str] = fn2sb_reg.outputs(src_space=src_space, ref_space=ref_space)
@@ -408,8 +408,8 @@ class Pipeline:
         sbref: str = self.outputs.get('sbref')
         sbref_meta: Dict[str,str] = load_sidecar(file=sbref)
 
-        src_space='sbref'
-        ref_space='struct'
+        src_space: str = 'sbref'
+        ref_space: str = 'struct'
 
         sb2st_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
         sb2st_dict: Dict[str,str] = sb2st_reg.outputs(src_space=src_space, ref_space=ref_space)
@@ -467,8 +467,8 @@ class Pipeline:
         
         # func (distorted) -> sbref -> struct (composite)
 
-        src_space='func'
-        ref_space='struct'
+        src_space: str = 'func'
+        ref_space: str = 'struct'
 
         fn2st_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
         fn2st_dict: Dict[str,str] = fn2st_reg.outputs(src_space=src_space, ref_space=ref_space)
@@ -519,8 +519,8 @@ class Pipeline:
 
         # fmap -> func (composite)
 
-        src_space='fmap'
-        ref_space='func'
+        src_space: str = 'fmap'
+        ref_space: str = 'func'
 
         fm2fn_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
         fm2fn_dict: Dict[str,str] = fm2fn_reg.outputs(src_space=src_space, ref_space=ref_space)
@@ -686,8 +686,8 @@ class Pipeline:
                                                                     func2sbref_affine=func_mcdc2sbref_dc_affine,
                                                                     sbref2struct_affine=self.outputs.get('sbref2struct_affine'),
                                                                     sbref2struct_warp=self.outputs.get('sbref2struct_warp'),
-                                                                    src_space='func-mcdc',
-                                                                    ref_space='struct',
+                                                                    src_space=src_space,
+                                                                    ref_space=ref_space,
                                                                     log=mcdc_log)
         else:
             func_mcdc2struct_affine: str = mc2st_dict.get('affine')
@@ -724,6 +724,8 @@ class Pipeline:
             _std_log: str = lgd.join('standard.log')
             std_log: LogFile = LogFile(_std_log, format_log_str=True)
 
+        self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
+
         # if not isinstance(template_ages, list):
         #     template_ages: List[int,str] = [template_ages]
         
@@ -752,62 +754,120 @@ class Pipeline:
         # TODO: Add file checks for each registration step
         
         #  template -> struct
-        (template2struct_warp,
-        template2struct_inv_warp,
-        template2struct_affine,
-        template2struct_src2ref) = template_to_struct(outdir=self.outputs.get('workdir'),
-                                                      age=age,
-                                                      struct_brainmask=self.outputs.get('T2w_brainmask'),
-                                                      struct_T2w=self.outputs.get('T2w'),
-                                                      struct_T1w=self.outputs.get('T1w'),
-                                                      quick=quick,
-                                                      src_space=f'template-{age}',
-                                                      ref_space='struct',
-                                                      atlasdir=atlasdir,
-                                                      log=std_log)
 
-        # struct -> age-matched template -> standard template (composite)
-        (struct2std_warp, 
-        struct2std_inv_warp, 
-        struct2std_resamp_img) = struct_to_template_composite(outdir=self.outputs.get('workdir'),
-                                                              age=age,
-                                                              standard_age=standard_age,
-                                                              struct=self.outputs.get('T2w'),
-                                                              struct2template_warp=template2struct_inv_warp,
-                                                              atlasdir=atlasdir,
-                                                              src_space='struct',
-                                                              ref_space='standard',
-                                                              log=std_log)
+        src_space: str = f'template-{age}wks'
+        ref_space: str ='struct'
 
-        # func (undistorted) -> struct -> age-matched template -> standard template (composite)
-        (func2std_warp, 
-        func2std_inv_warp, 
-        func2std_resamp_img) = func_to_template_composite(outdir=self.outputs.get('workdir'),
-                                                          age=age,
-                                                          standard_age=standard_age,
-                                                          func=self.outputs.get('mcdc_mean'),
-                                                          func2struct_affine=self.outputs.get('func_mcdc2struct_affine'),
-                                                          struct2template_warp=struct2std_warp,
-                                                          atlasdir=atlasdir,
-                                                          standarddir=atlasdir,
-                                                          src_space='func-mcdc',
-                                                          ref_space='standard',
-                                                          log=std_log)
-        # Update output dictionary
+        tm2st_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        tm2st_dict: Dict[str,str] = tm2st_reg.outputs(src_space=src_space, ref_space=ref_space)
+        tm2st_files: Tuple[str] = ('warp',
+                                   'inv_warp',
+                                   'affine',
+                                   'resampled_image')
+
+        if not tm2st_reg.check_exists(*tm2st_files):
+            (template2struct_warp,
+            template2struct_inv_warp,
+            template2struct_affine,
+            template2struct_src2ref) = template_to_struct(outdir=self.outputs.get('workdir'),
+                                                        age=age,
+                                                        struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                                        struct_T2w=self.outputs.get('T2w'),
+                                                        struct_T1w=self.outputs.get('T1w'),
+                                                        quick=quick,
+                                                        src_space=src_space,
+                                                        ref_space=ref_space,
+                                                        atlasdir=atlasdir,
+                                                        log=std_log)
+        else:
+            template2struct_warp: str = tm2st_dict.get('warp')
+            template2struct_inv_warp: str = tm2st_dict.get('inv_warp')
+            template2struct_affine: str = tm2st_dict.get('affine')
+            template2struct_src2ref: str = tm2st_dict.get('resampled_image')
+        
         self.outputs: Dict[str,str] = {
             **self.outputs,
             "template2struct_warp": template2struct_warp,
             "template2struct_inv_warp": template2struct_inv_warp,
             "template2struct_affine": template2struct_affine,
             "template2struct_src2ref": template2struct_src2ref,
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # struct -> age-matched template -> standard template (composite)
+
+        src_space: str = 'struct'
+        ref_space: str = 'standard'
+
+        st2std_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        st2std_dict: Dict[str,str] = st2std_reg.outputs()
+        st2std_files: Tuple[str] = ('warp',
+                                    'inv_warp',
+                                    'resampled_image')
+        
+        if not st2std_reg.check_exists(*st2std_files):
+            (struct2std_warp, 
+            struct2std_inv_warp, 
+            struct2std_resamp_img) = struct_to_template_composite(outdir=self.outputs.get('workdir'),
+                                                                age=age,
+                                                                standard_age=standard_age,
+                                                                struct=self.outputs.get('T2w'),
+                                                                struct2template_warp=template2struct_inv_warp,
+                                                                atlasdir=atlasdir,
+                                                                src_space=src_space,
+                                                                ref_space=ref_space,
+                                                                log=std_log)
+        else:
+            struct2std_warp: str = st2std_dict.get('warp')
+            struct2std_inv_warp: str = st2std_dict.get('inv_warp')
+            struct2std_resamp_img: str = st2std_dict.get('resampled_image')
+        
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
             "struct2std_warp": struct2std_warp,
             "struct2std_inv_warp": struct2std_inv_warp,
-            "struct2std_resamp_img": struct2std_resamp_img,
+            "struct2std_resamp_img": struct2std_resamp_img
+        }
+        _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # func (undistorted) -> struct -> age-matched template -> standard template (composite)
+
+        src_space: str = 'func-mcdc'
+        ref_space: str = 'standard'
+
+        fn2tm_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
+        fn2tm_dict: Dict[str,str] = fn2tm_reg.outputs(src_space=src_space, ref_space=ref_space)
+        fn2tm_files: Tuple[str] = ('warp',
+                                   'inv_warp',
+                                   'resampled_image')
+
+        if not fn2tm_reg.check_exists(*fn2tm_files):
+            (func2std_warp, 
+            func2std_inv_warp, 
+            func2std_resamp_img) = func_to_template_composite(outdir=self.outputs.get('workdir'),
+                                                            age=age,
+                                                            standard_age=standard_age,
+                                                            func=self.outputs.get('mcdc_mean'),
+                                                            func2struct_affine=self.outputs.get('func_mcdc2struct_affine'),
+                                                            struct2template_warp=struct2std_warp,
+                                                            atlasdir=atlasdir,
+                                                            standarddir=atlasdir,
+                                                            src_space=src_space,
+                                                            ref_space=ref_space,
+                                                            log=std_log)
+        else:
+            func2std_warp: str = fn2tm_dict.get('warp')
+            func2std_inv_warp: str = fn2tm_dict.get('inv_warp')
+            func2std_resamp_img: str = fn2tm_dict.get('resampled_image')
+        
+        self.outputs: Dict[str,str] = {
+            **self.outputs,
             "func2std_warp": func2std_warp,
             "func2std_inv_warp": func2std_inv_warp,
             "func2std_resamp_img": func2std_resamp_img,
         }
         _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
         return self.outputs
 
     def ica(self,
@@ -820,15 +880,26 @@ class Pipeline:
             _ica_log: str = lgd.join('ica.log')
             ica_log: LogFile = LogFile(_ica_log, format_log_str=True)
         
+        self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
+
         temporal_fwhm: float = float(temporal_fwhm)
 
-        func_filt, icadir = ica(outdir=self.outputs.get('workdir'),
-                                func=self.outputs.get('func_mcdc'),
-                                func_brainmask=self.outputs.get('mcdc_brainmask'),
-                                icadim=icadim,
-                                temporal_fwhm=temporal_fwhm,
-                                log=ica_log)
-        
+        # Check if ICA files exist
+        ica_out: ICAFiles = ICAFiles(outdir=self.outputs.get('workdir'))
+        ica_dict: Dict[str,str] = ica_out.outputs()
+        ica_files: Tuple[str] = ('func_filt', 'meldir')
+
+        if not ica_out.check_exists(*ica_files):
+            func_filt, icadir = ica(outdir=self.outputs.get('workdir'),
+                                    func=self.outputs.get('func_mcdc'),
+                                    func_brainmask=self.outputs.get('mcdc_brainmask'),
+                                    icadim=icadim,
+                                    temporal_fwhm=temporal_fwhm,
+                                    log=ica_log)
+        else:
+            func_filt: str = ica_dict.get('func_filt')
+            icadir: str = ica_dict.get('icadir')
+
         _: str = update_sidecar(file=func_filt,
                                 temporal_fwhm=temporal_fwhm)
 
@@ -850,6 +921,8 @@ class Pipeline:
         with WorkDir(src=self.logdir) as lgd:
             _fix_log: str = lgd.join('fix.log')
             fix_log: LogFile = LogFile(_fix_log, format_log_str=True)
+        
+        self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
 
         struct_dseg: str = self.outputs.get('T2w_dseg')
         dseg_type: str = load_sidecar(struct_dseg).get('dseg_type')
