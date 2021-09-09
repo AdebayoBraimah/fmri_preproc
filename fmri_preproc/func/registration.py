@@ -123,13 +123,6 @@ def fmap_to_struct(outdir: str,
             raise TypeError(f"Input 'bbr_slope': {bbr_slope} is not an 'int' nor 'float'.")
     
     # Define output files
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "inv_affine": f"{regname}_invaffine.mat",
-    #                             "init_affine": f"{regname}_init_affine.mat",
-    #                             "resampled_image_init": f"{regname}_init_img.nii.gz"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -212,14 +205,8 @@ def func_to_sbref(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
     
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "inv_affine": f"{regname}_invaffine.mat",
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -307,11 +294,6 @@ def sbref_to_struct(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
-            # 
-            # dc_warp: str = rd.join(f'{src_space}_dc_warp.nii.gz') 
-            # dc_img: str = rd.join(f'{src_space}_dc_img.nii.gz')
-            # dc_brainmask: str = rd.join(f'{src_space}_dc_brainmask.nii.gz')
     
     # Logic tests
     _has_fmap: bool = fmap is not None and fmap_brainmask is not None
@@ -343,17 +325,6 @@ def sbref_to_struct(outdir: str,
                 sbref_pedir: str = PhaseEncodeDirection(sbref_pedir.upper()).name
     
     # Define outputs
-    # outputs: Dict[str, str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "inv_affine": f"{regname}_invaffine.mat",
-    #                             "init_affine": f'{regname}_init_affine.mat',
-    #                             "resampled_image_init": f"{regname}_init_img.nii.gz",
-    #                             "warp": f'{regname}_warp.nii.gz',
-    #                             "dc_warp": dc_warp,
-    #                             "dc_image": dc_img,
-    #                             "dc_brainmask": dc_brainmask,
-    #                           }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -476,23 +447,11 @@ def func_to_struct_composite(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
 
-            # dc_warp: str = rd.join(f'{src_space}_dc_warp.nii.gz') 
-            # dc_img: str = rd.join(f'{src_space}_dc_img.nii.gz')
-
+    # Logic test
     _has_warp: bool = sbref2struct_warp is not None
 
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "inv_affine": f"{regname}_invaffine.mat",
-    #                             "warp": f"{regname}_warp.nii.gz",
-    #                             "inv_warp": f"{regname}_invwarp.nii.gz",
-    #                             "dc_warp": dc_warp,
-    #                             "dc_image": dc_img
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -596,13 +555,8 @@ def fmap_to_func_composite(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
     
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -791,15 +745,8 @@ def template_to_struct(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
 
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "warp": f"{regname}_warp.nii.gz",
-    #                             "inv_warp": f"{regname}_invwarp.nii.gz"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -942,14 +889,8 @@ def struct_to_template_composite(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
     
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "warp": f"{regname}_warp.nii.gz",
-    #                             "inv_warp": f"{regname}_invwarp.nii.gz"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -1034,14 +975,8 @@ def func_to_template_composite(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
 
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "warp": f"{regname}_warp.nii.gz",
-    #                             "inv_warp": f"{regname}_invwarp.nii.gz"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
     
