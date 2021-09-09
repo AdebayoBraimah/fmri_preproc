@@ -143,7 +143,7 @@ def fetch_dhcp_volumetric_atlas(path: Optional[str] = None,
 
     if not os.path.exists(path):
         os.makedirs(path)
-
+    
     print('Download atlas:')
 
     with TemporaryDirectory(dir=path) as tmp:
@@ -151,14 +151,14 @@ def fetch_dhcp_volumetric_atlas(path: Optional[str] = None,
         with DownloadBar(unit='B', unit_scale=True, miniters=1,
                          desc=atlas_url.split('/')[-1]) as t:  # all optional kwargs
             file_tmp = urllib.urlretrieve(atlas_url, filename=os.path.join(tmp, 'atlas.tar.gz'), reporthook=t.update_to)[0]
-
+        
         print('Unpack atlas:')
         with tarfile.open(name=file_tmp) as tar:
             for m in tqdm(iterable=tar.getmembers(), total=len(tar.getmembers())):
                 tar.extract(member=m, path=path)
         
         unc_data: str = os.path.join(ATLASDIR,'UNC.tar.gz')
-        path: os.path.join(ATLASDIR,'UNCInfantAtlas_2020')
+        path: str = os.path.join(ATLASDIR,'UNCInfantAtlas_2020')
         if os.path.exists(unc_data):
             print('Unpack UNC atlas:')
             with tarfile.open(name=unc_data) as tar:
