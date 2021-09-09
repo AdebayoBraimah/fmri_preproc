@@ -43,18 +43,20 @@ preproc: Pipeline = Pipeline(outdir=outdir,
                              func=func,
                              scan_pma=44)
 
-preproc.import_data(func_echospacing=echospacing,
-                    func_pedir=func_pedir,
-                    func_inplane_accel=inplane_acc,
-                    T2w=T2w,
-                    T2w_brainmask=T2w_brainmask,
-                    dseg=dseg,
-                    mb_factor=mb_factor,
-                    sbref=sbref,
-                    sbref_pedir=func_pedir,
-                    sbref_echospacing=echospacing,
-                    ap_dir=ap,
-                    pa_dir=pa,
-                    spinecho_inplaneacc=inplane_acc)
+# preproc.import_data(func_echospacing=echospacing,
+#                     func_pedir=func_pedir,
+#                     func_inplane_accel=inplane_acc,
+#                     T2w=T2w,
+#                     T2w_brainmask=T2w_brainmask,
+#                     dseg=dseg,
+#                     mb_factor=mb_factor,
+#                     sbref=sbref,
+#                     sbref_pedir=func_pedir,
+#                     sbref_echospacing=echospacing,
+#                     ap_dir=ap,
+#                     pa_dir=pa,
+#                     spinecho_inplaneacc=inplane_acc)
+
+preproc.import_data()
 
 preproc.run_all(use_mcflirt=True, s2v=True)

@@ -604,9 +604,9 @@ def _select_atlas(age: Union[int,str],
     if atlasdir:
         pass
     elif ((age == 'neo') or (age == '1yr') or (age == '2yr')):
-        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"UNC*2020*"))))
+        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"UNC*2020*","atlas"))))
     elif ((28 <= age) and (age <= 44)):
-        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"*dhcp*atlas*"))))
+        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"*dhcp*atlas*","atlas"))))
     else:
         raise FileNotFoundError("'atlasdir' does exists or was not specified.")
 
