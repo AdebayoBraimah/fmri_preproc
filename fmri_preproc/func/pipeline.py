@@ -555,7 +555,10 @@ class Pipeline:
         return self.outputs
 
     def mcdc(self,
-             use_mcflirt: bool = False
+             use_mcflirt: bool = False,
+             s2v: bool = False,
+             dc: bool = False,
+             mbs: bool = False
             ) -> Dict[Any,str]:
         """doc-string
         """
@@ -579,8 +582,13 @@ class Pipeline:
             "func_echospacing": metadata.get('echo_spacing'),
             "func_pedir": metadata.get('phase_encode_dir'),
             "func_slorder": self.outputs.get('func_slorder'),
-            "inplane_acc": self.outputs.get('inplane_accel'),
+            "inplane_acc": metadata.get('inplane_accel'),
+            "mb_factor": metadata.get('mb_factor'),
             "outdir": self.outputs.get('workdir'),
+            "s2v": s2v,
+            "dc": dc,
+            "mbs": mbs,
+            "use_mcflirt": use_mcflirt,
         }
 
         # Check if mc(dc) files exist
@@ -601,7 +609,6 @@ class Pipeline:
             mcdc_brainmask,
             fov_mask,
             fov_percent) = mcdc(**kwargs,
-                                use_mcflirt=use_mcflirt,
                                 log=mcdc_log)
         else:
             func_mcdc: str = outmcdc_dict.get('func_mcdc')
@@ -1064,6 +1071,9 @@ class Pipeline:
                 standard_age: Union[int,str] = 40,
                 temporal_fwhm: float = 150.0,
                 use_mcflirt: bool = False,
+                s2v: bool = False,
+                dc: bool = False,
+                mbs: bool = False,
                 icadim: Optional[int] = None,
                 rdata: Optional[str] = None,
                 fix_threshold: Optional[int] = None,
@@ -1071,7 +1081,10 @@ class Pipeline:
                ) -> None:
         """Perform all stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.prepare_fieldmap()
-        self.outputs: Dict[Any,str] = self.mcdc(use_mcflirt=use_mcflirt)
+        self.outputs: Dict[Any,str] = self.mcdc(use_mcflirt=use_mcflirt,
+                                                s2v=s2v,
+                                                dc=dc,
+                                                mbs=mbs)
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
                                                     quick=True, # Remove this later after testing
                                                     atlasdir=atlasdir)
