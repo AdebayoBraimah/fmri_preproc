@@ -163,11 +163,11 @@ class Pipeline:
         return None
     
     def import_data(self,
-                    func_echospacing: float,
-                    func_pedir: str,
-                    T2w: str,
-                    T2w_brainmask: str,
-                    dseg: str,
+                    func_echospacing: Optional[float] = None,
+                    func_pedir: Optional[str] = None,
+                    T2w: Optional[str] = None,
+                    T2w_brainmask: Optional[str] = None,
+                    dseg: Optional[str] = None,  # Required and up [test]
                     func_brainmask: Optional[str] = None,
                     func_slorder: Optional[str] = None,
                     func_inplane_accel: Optional[float] = 1,
@@ -209,62 +209,71 @@ class Pipeline:
             self.__dict__.pop(attr, None) 
         
         # Check if func has been imported
-        out_func: ImportFunc = ImportFunc(outdir=outdir)
+        out_func: ImportFunc = ImportFunc(outdir=sub_workdir)
+        _: Dict[str,str] = out_func.outputs()
         func_files: Tuple[str] = ('func',
-                                'func_mean',
-                                'func_brainmask',
-                                'func_slorder')
+                                  'func_mean',
+                                  'func_brainmask',
+                                  'func_slorder')
 
         if not out_func.check_exists(*func_files):
-            (func,
-            _, 
-            func_brainmask, 
-            func_slorder, 
-            sbref, 
-            sbref_brainmask,
-            func_info_dict) = import_func(outdir=sub_workdir,
-                                        func=func,
-                                        func_echospacing=func_echospacing,
-                                        func_pedir=func_pedir,
-                                        func_brainmask=func_brainmask,
-                                        func_slorder=func_slorder,
-                                        func_inplane_accel=func_inplane_accel,
-                                        mb_factor=mb_factor,
-                                        sbref=sbref,
-                                        sbref_brainmask=sbref_brainmask,
-                                        sbref_echospacing=sbref_echospacing,
-                                        sbref_pedir=sbref_pedir,
-                                        mask_func=mask_func,
-                                        log=import_log)
+            if func and func_echospacing and func_pedir:
+                (func,
+                _, 
+                func_brainmask, 
+                func_slorder, 
+                sbref, 
+                sbref_brainmask,
+                func_info_dict) = import_func(outdir=sub_workdir,
+                                            func=func,
+                                            func_echospacing=func_echospacing,
+                                            func_pedir=func_pedir,
+                                            func_brainmask=func_brainmask,
+                                            func_slorder=func_slorder,
+                                            func_inplane_accel=func_inplane_accel,
+                                            mb_factor=mb_factor,
+                                            sbref=sbref,
+                                            sbref_brainmask=sbref_brainmask,
+                                            sbref_echospacing=sbref_echospacing,
+                                            sbref_pedir=sbref_pedir,
+                                            mask_func=mask_func,
+                                            log=import_log)
+            else:
+                raise RuntimeError("Minimum required information was not provided: 'func_echospacing' and/or 'func_pedir'.")
         else:
             func_info_dict: Dict[str,str] = out_func.outputs()
         
         # Check if struct has been imported
-        out_struct: ImportStruct = ImportStruct(outdir=outdir)
+        out_struct: ImportStruct = ImportStruct(outdir=sub_workdir)
+        _: Dict[str,str] = out_struct.outputs()
         struct_files: Tuple[str] = ('T2w',
                                     'T2w_brainmask',
                                     'T2w_dseg')
 
         if not out_struct.check_exists(*struct_files):
-            (T2w, 
-            wmmask, 
-            dseg,
-            struct_info_dict) = import_struct(outdir=sub_workdir,
-                                            T2w=T2w,
-                                            brainmask=T2w_brainmask,
-                                            dseg=dseg,
-                                            dseg_type=dseg_type,
-                                            probseg=probseg,
-                                            probseg_type=probseg_type,
-                                            wmmask=wmmask,
-                                            T1w=T1w,
-                                            log=import_log)
+            if T2w and T2w_brainmask and dseg and dseg_type:
+                (T2w, 
+                wmmask, 
+                dseg,
+                struct_info_dict) = import_struct(outdir=sub_workdir,
+                                                T2w=T2w,
+                                                brainmask=T2w_brainmask,
+                                                dseg=dseg,
+                                                dseg_type=dseg_type,
+                                                probseg=probseg,
+                                                probseg_type=probseg_type,
+                                                wmmask=wmmask,
+                                                T1w=T1w,
+                                                log=import_log)
+            else:
+                raise RuntimeError("Required inputs were not found and/or provided: 'T2w', 'T2w_brainmask', 'dseg', 'dseg_type'.")
         else:
             struct_info_dict: Dict[str,str] = out_struct.outputs()
         
         # Check if fmap has been imported
-        out_fmap: ImportSpinEcho = ImportSpinEcho(outdir=outdir)
-        fmap_files: Tuple[str] = ('spinecho')
+        out_fmap: ImportSpinEcho = ImportSpinEcho(outdir=sub_workdir)
+        _: Dict[str,str] = out_fmap.outputs()
+        fmap_files: Tuple[str] = ('spinecho',)
 
         if not out_fmap.check_exists(*fmap_files):
             if (spinecho or
@@ -288,7 +297,7 @@ class Pipeline:
                 spinecho: str = None
                 spinecho_pedir: str = None
         else:
-            fmap_info_dict: Dict[str,str] = out_fmap.outputs
+            fmap_info_dict: Dict[str,str] = out_fmap.outputs()
             spinecho: str = fmap_info_dict.get('spinecho')
 
         self.outputs: Dict[str,str] = {
