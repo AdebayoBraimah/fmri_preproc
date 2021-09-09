@@ -16,6 +16,7 @@ from typing import (
 )
 
 from fmri_preproc.utils.outputs.fieldmap import FmapFiles
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
@@ -35,6 +36,13 @@ from fmri_preproc.utils.fileio import (
 )
 
 
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
+
+
+@timeops(log)
 def fieldmap(outdir: str,
              spinecho: str,
              echo_spacing: float,
@@ -52,9 +60,9 @@ def fieldmap(outdir: str,
     """
     if log: log.log("Preparing fieldmaps")
 
-    outdir: str = os.path.join(outdir,"fmap")
+    # outdir: str = os.path.join(outdir,"fmap")
     with WorkDir(src=outdir) as od:
-        topup_dir: str = od.join("topup")
+        topup_dir: str = od.join("fmap","topup")
         with WorkDir(src=topup_dir) as td:
             if log: log.log(f"Making fieldmap directory: {od.src}.")
             outdir: str = od.abspath()

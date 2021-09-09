@@ -10,6 +10,8 @@ from typing import (
     Tuple
 )
 
+from fmri_preproc.utils.outputs.ica import ICAFiles
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.logutil import LogFile
@@ -20,6 +22,14 @@ from fmri_preproc.utils.fslpy import (
     melodic
 )
 
+
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
+
+
+@timeops(log)
 def ica(outdir: str,
         func: str,
         func_brainmask: str,
@@ -35,32 +45,27 @@ def ica(outdir: str,
         with NiiFile(src=func_brainmask, assert_exists=True, validate_nifti=True) as fb:
             func: str = fn.abspath()
             func_brainmask: str = fb.abspath()
-    
-    with WorkDir(src=outdir) as od:
-        icadir: str = os.path.join(od.src,'ica')
-        with WorkDir(src=icadir) as icd:
-            meldir: str = os.path.join(icadir,'func_filtered.ica')
-            with WorkDir(src=meldir) as mel:
-                icadir: str = icd.abspath()
-                outdir: str = od.abspath()
-                meldir: str = mel.abspath()
-    
+
     # Define outputs
-    outputs: Dict[str,str] = { "func_filt": os.path.join(icadir,'func_filtered.nii.gz') }
+    with WorkDir(src=outdir) as od:
+        ica_out: ICAFiles = ICAFiles(outdir=od.abspath())
+        outputs: Dict[str,str] = ica_out.outputs()
+
+        icadir: str = outputs.get('icadir')
+        meldir: str = outputs.get('meldir')
+        func_filt: str = outputs.get('func_filt')
 
     if func_tr:
         func_tr: float = float(func_tr)
     else:
         func_tr: float = nib.load(func).header.get('pixdim','')[4]
-    
-    func_filt: str = outputs.get('func_filt')
 
     if temporal_fwhm:
         temporal_fwhm: float = float(temporal_fwhm)
         # sigma: float = np.round(temporal_fwhm / (2 * func_tr))  # 150 second filter
 
         with TmpDir(src=icadir) as tmp:
-            func_mean: str = os.path.join(tmp,'func_mean.nii.gz')
+            func_mean: str = tmp.join('func_mean.nii.gz')
             func_mean: str = fslmaths(img=func).Tmean().run(out=func_mean, log=log)
             func_filt: str = fslmaths(img=func).bptf(high_pass=temporal_fwhm, 
                                                      low_pass=-1, 

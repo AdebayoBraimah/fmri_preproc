@@ -23,6 +23,7 @@ from abc import (
     abstractmethod
 )
 
+
 class IOBaseObj(ABC):
     """IO abstract base class (``ABC``) object that encapsulates methods related to file and directory manipulation. 
 
@@ -51,7 +52,7 @@ class IOBaseObj(ABC):
     Arguments:
         src: Input string that represents a file or directory.
     """
-    __slots__ = [ "src" ]
+    __slots__ = ( "src" )
 
     def __init__(self,
                  src: str) -> None:

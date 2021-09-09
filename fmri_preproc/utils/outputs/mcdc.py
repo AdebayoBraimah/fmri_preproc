@@ -21,6 +21,7 @@ class MCDCFiles(OutDict):
         NOTE: ``outdir`` should be subject working directory.
         """
         self.outdir: Union[WorkDir,str] = outdir
+        super(MCDCFiles, self).__init__()
     
     def outputs(self,
                 dc: bool = False) -> Dict[str,str]:
@@ -42,7 +43,7 @@ class MCDCFiles(OutDict):
             self.output: Dict[str,str] = {
                 "mcdir": mc.abspath(),
                 "func_mcdc": mc.join(f"func_{mc_name}.nii.gz"),
-                "func_mot": mc.join(f"func_{mc_name}_motion.tsv"),
+                "motparams": mc.join(f"func_{mc_name}_motion.tsv"),
                 "func_metrics": mc.join(f"func_{mc_name}_regressors.tsv"),
                 "func_out_plot": mc.join(f"func_{mc_name}_outliers.png"),
                 "mcdc_mean": mc.join(f"func_{mc_name}_mean.nii.gz"),

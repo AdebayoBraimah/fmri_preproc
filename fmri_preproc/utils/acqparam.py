@@ -40,8 +40,6 @@ def write_func_params(epi: str,
 
     epi: nib.Nifti1Image = nib.load(epi)
     
-    assert len(pedir) == epi.header.get('dim','')[4]
-
     # Loop through phase encoding directions and determine:
     #   * axis orientation
     #   * epi factor

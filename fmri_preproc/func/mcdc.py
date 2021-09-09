@@ -15,6 +15,7 @@ from typing import (
     Union
 )
 
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
@@ -42,7 +43,13 @@ from fmri_preproc.utils.enums import (
     SliceAcqOrder
 )
 
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
 
+
+@timeops(log)
 def mcdc(func: str,
          outdir: str,
          func_echospacing: Optional[float] = 0.1,
@@ -114,27 +121,9 @@ def mcdc(func: str,
         raise RuntimeError('func_brainmask is required to use EDDY.')
     
     # Define output files
-    # if use_mcflirt:
-    #     mc_name: str = 'mc'
-    # else:
-    #     mc_name: str = 'mcdc'
-
     out: MCDCFiles = MCDCFiles(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(dc=(not use_mcflirt))
     mcdir: str = outputs.get('mcdir')
-
-    # outputs: Dict[str,str] = {
-    #                             "func_mcdc": os.path.join(mcdir,f"func_{mc_name}.nii.gz"),
-    #                             "func_mot": os.path.join(mcdir,f"func_{mc_name}_motion.tsv"),
-    #                             "func_metrics": os.path.join(mcdir,f"func_{mc_name}_regressors.tsv"),
-    #                             "func_out_plot": os.path.join(mcdir,f"func_{mc_name}_outliers.png"),
-    #                             "mcdc_mean": os.path.join(mcdir,f"func_{mc_name}_mean.nii.gz"),
-    #                             "mcdc_std": os.path.join(mcdir,f"func_{mc_name}_std.nii.gz"),
-    #                             "mcdc_tsnr": os.path.join(mcdir,f"func_{mc_name}_tsnr.nii.gz"),
-    #                             "mcdc_brainmask": os.path.join(mcdir,f"func_{mc_name}_brainmask.nii.gz"),
-    #                             "func_mcdc_fovmask": os.path.join(mcdir,f"func_{mc_name}_fovmask.nii.gz"),
-    #                             "func_mcdc_fovpercent": os.path.join(mcdir,f"func_{mc_name}_fovpercent.nii.gz")
-    #                         }
 
     # Perform MCDC
     if use_mcflirt:
@@ -167,8 +156,8 @@ def mcdc(func: str,
     # Write motion regressors
     mcf: np.array = np.loadtxt(motfile)
     mcf: pd.DataFrame = pd.DataFrame(mcf, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
-    mcf.to_csv(outputs.get('func_mot'), sep='\t', index=None)
-    mcf: str = outputs.get('func_mot')
+    mcf.to_csv(outputs.get('motparams'), sep='\t', index=None)
+    mcf: str = outputs.get('motparams')
     
     # Calculate post-mc motion outliers
     _: Tuple[str,int] = motion_outlier(func=func_mcdc,
@@ -216,6 +205,7 @@ def mcdc(func: str,
             fov_percent)
 
 
+@timeops(log)
 def mcflirt_mc(func: str,
                func_mc: str,
                ref: Optional[Union[int, str]] = None,
@@ -270,6 +260,7 @@ def mcflirt_mc(func: str,
             matsdir)
 
 
+@timeops(log)
 def eddy_mcdc(func: str,
               func_brainmask: str,
               func_mcdc: str,
@@ -345,7 +336,7 @@ def eddy_mcdc(func: str,
     idx: str = write_index(num_frames=num_vols, out_file=outputs.get('idx'))
     bvals: str = write_bvals(num_frames=num_vols, out_file=outputs.get('bvals'))
     bvecs: str = write_bvecs(num_frames=num_vols, out_file=outputs.get('bvecs'))
-    acqp: str = write_func_params(epi=func,
+    acqp, _ = write_func_params(epi=func,
                                   echospacing=func_echospacing,
                                   pedir=PhaseEncodeDirection(func_pedir).name,
                                   out=outputs.get('acqp'),
@@ -635,7 +626,7 @@ def write_slice_order(slices: int,
     return out_file
 
 
-def _dvars(img: nib.Nifti1Header) -> np.array:
+def _dvars(img: nib.Nifti1Image) -> np.array:
     """Calculates DVARS.
     """
     dvars: np.array = np.square(np.diff(img, axis=3))
@@ -646,17 +637,17 @@ def _dvars(img: nib.Nifti1Header) -> np.array:
     return dvars
 
 
-def _refrms(img: nib.Nifti1Header,
-            ref: Optional[nib.Nifti1Header] = None
+def _refrms(img: nib.Nifti1Image,
+            ref: Optional[nib.Nifti1Image] = None
            ) -> np.array:
     """Calculates REFRMS.
     """
     if ref:
         pass
     else:
-        ref: nib.Nifti1Header = img[:, :, :, int(np.round(img.shape[3] / 2))]
+        ref: nib.Nifti1Image = img[:, :, :, int(np.round(img.shape[3] / 2))]
 
-    rms: nib.Nifti1Header = img
+    rms: nib.Nifti1Image = img
     for i in range(0, rms.shape[3]):
         rms[:, :, :, i] = (rms[:, :, :, i] - ref)
 
@@ -680,7 +671,7 @@ def motion_outlier(func: str,
     """
     func: NiiFile = NiiFile(src=func, assert_exists=True, validate_nifti=True)
 
-    img0: nib.Nifti1Header = nib.load(func.src)
+    img0: nib.Nifti1Image = nib.load(func.src)
     image_data: np.array = img0.get_data().astype(float)
 
     # Threshold image
@@ -749,33 +740,6 @@ def motion_outlier(func: str,
 
     return outlier, metric_data, thr, metric_name, plot_name
 
-# This function is not necessilary needed as the import
-#   module handles this.
-# 
-# def brain_extract(img: str,
-#                   out: str,
-#                   mask: Optional[str] = None,
-#                   robust: bool = False,
-#                   seg: bool = True,
-#                   frac_int: Optional[float] = None,
-#                   log: Optional[LogFile] = None
-#                  ) -> Tuple[str,str]:
-#     """Performs brain extraction.
-#     """
-#     if mask:
-#         mask_bool: bool = True
-#     else:
-#         mask_bool: bool = False
-# 
-#     brain, _ = bet(img=img,
-#                    out=out,
-#                    mask=mask_bool,
-#                    robust=robust,
-#                    seg=seg,
-#                    frac_int=frac_int,
-#                    log=log)
-#     mask: str = fslmaths(img=brain).bin().run(out=mask, log=log)
-#     return brain, mask
 
 # This function should be used elsewhere, perhaps outside of this
 #   package.

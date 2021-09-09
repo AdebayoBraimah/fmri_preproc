@@ -15,9 +15,20 @@ from fmri_preproc.utils.command import Command
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.fileio import NiiFile
 from fmri_preproc.utils.workdir import WorkDir
+from fmri_preproc.utils.tempdir import TmpDir
+from fmri_preproc.utils.util import timeops
+
 
 from fmri_preproc.utils.fslpy import fslmaths
 
+
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
+
+
+@timeops(log)
 def postprocess(func: str,
                 func_mean: str,
                 func_brainmask: str,
@@ -59,11 +70,11 @@ def postprocess(func: str,
     func_smooth: str = outputs.get('func_smooth')
     func_smooth: str = fslmaths(img=func).mas(func_brainmask).run(out=func_smooth, log=log)
 
-    d: nib.Nifti1Header = nib.load(func_smooth).get_data().astype(float)
+    d: nib.Nifti1Image = nib.load(func_smooth).get_data().astype(float)
     func_q2, func_q98 = np.percentile(d, [2, 98])
 
-    d: nib.Nifti1Header = nib.load(func_smooth).get_data().astype(float)
-    m: nib.Nifti1Header = nib.load(func_brainmask).get_data().astype(float)
+    d: nib.Nifti1Image = nib.load(func_smooth).get_data().astype(float)
+    m: nib.Nifti1Image = nib.load(func_brainmask).get_data().astype(float)
     median_intensity: float = np.percentile(d[m >= 1], 50)
 
     if spatial_fwhm > 0.01:

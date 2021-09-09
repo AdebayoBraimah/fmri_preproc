@@ -13,6 +13,7 @@ from typing import (
     Union
 )
 
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.logutil import LogFile
@@ -57,12 +58,13 @@ from fmri_preproc.func.mcdc import (
 )
 
 
-# Globlally define log file object
-log: LogFile = None
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
 
 
-# @timeops(log)
-@timeops()
+@timeops(log)
 def import_info(outdir: str,
                 func: str,
                 scan_pma: Union[int,float,str],
@@ -98,11 +100,11 @@ def import_info(outdir: str,
         if sesid:
             info_dir: str = od.join(f'sub-{subid}',f'ses-{sesid}',f'run-{runid}')
             info_data: str = f'sub-{subid}_ses-{sesid}'
-            sub_info: str = f"\nSubject information \nsub: {subid} \nses: {sesid} \nrun: {runid}"
+            sub_info: str = f"\n\nSubject information:\n \nsub: {subid} \nses: {sesid} \nrun: {runid}"
         else:
             info_dir: str = od.join(f'sub-{subid}',f'run-{runid}')
             info_data: str = f'sub-{subid}'
-            sub_info: str = f"\nSubject information \nsub: {subid} \nrun: {runid}"
+            sub_info: str = f"\n\nSubject information:\n \nsub: {subid} \nrun: {runid}"
 
         with WorkDir(src=info_dir) as ifd:
 
@@ -142,8 +144,7 @@ def import_info(outdir: str,
     return info_dir, logdir, info_name, info
 
 
-# @timeops(log)
-@timeops()
+@timeops(log)
 def import_func(outdir: str,
                 func: str,
                 func_echospacing: float,
@@ -273,8 +274,7 @@ def import_func(outdir: str,
             outputs)
 
 
-# @timeops(log)
-@timeops()
+@timeops(log)
 def import_struct(outdir: str,
                   T2w: str,
                   brainmask: str,
@@ -313,13 +313,13 @@ def import_struct(outdir: str,
     with NiiFile(src=dseg, assert_exists=True, validate_nifti=True) as ds:
         _, dseg, _ = fslreorient2std(img=ds.abspath(), out=outputs.get('T2w_dseg'), log=log)
         _: str = update_sidecar(file=dseg,
-                                seg_type=dseg_type)
+                                dseg_type=dseg_type)
     
     if probseg:
         with NiiFile(src=probseg, assert_exists=True, validate_nifti=True) as pb:
             _, probseg, _ = fslreorient2std(img=pb.abspath(), out=outputs.get('T2w_probseg'), log=log)
             _: str = update_sidecar(file=probseg,
-                                    seg_type=probseg_type)
+                                    probseg_type=probseg_type)
     
     if wmmask:
         with NiiFile(src=wmmask, assert_exists=True, validate_nifti=True) as wm:
@@ -340,8 +340,7 @@ def import_struct(outdir: str,
             outputs)
 
 
-# @timeops(log)
-@timeops()
+@timeops(log)
 def import_spinecho(outdir: str,
                     spinecho: Optional[str] = None,
                     spinecho_echospacing: Optional[float] = 0.1,

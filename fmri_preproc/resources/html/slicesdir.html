@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+
+{% set Nimages = data|length %}
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+          crossorigin="anonymous">
+
+    <style type="text/css">
+        body {
+            background: whitesmoke !important;
+        }
+
+        /* Adding !important forces the browser to overwrite the default style applied by Bootstrap */
+    </style>
+
+    <title>{{ title }}</title>
+
+    <script type="text/javascript">
+
+        function saveFormAsTextFile()
+            // Based on https://thiscouldbebetter.wordpress.com/2012/12/18/loading-editing-and-saving-a-text-file-in-html5-using-javascrip/
+            {
+            var textToSave = "filename,flagged\n"
+
+            var i;
+            for (i = 0; i < {{ Nimages }}; i++) {
+                textToSave += document.getElementById('flag'+i).value +',';
+                textToSave += document.getElementById('flag'+i).checked + "\n";
+            }
+
+            var textToSaveAsBlob = new Blob([textToSave], {type:"text/plain"});
+            var textToSaveAsURL = window.URL.createObjectURL(textToSaveAsBlob);
+            var fileNameToSaveAs = document.getElementById('filename').value;
+
+            var downloadLink = document.createElement("a");
+            downloadLink.download = fileNameToSaveAs;
+            downloadLink.innerHTML = "Download File";
+            downloadLink.href = textToSaveAsURL;
+            downloadLink.onclick = destroyClickedElement;
+            downloadLink.style.display = "none";
+            document.body.appendChild(downloadLink);
+
+            downloadLink.click();
+            }
+
+        function destroyClickedElement(event)
+            {
+            document.body.removeChild(event.target);
+            }
+
+
+    </script>
+
+</head>
+<body>
+
+<nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark justify-content-between">
+    <span class="navbar-brand mb-0 h1">{{ title }}</span>
+
+    <span>
+        <table style="width:100%">
+            <tr>
+                <td style="padding:0 20px 0 40px;"><span class="navbar-text">Save flag file: </span></td>
+                <td><input type="text" class="form-control mr-sm-2" id="filename" placeholder="flagged.csv" value="flagged.csv"></td>
+                <td><button type="submit" class="btn btn-primary" onclick="saveFormAsTextFile()">Download</button></td>
+            </tr>
+        </table>
+    </span>
+
+</nav>
+
+<div class="container-fluid">
+
+    <div class="row">
+
+        <div class="col-xl-12">
+        {% for idx in range(Nimages) %}
+
+            {% set data0 = data[idx] %}
+
+            <div class="card border-secondary mt-2" id="image-card">
+
+                <div class="card-body">
+
+                    <div class="container-fluid">
+                        <div class="row justify-content-start">
+                            <div class="col-10">
+
+                                <small>
+
+                                <dl class="row">
+                                    <dt class="col-sm-1 m-0 p-0">{{ data0['primary_label'] }}:</dt>
+                                    <dd class="col-sm-11 m-0 p-0">{{ data0['primary_name'] }}</dd>
+
+
+                                    {% if data0['secondary_name'] is not none %}
+                                        <dt class="col-sm-1 m-0 p-0">{{ data0['secondary_label'] }}:</dt>
+                                        <dd class="col-sm-11 m-0 p-0">{{ data0['secondary_name'] }}</dd>
+                                    {% endif %}
+
+                                    {% if data0['tertiary_name'] is not none %}
+                                        <dt class="col-sm-1 m-0 p-0">{{ data0['tertiary_label'] }}:</dt>
+                                        <dd class="col-sm-11 m-0 p-0">{{ data0['tertiary_name'] }}</dd>
+                                    {% endif %}
+
+                                    {% if data0['overlay_name'] is not none %}
+                                        <dt class="col-sm-1 m-0 p-0">Overlay:</dt>
+                                        <dd class="col-sm-11 m-0 p-0">{{ data0['overlay_name'] }}</dd>
+                                    {% endif %}
+
+                                    {% if data0['mask_name'] is not none %}
+                                        <dt class="col-sm-1 m-0 p-0">Mask:</dt>
+                                        <dd class="col-sm-11 m-0 p-0">{{ data0['mask_name'] }}</dd>
+                                    {% endif %}
+
+                                </dl>
+
+                                </small>
+
+                            </div>
+                            <div class="col">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="flag{{idx}}" value="{{ data0['primary_name'] }}">
+                                    <label class="form-check-label" for="flag{{idx}}">Flag image</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% for f in data0['primary_img'] %}
+                         <img src="{{ f }}" width="100%">
+                    {% endfor %}
+
+                    {% if data0['secondary_name'] is not none %}
+                        {% for f in data0['secondary_img'] %}
+                            <img src="{{ f }}" width="100%">
+                        {% endfor %}
+                    {% endif %}
+
+                    {% if data0['tertiary_name'] is not none %}
+                        {% for f in data0['tertiary_img'] %}
+                            <img src="{{ f }}" width="100%">
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="row justify-content-end">
+                        <div class="col-1"><small>Image {{ idx }} of {{ Nimages }}</small></div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

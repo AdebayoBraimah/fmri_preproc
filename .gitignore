@@ -1,4 +1,5 @@
 *.nii*
 data/*
-*.tar.gz
-fmri_preproc/resources/atlases/*/*
+# *.tar.gz
+fmri_preproc/resources/atlases/*/*.nii*
+fmri_preproc/resources/atlases/*dHCP*/*

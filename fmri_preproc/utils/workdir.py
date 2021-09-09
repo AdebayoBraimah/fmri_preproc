@@ -33,10 +33,10 @@ class WorkDir(IOBaseObj):
         src: Working directory name/path. This directory need not exist at runtime.
         use_cwd: Use current working directory as the parent directory.
     """
-    __slots__ = [ 
+    __slots__ = ( 
                     "src", 
                     "parent_dir"
-                ]
+                )
 
     def __init__(self, 
                  src: str,

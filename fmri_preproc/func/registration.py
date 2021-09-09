@@ -18,8 +18,9 @@ from typing import (
     Union
 )
 
-from fmri_preproc import _resourcedir
+from fmri_preproc import ATLASDIR
 from fmri_preproc.utils.outputs.registration import MRreg
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.command import Command
@@ -55,9 +56,13 @@ from fmri_preproc.utils.fslpy import (
 )
 
 
-ATLASDIR: str = os.path.join(_resourcedir,'atlases')
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
 
 
+@timeops(log)
 def fmap_to_struct(outdir: str,
                    fmap: str,
                    fmap_magnitude: str,
@@ -93,7 +98,7 @@ def fmap_to_struct(outdir: str,
                 _, ref_space, _ = stc.file_parts()
 
     with WorkDir(src=outdir) as od:
-        regdir: str = os.path.join(od.src,'reg',f'{src_space}_to_{ref_space}')
+        regdir: str = od.join('reg',f'{src_space}_to_{ref_space}')
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
@@ -115,13 +120,6 @@ def fmap_to_struct(outdir: str,
             raise TypeError(f"Input 'bbr_slope': {bbr_slope} is not an 'int' nor 'float'.")
     
     # Define output files
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "inv_affine": f"{regname}_invaffine.mat",
-    #                             "init_affine": f"{regname}_init_affine.mat",
-    #                             "resampled_image_init": f"{regname}_init_img.nii.gz"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -141,13 +139,15 @@ def fmap_to_struct(outdir: str,
 
         # Perform registration
         kwargs: Dict[str,str] = { 
-                                    "outdir": regdir,
+                                    "outdir": outdir,
                                     "log": log,
                                     "src": fmap_brain,
                                     "ref": struct_brain,
                                     "affine": affine,
                                     "inv_affine": inv_affine,
                                     "src2ref": src2ref,
+                                    "src_space": src_space,
+                                    "ref_space": ref_space
                                 }
         if bbr:
             init_affine: str = outputs.get('init_affine')
@@ -160,9 +160,10 @@ def fmap_to_struct(outdir: str,
                                     }
 
         (affine, 
-         inv_affine, 
-         src2ref, 
-         _) = epireg(**kwargs)
+        inv_affine, 
+        src2ref, 
+        _, 
+        _) = epireg(**kwargs)
     
     return (affine,
             inv_affine,
@@ -170,6 +171,7 @@ def fmap_to_struct(outdir: str,
             init_affine)
 
 
+@timeops(log)
 def func_to_sbref(outdir: str,
                   func: str,
                   func_brainmask: str,
@@ -200,14 +202,8 @@ def func_to_sbref(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
     
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "inv_affine": f"{regname}_invaffine.mat",
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -233,6 +229,8 @@ def func_to_sbref(outdir: str,
                     src=func_brain,
                     ref=sbref_brain,
                     affine=init_affine,
+                    src_space=src_space,
+                    ref_space=ref_space,
                     inv_affine=os.path.join(tmp.src, 'init_inv.mat'),
                     src2ref=os.path.join(tmp.src, 'init.nii.gz'))
         
@@ -243,6 +241,8 @@ def func_to_sbref(outdir: str,
         _) = epireg(outdir=tmp.src,
                     src=func,
                     ref=sbref,
+                    src_space=src_space,
+                    ref_space=ref_space,
                     init_xfm=init_affine,
                     affine=outputs.get('affine'),
                     inv_affine=outputs.get('inv_affine'),
@@ -250,6 +250,7 @@ def func_to_sbref(outdir: str,
     return src2ref, affine, inv_affine
 
 
+@timeops(log)
 def sbref_to_struct(outdir: str,
                     sbref: str,
                     sbref_brainmask: str,
@@ -290,11 +291,6 @@ def sbref_to_struct(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
-            # 
-            # dc_warp: str = rd.join(f'{src_space}_dc_warp.nii.gz') 
-            # dc_img: str = rd.join(f'{src_space}_dc_img.nii.gz')
-            # dc_brainmask: str = rd.join(f'{src_space}_dc_brainmask.nii.gz')
     
     # Logic tests
     _has_fmap: bool = fmap is not None and fmap_brainmask is not None
@@ -323,20 +319,9 @@ def sbref_to_struct(outdir: str,
                 fmap_brainmask: str = fb.abspath()
 
                 sbref_echospacing: float = float(sbref_echospacing)
-                sbref_pedir: str = PhaseEncodeDirection(sbref_pedir.lower()).name
+                sbref_pedir: str = PhaseEncodeDirection(sbref_pedir.upper()).name
     
     # Define outputs
-    # outputs: Dict[str, str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "inv_affine": f"{regname}_invaffine.mat",
-    #                             "init_affine": f'{regname}_init_affine.mat',
-    #                             "resampled_image_init": f"{regname}_init_img.nii.gz",
-    #                             "warp": f'{regname}_warp.nii.gz',
-    #                             "dc_warp": dc_warp,
-    #                             "dc_image": dc_img,
-    #                             "dc_brainmask": dc_brainmask,
-    #                           }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -353,7 +338,11 @@ def sbref_to_struct(outdir: str,
             "ref": struct_brain,
             "affine": outputs.get('affine'),
             "inv_affine": outputs.get('inv_affine'),
-            "src2ref": outputs.get('resampled_image')
+            "src2ref": outputs.get('resampled_image'),
+            "src_space": src_space,
+            "ref_space": ref_space,
+            "outdir": outdir,
+            "log": log
         }
 
         if bbr:
@@ -423,6 +412,7 @@ def sbref_to_struct(outdir: str,
             dc_brainmask)
 
 
+@timeops(log)
 def func_to_struct_composite(outdir: str,
                              func: str,
                              struct: str,
@@ -454,23 +444,11 @@ def func_to_struct_composite(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
 
-            # dc_warp: str = rd.join(f'{src_space}_dc_warp.nii.gz') 
-            # dc_img: str = rd.join(f'{src_space}_dc_img.nii.gz')
-
+    # Logic test
     _has_warp: bool = sbref2struct_warp is not None
 
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "inv_affine": f"{regname}_invaffine.mat",
-    #                             "warp": f"{regname}_warp.nii.gz",
-    #                             "inv_warp": f"{regname}_invwarp.nii.gz",
-    #                             "dc_warp": dc_warp,
-    #                             "dc_image": dc_img
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -544,6 +522,7 @@ def func_to_struct_composite(outdir: str,
             resamp_img)
 
 
+@timeops(log)
 def fmap_to_func_composite(outdir: str,
                            fmap: str,
                            func: str,
@@ -573,13 +552,8 @@ def fmap_to_func_composite(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
     
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -632,7 +606,7 @@ def _select_atlas(age: Union[int,str],
     elif ((age == 'neo') or (age == '1yr') or (age == '2yr')):
         atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"UNC*2020*"))))
     elif ((28 <= age) and (age <= 44)):
-        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"dHCPatlas"))))
+        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"*dhcp*atlas*"))))
     else:
         raise FileNotFoundError("'atlasdir' does exists or was not specified.")
 
@@ -700,6 +674,8 @@ def _select_atlas(age: Union[int,str],
 
                 if t2 == "":
                     raise FileNotFoundError(f"Unable to find T2w image template for the specified age: {age} and atlas directory: {td.abspath()}")
+                else:
+                    t2: str = td.join(t2)
                 
                 if xfm == "":
                     xfm: str = None
@@ -711,7 +687,7 @@ def _select_atlas(age: Union[int,str],
                 else:
                     invxfm: str = wd.join(invxfm)
                 
-                if 'dHCPatlas' in atlasdir:
+                if 'dhcp' in atlasdir.lower():
                     age: str = f"{age}wks"
                 
                 atlasdict: Dict[str,str] = {
@@ -731,6 +707,7 @@ def _select_atlas(age: Union[int,str],
     return atlasdict
 
 
+@timeops(log)
 def template_to_struct(outdir: str,
                        age: Union[int,str],
                        struct_brainmask: str,
@@ -765,15 +742,8 @@ def template_to_struct(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
 
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "affine": f"{regname}_affine.mat",
-    #                             "warp": f"{regname}_warp.nii.gz",
-    #                             "inv_warp": f"{regname}_invwarp.nii.gz"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -804,7 +774,7 @@ def template_to_struct(outdir: str,
             struct_gmprob: str = stg.abspath()
             struct += [struct_gmprob]
 
-        if 'dHCP' in atlas.get('prob'):
+        if 'dchp' in atlas.get('prob').lower():
             with NiiFile(src=atlas.get('prob'), assert_exists=True, validate_nifti=True) as tgmpb:
                 tprob: str = tgmpb.abspath()
                 gmpb: str = os.path.join(regdir,'template_gmprob.nii.gz')
@@ -825,7 +795,7 @@ def template_to_struct(outdir: str,
             struct_wmprob: str = stw.abspath()
             struct += [struct_wmprob]
 
-        if 'dHCP' in atlas.get('prob'):
+        if 'dhcp' in atlas.get('prob').lower():
             with NiiFile(src=atlas.get('prob'), assert_exists=True, validate_nifti=True) as twmpb:
                 tprob: str = twmpb.abspath()
                 wmpb: str = os.path.join(regdir,'template_wmprob.nii.gz')
@@ -850,12 +820,15 @@ def template_to_struct(outdir: str,
     src2ref) = nonlinear_reg(src=template,
                             ref=struct,
                             quick=quick,
+                            outdir=outdir,
                             ref_brainmask=struct_brainmask,
                             antsout=antsout_dir + '.ants/output_',
                             affine=outputs.get('affine'),
                             warp=outputs.get('warp'),
                             inv_warp=outputs.get('inv_warp'),
                             src2ref=outputs.get('resampled_image'),
+                            src_space=src_space,
+                            ref_space=ref_space,
                             log=log)
     
     inv_warp: str = invwarp(inwarp=warp,
@@ -869,6 +842,7 @@ def template_to_struct(outdir: str,
             src2ref)
 
 
+@timeops(log)
 def struct_to_template_composite(outdir: str,
                                  struct: str,
                                  struct2template_warp: str,
@@ -879,20 +853,17 @@ def struct_to_template_composite(outdir: str,
                                  atlasdir: Optional[str] = None,
                                  standarddir: Optional[str] = None,
                                  log: Optional[LogFile] = None
-                                ) -> Tuple[str,str,str]:
+                                ) -> Tuple[Union[str,None]]:
     """Create composite transform struct -> age-matched template -> standard template.
     """
     atlas: Dict[str,str] = _select_atlas(age=age, atlasdir=atlasdir, standard_age=standard_age)
     standard_atlas: Dict[str,str] = _select_atlas(age=standard_age, atlasdir=standarddir, standard_age=standard_age)
     
-    # if ((age != standard_age) and 
-    #     (atlas.get('atlas_name') == standard_atlas.get('atlas_name'))): 
-    #     pass
-    # elif (atlas.get('atlas_name') == standard_atlas.get('atlas_name')):
-    #     pass
-    # else:
-    #     resamp_img, inv_warp, warp = None, None, None
-    #     return resamp_img, inv_warp, warp
+    if (atlas.get('atlas_name') == standard_atlas.get('atlas_name')):
+        pass
+    else:
+        resamp_img, inv_warp, warp = None, None, None
+        return resamp_img, inv_warp, warp
 
     with NiiFile(src=standard_atlas.get('template_T2'), assert_exists=True, validate_nifti=True) as std:
         with NiiFile(src=atlas.get('template_T2'), assert_exists=True, validate_nifti=True) as ats:
@@ -915,14 +886,8 @@ def struct_to_template_composite(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
     
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "warp": f"{regname}_warp.nii.gz",
-    #                             "inv_warp": f"{regname}_invwarp.nii.gz"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
 
@@ -931,7 +896,7 @@ def struct_to_template_composite(outdir: str,
     if ((age != standard_age) and 
         (atlas.get('atlas_name') == standard_atlas.get('atlas_name'))): 
         
-        template2standard_warp: str = atlas.get(['xfm'])
+        template2standard_warp: str = atlas.get('xfm')
 
         warp: str = convertwarp(out=outputs.get('warp'),
                                 ref=standard,
@@ -958,6 +923,7 @@ def struct_to_template_composite(outdir: str,
     return warp, inv_warp, resamp_img
 
 
+@timeops(log)
 def func_to_template_composite(outdir: str,
                                func: str,
                                func2struct_affine: str,
@@ -977,6 +943,12 @@ def func_to_template_composite(outdir: str,
     atlas: Dict[str,str] = _select_atlas(age=age, atlasdir=atlasdir, standard_age=standard_age)
     standard_atlas: Dict[str,str] = _select_atlas(age=standard_age, atlasdir=standarddir, standard_age=standard_age)
 
+    if (atlas.get('atlas_name') == standard_atlas.get('atlas_name')):
+        pass
+    else:
+        resamp_img, inv_warp, warp = None, None, None
+        return resamp_img, inv_warp, warp
+    
     with NiiFile(src=standard_atlas.get('template_T2'), assert_exists=True, validate_nifti=True) as std:
         with NiiFile(src=atlas.get('template_T2'), assert_exists=True, validate_nifti=True) as ats:
             standard: str = std.abspath()
@@ -991,6 +963,7 @@ def func_to_template_composite(outdir: str,
             with File(src=func2struct_affine, assert_exists=True) as fsa:
                 func: str = fn.abspath()
                 struct2template_warp: str = stw.abspath()
+                func2struct_affine: fsa.abspath()
 
                 if not src_space: _, src_space, _ = fn.file_parts()
     
@@ -999,14 +972,8 @@ def func_to_template_composite(outdir: str,
         with WorkDir(src=regdir) as rd:
             outdir: str = od.abspath()
             regdir: str = rd.abspath()
-            # regname: str = rd.join(f'{src_space}_to_{ref_space}')
 
     # Define outputs
-    # outputs: Dict[str,str] = {
-    #                             "resampled_image": f"{regname}_img.nii.gz",
-    #                             "warp": f"{regname}_warp.nii.gz",
-    #                             "inv_warp": f"{regname}_invwarp.nii.gz"
-    #                          }
     out: MRreg = MRreg(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(src_space=src_space, ref_space=ref_space)
     
@@ -1033,6 +1000,7 @@ def func_to_template_composite(outdir: str,
     return warp, inv_warp, resamp_img
 
 
+@timeops(log)
 def epireg(outdir: str,
            src: str,
            ref: str,
@@ -1080,8 +1048,8 @@ def epireg(outdir: str,
             with WorkDir(src=regdir) as rd:
                 outdir: str = od.abspath()
                 regdir: str = rd.abspath()
-                basename: str = os.path.join(regdir,f'{src_space}_to_{ref_space}')
-                dc_warp: str = os.path.join(regdir, f'{src_space}_dc_warp.nii.gz')
+                basename: str = rd.join(f'{src_space}_to_{ref_space}')
+                dc_warp: str = rd.join(f'{src_space}_dc_warp.nii.gz')
     
     # Define outputs
     outputs: Dict[str,str] = {
@@ -1288,7 +1256,7 @@ def epireg(outdir: str,
                              log=log)
         ## Inverse warp
         inv_warp: str = outputs.get('inv_warp')
-        inv_warp: str = inv_warp(inwarp=warp,
+        inv_warp: str = invwarp(inwarp=warp,
                                  ref=src,
                                  outwarp=inv_warp,
                                  log=log)
@@ -1303,6 +1271,7 @@ def epireg(outdir: str,
     return affine, inv_affine, src2ref, warp, inv_warp
 
 
+@timeops(log)
 def nonlinear_reg(outdir: str,
                   src: Union[str,List[str]],
                   ref: Union[str,List[str]],
@@ -1329,6 +1298,8 @@ def nonlinear_reg(outdir: str,
         ref: List[str] = [ ref ]
     else:
         raise TypeError(f"Input for 'ref' is not a list or string: {ref}")
+    
+    if log: log.log(f"Performing nonlinear registration: Register {src} to {ref} ")
     
     if basename and src_space and ref_space:
         with WorkDir(src=outdir) as od:
@@ -1431,6 +1402,7 @@ def nonlinear_reg(outdir: str,
             src2ref)
 
 
+@timeops(log)
 def antsRegistrationSyN(fixed: Union[List[str],str],
                         moving: Union[List[str],str],
                         dim: int,
@@ -1453,6 +1425,8 @@ def antsRegistrationSyN(fixed: Union[List[str],str],
         moving: List[str] = [ moving ]
     else:
         raise TypeError(f"Input for 'moving' is not a list or string: {moving}")
+
+    if log: log.log(f"Performing nonlinear registration with antsRegistrationSyN(Quick).sh: Register {fixed} to {moving} ")
     
     assert len(fixed) == len(moving), 'The same number of fixed and moving images must be provided'
 

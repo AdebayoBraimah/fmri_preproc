@@ -22,6 +22,7 @@ class MRreg(OutDict):
         NOTE: ``outdir`` should be subject working directory.
         """
         self.outdir: Union[WorkDir,str] = outdir
+        super(MRreg, self).__init__()
     
     def outputs(self,
                 src_space: str,

@@ -739,7 +739,7 @@ def applywarp(src: str,
 
     if warp:
         warp: NiiFile = NiiFile(src=warp, assert_exists=True, validate_nifti=True)
-        cmd.opt(f"--warp={warp}")
+        cmd.opt(f"--warp={warp.src}")
 
     if premat:
         cmd.opt(f"--premat={premat}")
@@ -777,7 +777,7 @@ def invxfm(inmat: str,
     cmd.opt(inmat.src)
 
     cmd.run(log=log)
-    return outmat
+    return outmat.src
 
 
 def applyxfm(src: str,
@@ -918,7 +918,7 @@ def invwarp(inwarp: str,
         cmd.opt(f"--jmin={jmin}")
     
     if jmax:
-        cmd.opt(f"--jamx={jmax}")
+        cmd.opt(f"--jmax={jmax}")
     
     if verbose:
         cmd.opt("--verbose")
@@ -1010,7 +1010,8 @@ def convertwarp(out: str,
 
 def fugue(unmaskshift: bool = False, 
           despike: bool = False, 
-          unmaskfmap: bool = False, 
+          unmaskfmap: bool = False,
+          nocheck: bool = False,
           log: Optional[LogFile] = None,
           **kwargs
          ) -> Tuple[str,str,str,str]:
@@ -1023,6 +1024,8 @@ def fugue(unmaskshift: bool = False,
         cmd.opt("--despike")
     if unmaskfmap:
         cmd.opt("--unmaskfmap")
+    if nocheck:
+        cmd.opt("--nocheck")
     
     unwarp: str = kwargs.get('unwarp','')
     warp: str = kwargs.get('warp','')
@@ -1563,7 +1566,7 @@ class fslmaths:
             img: str
            ):
         """work"""
-        img: NiiFile = NiiFile(src=input, assert_exists=True, validate_nifti=True)
+        img: NiiFile = NiiFile(src=img, assert_exists=True, validate_nifti=True)
         self._cmds.opt("-mas")
         self._cmds.opt(img.src)
         return self
@@ -1646,8 +1649,7 @@ class fslmaths:
                 * https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=fsl;fc5b33c5.1205
                 * https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=FSL;f6fd75a6.1709
             """
-            if ((isinstance(tr,int) or isinstance(tr,float)) and
-                    (isinstance(hz,int) or isinstance(hz,float))):
+            if (isinstance(float(tr),float) and isinstance(float(hz),float)):
 
                 if compute_low_pass:
                     fwhm_kernel: float = float(18)
@@ -1681,8 +1683,7 @@ class fslmaths:
                                               hz=low_pass,
                                               compute_low_pass=True)
 
-        if ((isinstance(high_pass,int) or isinstance(high_pass,float)) and
-                (isinstance(low_pass,int) or isinstance(low_pass,float))):
+        if (isinstance(float(high_pass),float) and isinstance(float(low_pass),float)):
             self._cmds.opt("-bptf")
             self._cmds.opt(f"{high_pass}")
             self._cmds.opt(f"{low_pass}")

@@ -42,10 +42,10 @@ class File(IOBaseObj):
         ext: File extension of input file. If no extension is provided, it is inferred.
         assert_exists: Asserts that the specified input file must exist. 
     """
-    __slots__ = [ 
+    __slots__ = ( 
                     "src", 
                     "ext"
-                ]
+                )
     
     def __init__(self,
                  src: str,
@@ -91,7 +91,6 @@ class File(IOBaseObj):
         if assert_exists:
             assert os.path.exists(self.src), f"Input file {self.src} does not exist."
     
-    # TODO: Re-implement __enter__ method similar to that of tempfile.TemporaryDirectory
     def copy(self,
              dst: str
             ) -> str:
@@ -360,7 +359,7 @@ class NiiFile(File):
         
         if validate_nifti and os.path.exists(self.src):
             try:
-                _: nib.Nifti1Header = nib.load(filename=self.src)
+                _: nib.Nifti1Image = nib.load(filename=self.src)
             except Exception as error:
                 raise InvalidNiftiFileError(f"The NIFTI file {self.src} is not a valid NIFTI file and raised the following error {error}.")
         
@@ -398,7 +397,7 @@ class NiiFile(File):
             txt: Input text to be added to the NIFTI file header.
             header_field: Header field to have text added to.
         """
-        img: nib.Nifti1Header = nib.load(self.src)
+        img: nib.Nifti1Image = nib.load(self.src)
         header_field: str = NiiHeaderField(header_field).name
 
         if header_field == 'descrip':

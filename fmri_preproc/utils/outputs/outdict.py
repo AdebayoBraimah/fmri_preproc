@@ -13,7 +13,7 @@ from typing import (
 class OutDict(ABC):
     """Abstract base class doc-string.
     """
-    __slots__ = [ "output" ]
+    __slots__ = ( "output" )
 
     def __init__(self) -> None:
         """Abstract base class constructor.
@@ -49,8 +49,13 @@ def key_to_none(d: Dict[Any,Any]) -> Dict[Any,Any]:
     key-mapped value is a directory or file. If the value is a directory or file that
     DOES NOT EXIST, then it is set to ``None``.
     """
+    # Only looking for files that do not exist.
+    # Leave other non-filepath dictionary values as is.
     for key,val in d.items():
-        if os.path.isfile(val) or os.path.isdir(val):
+        try:
+            val: str = os.path.abspath(val)
             if not os.path.exists(val):
                 d[key] = None
+        except TypeError:
+            pass
     return d

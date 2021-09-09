@@ -14,13 +14,20 @@ from typing import (
     Tuple
 )
 
+from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.command import Command
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
+from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.mask import convert_to_fsl_fast
 from fmri_preproc.utils.fixlabels import loadLabelFile
 from fmri_preproc.func.ica import ica
-from fmri_preproc.func.mcdc import brain_extract
+
+from fmri_preproc.utils.outputs.denoise import (
+    FIXApply,
+    FIXClassify,
+    FIXExtract
+)
 
 from fmri_preproc.utils.fileio import (
     File,
@@ -29,11 +36,19 @@ from fmri_preproc.utils.fileio import (
 
 from fmri_preproc.utils.fslpy import (
     applyxfm,
+    bet,
     invxfm,
     fslmaths,
 )
 
 
+# Globlally define (temporary) log file object
+with TmpDir(src=os.getcwd()) as tmpd:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+        log: LogFile = LogFile(log_file=tmpf.src)
+
+
+@timeops(log)
 def fix_extract(func_filt: str,
                 func_ref: str,
                 struct: str,
@@ -66,12 +81,13 @@ def fix_extract(func_filt: str,
             func2struct_mat: str = fm.abspath()
             mot_param: str = mt.abspath()
     
+    # Define outputs
     with WorkDir(src=outdir) as od:
-        denoisedir: str = os.path.join(od.src,'denoise')
-        fixdir: str = os.path.join(denoisedir,'fix')
-        with WorkDir(src=fixdir) as fx:
-            denoisedir: str = os.path.abspath(denoisedir)
-            fixdir: str = fx.abspath()
+        outfix: FIXExtract = FIXExtract(outdir=od.abspath())
+        outputs: Dict[str,str] = outfix.outputs()
+        with WorkDir(src=outputs.get('fixdir')) as fd:
+            # denoisedir: str = outputs.get('denoisedir')
+            fixdir: str = fd.abspath()
     
     # Setup fake FIX directory
     if log: log.log("Setting up FIX directory")
@@ -127,22 +143,22 @@ def fix_extract(func_filt: str,
     with WorkDir(src=fixregdir) as _:
         pass
     
-    example_func: str = os.path(fixdir, 'example_func.nii.gz')
-    highres: str = os.path(fixdir, 'highres.nii.gz')
-    highres2examp: str = os.path(fixdir, 'highres2example_func.nii.gz')
-    funcmask: str = os.path(fixdir, 'mask.nii.gz')
+    example_func: str = os.path.join(fixregdir, 'example_func.nii.gz')
+    highres: str = os.path.join(fixregdir, 'highres.nii.gz')
+    highres2examp: str = os.path.join(fixregdir, 'highres2example_func.mat')
+    funcmask: str = os.path.join(fixdir, 'mask.nii.gz')
 
     with File(src=func_ref) as fr:
         example_func: str = fr.sym_link(dst=example_func, relative=True)
     
     highres: str = fslmaths(img=struct).mul(struct_brainmask).run(out=highres, log=log)
-    highres2examp: str = invxfm(inmat=func2struct_mat,outmat=highres2examp, log=log)
+    highres2examp: str = invxfm(inmat=func2struct_mat, outmat=highres2examp, log=log)
     funcmask: str = applyxfm(src=struct_brainmask, ref=example_func, mat=highres2examp, out=funcmask)
     funcmask: str = fslmaths(img=funcmask).thr(0.5).bin().run(out=funcmask, log=log)
 
     fsl_labels: str = os.path.join(fixregdir,'highres_pveseg.nii.gz')
     fsl_labels: str = convert_to_fsl_fast(dseg=struct_dseg,
-                                          dseg_type=dseg_type,
+                                          seg_type=dseg_type,
                                           out=fsl_labels)
 
     # Extract FIX features
@@ -197,6 +213,7 @@ def _classify(fixdir: str,
     return fixdir
 
 
+@timeops(log)
 def fix_classify(rdata: str,
                  thr: int,
                  outdir: str,
@@ -209,7 +226,7 @@ def fix_classify(rdata: str,
         rdata: str = rd.abspath()
     
     with WorkDir(src=outdir) as od:
-        denoisedir: str = os.path.join(od.src,'denoise')
+        denoisedir: str = od.join('denoise')
         fixdir: str = os.path.join(denoisedir,'fix')
         with WorkDir(src=fixdir) as fd:
             if not fd.exists():
@@ -218,10 +235,8 @@ def fix_classify(rdata: str,
             fixdir: fd.abspath()
     
     # Define outputs
-    outputs: Dict[str,str] = {
-                                "fix_labels": os.path.join(denoisedir,'fix_labels.txt'),
-                                "fix_regressors": os.path.join(denoisedir,'fix_regressors.tsv'),
-                             }
+    outfix: FIXClassify = FIXClassify(outdir=outdir)
+    outputs: Dict[str,str] = outfix.outputs()
     
     # FIX feature classification
     if log: log.log("Performing FIX feature classification.")
@@ -249,6 +264,7 @@ def fix_classify(rdata: str,
     return fix_labels, fix_reg
 
 
+@timeops(log)
 def fix_apply(outdir: str,
               temporal_fwhm: Optional[float] = 150.0,
               log: Optional[LogFile] = None
@@ -263,15 +279,9 @@ def fix_apply(outdir: str,
             fixdir: str = fx.abspath()
 
     # Define outputs
-    outputs: Dict[str,str] = {
-                                "fix_labels": os.path.join(denoisedir,'fix_labels.txt'),
-                                "func_clean": os.path.join(denoisedir,'func_clean.nii.gz'),
-                                "func_clean_mean": os.path.join(denoisedir,'func_clean_mean.nii.gz'),
-                                "func_clean_std": os.path.join(denoisedir,'func_clean_std.nii.gz'),
-                                "func_clean_tsnr": os.path.join(denoisedir,'func_clean_tsnr.nii.gz'),
-                                "fix_clean": os.path.join(fixdir,'filtered_func_data_clean.nii.gz')
-                             }
-
+    outfix: FIXApply = FIXApply(outdir=outdir)
+    outputs: Dict[str,str] = outfix.outputs()
+    
     # Output variables
     labels: str = outputs.get('fix_labels')
     fix_clean: str = outputs.get('fix_clean')
@@ -279,7 +289,6 @@ def fix_apply(outdir: str,
     func_mean: str = outputs.get('func_clean_mean')
     func_stdev: str = outputs.get('func_clean_std')
     func_tsnr: str = outputs.get('func_clean_tsnr')
-
 
     # FIX apply
     if log: log.log("Performing FIX noise/nuissance regression")
@@ -303,3 +312,30 @@ def fix_apply(outdir: str,
             func_mean,
             func_stdev,
             func_tsnr)
+
+
+@timeops(log)
+def brain_extract(img: str,
+                  out: str,
+                  mask: Optional[str] = None,
+                  robust: bool = False,
+                  seg: bool = True,
+                  frac_int: Optional[float] = None,
+                  log: Optional[LogFile] = None
+                 ) -> Tuple[str,str]:
+    """Performs brain extraction.
+    """
+    if mask:
+        mask_bool: bool = True
+    else:
+        mask_bool: bool = False
+
+    brain, _ = bet(img=img,
+                   out=out,
+                   mask=mask_bool,
+                   robust=robust,
+                   seg=seg,
+                   frac_int=frac_int,
+                   log=log)
+    mask: str = fslmaths(img=brain).bin().run(out=mask, log=log)
+    return brain, mask
