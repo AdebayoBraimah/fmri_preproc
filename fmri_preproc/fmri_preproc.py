@@ -20,9 +20,30 @@ def main():
     pass
 
 
-def arg_parser():
+def preproc_data():
+    """Preprocess rs-fMRI data.
+    """
+    # preproc: Pipeline = Pipeline(outdir=outdir,
+    #                              func=func,
+    #                              scan_pma=44)
+    pass
+
+
+def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentParser]:
     """Argument parser.
     """
+    # Init parser
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__)
+
+    # Parse Arguments
+
+    # Required Arguments
+    reqoptions = parser.add_argument_group('Required Arguments')
+    reqoptions.add_argument('--path',
+                            type=str,
+                            metavar="<path>",
+                            dest="path",
+                            help="Location for resources (default = <FMRI_PREPROC_DIR>/resources).")
     pass
 
 
