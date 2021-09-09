@@ -58,7 +58,7 @@ def convert_to_fsl_fast(dseg: str,
     with NiiFile(src=dseg, assert_exists=True, validate_nifti=True) as dg:
         dseg: str = dg.abspath()
 
-    dseg: nib.Nifti1Header = nib.load(dseg)
+    dseg: nib.Nifti1Image = nib.load(dseg)
     d: np.array = dseg.get_data()
     d0: np.array = np.zeros(d.shape)
 
@@ -85,7 +85,7 @@ def create_mask(dseg: str,
                ) -> str:
     """Create segmentation mask.
     """
-    dseg: nib.Nifti1Header = nib.load(dseg)
+    dseg: nib.Nifti1Image = nib.load(dseg)
     d: np.array = dseg.get_data()
     d0: np.array = np.zeros(d.shape)
 

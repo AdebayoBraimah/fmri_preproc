@@ -70,11 +70,11 @@ def postprocess(func: str,
     func_smooth: str = outputs.get('func_smooth')
     func_smooth: str = fslmaths(img=func).mas(func_brainmask).run(out=func_smooth, log=log)
 
-    d: nib.Nifti1Header = nib.load(func_smooth).get_data().astype(float)
+    d: nib.Nifti1Image = nib.load(func_smooth).get_data().astype(float)
     func_q2, func_q98 = np.percentile(d, [2, 98])
 
-    d: nib.Nifti1Header = nib.load(func_smooth).get_data().astype(float)
-    m: nib.Nifti1Header = nib.load(func_brainmask).get_data().astype(float)
+    d: nib.Nifti1Image = nib.load(func_smooth).get_data().astype(float)
+    m: nib.Nifti1Image = nib.load(func_brainmask).get_data().astype(float)
     median_intensity: float = np.percentile(d[m >= 1], 50)
 
     if spatial_fwhm > 0.01:

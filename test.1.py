@@ -57,4 +57,4 @@ preproc.import_data(func_echospacing=echospacing,
                     pa_dir=pa,
                     spinecho_inplaneacc=inplane_acc)
 
-preproc.run_all(use_mcflirt=False, s2v=True)
+preproc.run_all(use_mcflirt=True, s2v=True)

@@ -24,9 +24,14 @@
 #   b. [X] Intensity norm
 # 7. QC
 #   a. PENDING
+# 
+# 
+# TODO:
+#   * Figure out a way to transport and rename atlses
+#   * Figure out a way to perform multiple registrations
+
 import os
 import numpy as np
-
 from io import TextIOWrapper
 
 from typing import (
@@ -38,8 +43,13 @@ from typing import (
     Union
 )
 
+from fmri_preproc.func.qc import Subject
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
+from fmri_preproc.func.fieldmap import fieldmap
+from fmri_preproc.func.mcdc import mcdc
+from fmri_preproc.func.ica import ica
+
 from fmri_preproc.utils.util import (
     dict2json,
     json2dict,
@@ -58,6 +68,7 @@ from fmri_preproc.utils.outputs.fieldmap import FmapFiles
 from fmri_preproc.utils.outputs.registration import MRreg
 from fmri_preproc.utils.outputs.mcdc import MCDCFiles
 from fmri_preproc.utils.outputs.ica import ICAFiles
+
 from fmri_preproc.utils.outputs.denoise import (
     FIXApply,
     FIXClassify,
@@ -71,8 +82,6 @@ from fmri_preproc.func.importdata import (
     import_struct
 )
 
-from fmri_preproc.func.fieldmap import fieldmap
-
 from fmri_preproc.func.registration import (
     fmap_to_struct,
     fmap_to_func_composite,
@@ -83,9 +92,6 @@ from fmri_preproc.func.registration import (
     struct_to_template_composite,
     template_to_struct
 )
-
-from fmri_preproc.func.mcdc import mcdc
-from fmri_preproc.func.ica import ica
 
 from fmri_preproc.func.denoise import (
     fix_apply,
@@ -760,11 +766,6 @@ class Pipeline:
         except (TypeError,ValueError):
             age: Union[int,float,str] = scan_pma
         
-        # if atlasdir is None:
-        #     atlasdir: str = ATLASDIR
-
-        # TODO: Add file checks for each registration step
-        
         #  template -> struct
 
         src_space: str = f'template-{age}wks'
@@ -1035,12 +1036,25 @@ class Pipeline:
 
         return self.outputs
     
-    # TODO: Work on these class function later
-    # 
-    # def report(self) -> None:
-    #     pass
-    # 
+    # def report(self,
+    #            group_qc: Optional[str] = None
+    #           ) -> None:
+    #     """doc-string
+    #     """
+    #     if group_qc is None:
+    #         # TODO: set a default for this - use a settings file
+    #         group_qc: str = 'PLACE_HOLDER_TEXT'
+        
+    #     template: str = 'individual_qc_report_template.html'
+    #     qcdir: str = 'PLACE_HOLDER_TEXT' # TODO: set a default for this - use a settings file
+
+    #     qc0: Subject = Subject.from_qcdir()
+    #     # qc0.parse(template, self.defaults.get('qc_report', make_dir=True), group_json=group_qc) # TODO: Set output dict for report
+    #     return None
+    
     # def qc(self) -> None:
+    #     """doc-string
+    #     """
     #     pass
 
     def pre_mcdc(self) -> Dict[Any,str]:

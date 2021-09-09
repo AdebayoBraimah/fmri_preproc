@@ -18,16 +18,22 @@ It is split into the following sub-packages:
 
 .. autosummary::
 
-    fsl.func
-    fsl.util
+    func
+    util
 """
 import os
 name: str = "fmri_preproc"
 
-_resourcedir: str = os.path.join(os.path.dirname(__file__), 'resources')
+# Define constants
+RESOURCEDIR: str = os.path.join(os.path.dirname(__file__), 'resources')
+ATLASDIR: str = os.path.join(RESOURCEDIR,'atlases')
+HTMLDIR: str = os.path.join(RESOURCEDIR,'html')
+FIXDATADIR: str = os.path.join(RESOURCEDIR,'fix')
+GROUP_MAP_DIR: str = os.path.join(RESOURCEDIR,'group_maps')
+GROUP_QC_DIR: str = os.path.join(RESOURCEDIR,'group_qc')
 
 _version_file: str = os.path.abspath(
-    os.path.join(_resourcedir,'version.txt')
+    os.path.join(RESOURCEDIR,'version.txt')
 )
 
 with open(_version_file,'r') as f:

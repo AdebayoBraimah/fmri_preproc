@@ -626,7 +626,7 @@ def write_slice_order(slices: int,
     return out_file
 
 
-def _dvars(img: nib.Nifti1Header) -> np.array:
+def _dvars(img: nib.Nifti1Image) -> np.array:
     """Calculates DVARS.
     """
     dvars: np.array = np.square(np.diff(img, axis=3))
@@ -637,17 +637,17 @@ def _dvars(img: nib.Nifti1Header) -> np.array:
     return dvars
 
 
-def _refrms(img: nib.Nifti1Header,
-            ref: Optional[nib.Nifti1Header] = None
+def _refrms(img: nib.Nifti1Image,
+            ref: Optional[nib.Nifti1Image] = None
            ) -> np.array:
     """Calculates REFRMS.
     """
     if ref:
         pass
     else:
-        ref: nib.Nifti1Header = img[:, :, :, int(np.round(img.shape[3] / 2))]
+        ref: nib.Nifti1Image = img[:, :, :, int(np.round(img.shape[3] / 2))]
 
-    rms: nib.Nifti1Header = img
+    rms: nib.Nifti1Image = img
     for i in range(0, rms.shape[3]):
         rms[:, :, :, i] = (rms[:, :, :, i] - ref)
 
@@ -671,7 +671,7 @@ def motion_outlier(func: str,
     """
     func: NiiFile = NiiFile(src=func, assert_exists=True, validate_nifti=True)
 
-    img0: nib.Nifti1Header = nib.load(func.src)
+    img0: nib.Nifti1Image = nib.load(func.src)
     image_data: np.array = img0.get_data().astype(float)
 
     # Threshold image

@@ -18,7 +18,7 @@ from typing import (
     Union
 )
 
-from fmri_preproc import _resourcedir
+from fmri_preproc import ATLASDIR
 from fmri_preproc.utils.outputs.registration import MRreg
 from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.workdir import WorkDir
@@ -60,9 +60,6 @@ from fmri_preproc.utils.fslpy import (
 with TmpDir(src=os.getcwd()) as tmpd:
     with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
         log: LogFile = LogFile(log_file=tmpf.src)
-
-
-ATLASDIR: str = os.path.join(_resourcedir,'atlases')
 
 
 @timeops(log)
@@ -609,7 +606,7 @@ def _select_atlas(age: Union[int,str],
     elif ((age == 'neo') or (age == '1yr') or (age == '2yr')):
         atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"UNC*2020*"))))
     elif ((28 <= age) and (age <= 44)):
-        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"dHCPatlas"))))
+        atlasdir: str = ' '.join(map(str, glob.glob(os.path.join(ATLASDIR,"*dhcp*atlas*"))))
     else:
         raise FileNotFoundError("'atlasdir' does exists or was not specified.")
 
@@ -690,7 +687,7 @@ def _select_atlas(age: Union[int,str],
                 else:
                     invxfm: str = wd.join(invxfm)
                 
-                if 'dHCPatlas' in atlasdir:
+                if 'dhcp' in atlasdir.lower():
                     age: str = f"{age}wks"
                 
                 atlasdict: Dict[str,str] = {
@@ -777,7 +774,7 @@ def template_to_struct(outdir: str,
             struct_gmprob: str = stg.abspath()
             struct += [struct_gmprob]
 
-        if 'dHCP' in atlas.get('prob'):
+        if 'dchp' in atlas.get('prob').lower():
             with NiiFile(src=atlas.get('prob'), assert_exists=True, validate_nifti=True) as tgmpb:
                 tprob: str = tgmpb.abspath()
                 gmpb: str = os.path.join(regdir,'template_gmprob.nii.gz')
@@ -798,7 +795,7 @@ def template_to_struct(outdir: str,
             struct_wmprob: str = stw.abspath()
             struct += [struct_wmprob]
 
-        if 'dHCP' in atlas.get('prob'):
+        if 'dhcp' in atlas.get('prob').lower():
             with NiiFile(src=atlas.get('prob'), assert_exists=True, validate_nifti=True) as twmpb:
                 tprob: str = twmpb.abspath()
                 wmpb: str = os.path.join(regdir,'template_wmprob.nii.gz')

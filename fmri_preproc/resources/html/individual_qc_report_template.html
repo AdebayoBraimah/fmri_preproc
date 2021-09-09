@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+       <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+          crossorigin="anonymous">
+
+    <style type="text/css">
+        body {
+            background: whitesmoke !important;
+        }
+
+        .popover {
+            max-width: 100%;
+        }
+
+        @media (min-width: 34em) {
+            .card-columns {
+                -webkit-column-count: 1;
+                -moz-column-count: 1;
+                column-count: 1;
+            }
+        }
+
+        @media (min-width: 48em) {
+            .card-columns {
+                -webkit-column-count: 1;
+                -moz-column-count: 1;
+                column-count: 1;
+            }
+        }
+
+        @media (min-width: 62em) {
+            .card-columns {
+                -webkit-column-count: 1;
+                -moz-column-count: 1;
+                column-count: 1;
+            }
+        }
+
+        @media (min-width: 75em) {
+            .card-columns {
+                -webkit-column-count: 2;
+                -moz-column-count: 2;
+                column-count: 2;
+            }
+        }
+
+        /* Adding !important forces the browser to overwrite the default style applied by Bootstrap */
+    </style>
+
+    <title>QC Subject Report</title>
+</head>
+<body>
+
+{% set qc = ind_obj.properties %}
+{% set qc_df = ind_obj.to_dataframe() %}
+
+{% set func_labels = [] %}
+{% for k, v in qc.items() if k.endswith('_qctype') and v == 'func' %}
+    {% set tmp = func_labels.append(k[:-7]) %}
+{% endfor %}
+
+{% set motp_labels = [] %}
+{% for k, v in qc.items() if k.endswith('_qctype') and v == 'motparam' %}
+    {% set tmp = motp_labels.append(k[:-7]) %}
+{% endfor %}
+
+{% set reg_labels = [] %}
+{% for k, v in qc.items() if k.endswith('_qctype') and v == 'reg' %}
+    {% set tmp = reg_labels.append(k[:-7]) %}
+{% endfor %}
+
+{% set fmap_labels = [] %}
+{% for k, v in qc.items() if k.endswith('_qctype') and v == 'fmap' %}
+    {% set tmp = fmap_labels.append(k[:-7]) %}
+{% endfor %}
+
+{% if grp_obj is defined %}
+    {%  set has_group_qc = True %}
+    {% set grp_qc = grp_obj.group_scores %}
+    {% set grp_N = grp_qc.shape[0] %}
+{% else %}
+    {%  set has_group_qc = False %}
+{% endif %}
+
+{% set tsnr_def = "
+tSNR = Tmean(FUNC) / Tstd(FUNC)<br>
+where:
+<ol>
+<li>FUNC = subject 4D functional image: [x, y, z, time]</li>
+<li>Tmean is the temporal mean</li>
+<li>Tstd is the temporal standard deviation</li>
+</ol>" %}
+
+{% set cnr_def = "
+FUNC = subject 4D functional image: [x, y, z, time]<br>
+GRPMAP = dHCP group RSN spatial-maps: [x, y, z, maps]<br><br>
+
+<b>Dual Regression (DR)</b><br>
+<ol>
+<li> Regress GRPMAP onto FUNC to yield subject time-courses (DR1: [time, maps]) and residual noise (N: [x, y, z, time])</li>
+<li> Regress DR1 onto FUNC to yield subject-spatial-maps (DR2: [x, y, z, maps])
+</ol>
+See: <a target='_blank' href='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/DualRegression'>https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/DualRegression</a> <br><br>
+
+<b>Contrast-to-Noise Ratio (CNR)</b><br>
+<ol>
+<li> Contrast (C: [x, y, z, time]) = FUNC - N
+<li> CNR ([x, y, z]) = Tstd(C) / Tstd(N), where Tstd is the temporal standard deviation
+</ol>
+
+*Note: the GRPMAP is aligned with the FUNC, and the DR and CNR are calculated in the subjects native FUNC space.
+
+" %}
+
+{% set voxplot_def = "<b>Voxplots</b> (aka. “carpetplots” and “grayplots”) comprise a heat-map of voxel x time fMRI intensities (with mean and linear trend removed)<br>
+along with plots of nuisance time-series such as DVARs and framewise displacement (surrogates for motion).  <br><br>
+<b>DVARS</b> = the RMS intensity difference between successive volumes , as per <a target='_blank' href='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLMotionOutliers'>https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLMotionOutliers</a> <br>
+<b>Framewise displacement</b> = average of rotation and translation parameter differences - using weighted scaling, as per <a target='_blank' href='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLMotionOutliers'>https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLMotionOutliers</a> <br><br>
+Voxplots were developed by Power (2017) and here they have been adapted  by converting each heat-map to a
+z-score and using a diverging colormap so that it accentuates divergence from the mean of zero.  " %}
+
+{% set netmat_def = "
+FUNC = subject 4D functional image: [x, y, z, time]<br>
+GRPMAP = dHCP group RSN spatial-maps: [x, y, z, maps]<br><br>
+
+<b>Dual Regression (DR)</b><br>
+<ol>
+<li> Regress GRPMAP onto FUNC to yield subject time-courses (DR1: [time, maps])</li>
+<li> Regress DR1 onto FUNC to yield subject-spatial-maps (DR2: [x, y, z, maps])
+</ol>
+See: <a target='_blank' href='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/DualRegression'>https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/DualRegression</a> <br><br>
+
+<b>FSL Netmat</b><br>
+Individual subject FSL netmat calculated from subject-spatial-maps (DR2).<br>
+Upper triangle = full correlation<br>
+Lower triangle = partial correlation<br>
+See: <a target='_blank' href='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLNets'>https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLNets</a><br><br>
+
+<b>Spatial Correlation</b><br>
+Spatial correlation of each subject-spatial-map (DR2) with the corresponding dHCP group RSN spatial-map (GRPMAP)<br><br>
+*Note: the GRPMAP is aligned with the FUNC, and the DR and CNR are calculated in the subjects native FUNC space.
+" %}
+
+
+<nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
+    <span class="navbar-brand mb-0 h1">QC Subject Report</span>
+
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+
+        <ul class="navbar-nav mr-auto">
+
+            <li class="nav-item">
+                <a class="nav-link" href="#info">Info<span class="sr-only">(current)</span></a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#tsnr">tSNR<span class="sr-only">(current)</span></a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#cnr">CNR<span class="sr-only">(current)</span></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#voxplot">VoxPlot<span class="sr-only">(current)</span></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#rsn">RSNs<span class="sr-only">(current)</span></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#reg">Registration<span class="sr-only">(current)</span></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#fmap">Fieldmap<span class="sr-only">(current)</span></a>
+            </li>
+
+        </ul>
+    </div>
+
+</nav>
+
+
+<div class="container-fluid">
+<div class="card-columns">
+
+
+{#    <div class="row"> {# START ROW #}
+
+
+        {# ------ SUBJECT/GROUP INFO ------ #}
+
+{#        <div class="col-xl-6"> {# START COL #}
+            <div class="card border-secondary mt-2" id="info">
+                <div class="card-header">
+                    Info
+                </div>
+                <div class="card-body">
+
+                    <h5 class="card-title">Subject</h5>
+
+                    <table class="table table-hover table-bordered">
+                        <tr>
+                            <td><b>Subject ID:</b></td><td>{{ qc['subid'] }}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Session ID:</b></td><td>{{ qc['sesid'] }}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Age at birth:</b></td><td>{{ qc['birth_age'] }}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Age at scan:</b></td><td>{{ qc['scan_age'] }}</td>
+                        </tr>
+                        <tr>
+                            <td><b>Subject QC filename:</b></td><td>{{ ind_obj.fname }}</td>
+                        </tr>
+                    </table>
+
+                    {% if has_group_qc %}
+
+                        <h5 class="card-title">Group</h5>
+
+                        <table class="table table-hover table-bordered">
+                            <tr>
+                                <td><b>Group QC filename:</b></td><td>{{ grp_obj.fname }}</td>
+                            </tr>
+                            <tr>
+                                <td><b>Group N:</b></td><td>{{ grp_N }}</td>
+                            </tr>
+                        </table>
+
+                        <table class="table">
+                            <tr>
+                                {% set grp0 = grp_qc[['scan_age']] %} 
+                                {% set ind0 = qc_df[['scan_age']].astype('float64') %} 
+                                {% set imgstr = plot.to_base64(plot.raincloudplot, grp0, marker=ind0, z=False, figsize=(12,4), width_viol=0.5, title='Group (n='+ grp_N|string + ') Age Distribution', markerlegend=('This subject',), orient='h') %} 
+                                <td><img src="{{ imgstr }}" width="100%"></td>
+                            </tr>
+                        </table>
+
+                    {%  endif %}
+
+                    <h5 class="card-title">Files</h5>
+
+                    <table class="table table-hover table-bordered">
+
+                        <tr>
+                            <td><b></b></td><td><b>Filename:</b></td><td><b>Shape:</b></td><td><b>Pixdims:</b></td>
+                        </tr>
+
+
+                        {% for func in ['raw','clean'] %}
+                            {% set func0 = ind_obj.get_image(func+'_fname') %}
+                            <tr>
+                                <td><b>{{ func }}</b></td><td>{{ qc[func+'_fname'] }}</td><td>{{ func0.shape }}</td><td>{{ func0.header.get_zooms() }}</td>
+                            </tr>
+                        {% endfor %}
+
+
+                    </table>
+
+                </div>
+            </div>
+{#        </div> {# END COL #}
+
+
+        {# ------ VOXEL/CARPET PLOTS ------ #}
+
+
+{#        <div class="col-xl-6"> {# START COL #}
+            <div class="card border-secondary mt-2" id="voxplot">
+                <div class="card-header">
+                    Voxel time-series plot <span class="badge badge-pill badge-secondary" data-toggle="popover" data-html=true data-placement="bottom" data-title="Voxel time-series plot" data-content="{{ voxplot_def }}">?</span>
+                </div>
+                <div class="card-body">
+
+                    {% set imgstr = plot.to_base64(plot.colorbar, None, 'bwr', vmin=-1.5, vmax=1.5, orientation='horizontal', figsize=(12, 1)) %}
+                    <table>
+                        <tr>
+                            <td><img src="{{ imgstr }}" width="60%" style="display: block; margin-left: auto; margin-right: auto;"></td>
+                        </tr>
+
+                        {% for func in ['raw','clean'] %}
+
+                            {% set func0 = ind_obj.get_image(func+'_fname') %}
+
+                            {% set brain_mask = ind_obj.get_image(func+'_brainmask') %}
+
+                            {% if ind_obj.has(func+'_func_dseg') %}
+                                {% set dseg = ind_obj.get_image(func+'_func_dseg') %}
+                                {% set dseg_labels = ind_obj.get(func+'_func_dseg_labels') %}
+                                {% set dseg_labels = {'GM': [2], 'WM': [3], 'SC': [7, 9], 'CB': [6], 'BS': [8]} %}
+                                {% set imgstr = plot.to_base64(plot.voxplot, func0, dseg=dseg, dseg_labels=dict(dseg_labels), clim=[-1.5, 1.5], ylabel=func|title, zscore=True, grid_color='k', colorbar=False, figsize=(12, 5)) %}
+                            {% else %}
+                                {% set imgstr = plot.to_base64(plot.voxplot, func0, brain_mask=brain_mask, clim=[-1.5, 1.5], ylabel=func|title, zscore=True, grid_color='k', colorbar=False, figsize=(12, 5)) %}
+                            {% endif %}
+                            <tr>
+                                <td><img src="{{ imgstr }}" width="100%"></td>
+                            </tr>
+
+                        {% endfor %}
+
+                        {% set imgstr = plot.to_base64(plot.dvars, numpy.stack([qc['raw_dvars'], qc['clean_dvars']], axis=1), figsize=(12, 2), title=None, legend=('Raw', 'Clean')) %}
+                        <tr>
+                            <td><img src="{{ imgstr }}" width="100%"></td>
+                        </tr>
+
+
+                        {% set mp = 'motparam' %}
+
+                        {% if mp+'_fd' in qc %}
+                            {% set imgstr = plot.to_base64(plot.framewise_displacement, qc[mp+'_fd'], figsize=(12, 2), title='', ylabel='Framewise\nDisplacement (mm)') %}
+                            <tr>
+                                <td><img src="{{ imgstr }}" width="100%"></td>
+                            </tr>
+                        {% endif %}
+
+
+                        {% if mp+'_RotX' in qc %}
+                            {% set motparam = numpy.stack((qc[mp+'_RotX'], qc[mp+'_RotY'], qc[mp+'_RotZ'], qc[mp+'_X'], qc[mp+'_Y'], qc[mp+'_Z']), axis=1) %}
+                            {% set imgstr = plot.to_base64(plot.motion_parameters, motparam, figsize=(12, 4), title='') %}
+                            <tr>
+                                <td><img src="{{ imgstr }}" width="100%"></td>
+                            </tr>
+                        {% endif %}
+
+                    </table>
+
+                    {% if has_group_qc %}
+
+                        <table>
+                        <tr>
+                            {% set grp0 = grp_qc[['raw_dvars_mean', 'clean_dvars_mean']] %}
+                            {% set ind0 = qc_df[['raw_dvars_mean', 'clean_dvars_mean']].astype('float64') %}
+
+                            {% set imgstr = plot.to_base64(plot.raincloudplot, grp0, marker=ind0, z=False, figsize=(7,5), width_viol=0.5, xticklabels=['Raw', 'Clean'], title='Group (n='+ grp_N|string + ') Mean DVARS', markerlegend=("This subject (" + qc['subid'] + "-" + qc['sesid']+")",)) %}
+                            <td><img src="{{ imgstr }}" width="100%"></td>
+
+                            {% set grp0 = grp_qc[[mp+'_fd_mean']] %}
+                            {% set ind0 = qc_df[[mp+'_fd_mean']].astype('float64') %}
+
+                            {% set imgstr = plot.to_base64(plot.raincloudplot, grp0, marker=ind0, z=False, figsize=(5,5), width_viol=0.5, title='Group (n='+ grp_N|string + ') Mean Framewise Displacement', markerlegend=("This subject (" + qc['subid'] + "-" + qc['sesid']+")",)) %}
+                            <td><img src="{{ imgstr }}" width="100%"></td>
+                        </tr>
+                        </table>
+
+                    {% endif %}
+
+
+                </div>
+            </div>
+{#        </div> {# END COL #}
+
+
+        {# ------ TSNR ------ #}
+{#        <div class="col-xl-6"> {# START COL #}
+            <div class="card border-secondary mt-2" id="tsnr">
+                <div class="card-header">
+                    tSNR <span class="badge badge-pill badge-secondary" data-toggle="popover" data-html=true data-placement="bottom" data-title="Temporal signal-to-noise ratio (tSNR)" data-content="{{ tsnr_def }}">?</span>
+                </div>
+                <div class="card-body">
+
+{#                    <h5>tSNR#}
+{#                        <span class="badge badge-pill badge-secondary" data-toggle="popover" data-html=true data-placement="bottom" data-title="Temporal signal-to-noise ratio (tSNR)" data-content="{{ tsnr_def }}">?</span>#}
+{#                    </h5>#}
+
+
+                    {% set snr_max = [] %}
+                    {% for k, v in qc.items() if k.endswith('_snr_p95') %}
+                        {% set tmp = snr_max.append(v|float) %}
+                    {% endfor %}
+                    {% set snr_max = numpy.mean(snr_max) %}
+
+                    {% set cut_coords = nl_plot.find_cut_slices(ind_obj.get_image('raw_brainmask'), direction='z', n_cuts=7) %}
+
+                    {% for func in ['raw','clean'] %}
+
+                        {% set snr = ind_obj.get_image(func+'_snr') %}
+
+                        {% set imgstr = plot.to_base64(nl_plot.plot_anat, snr, colorbar=True, cmap='hot', display_mode='z', cut_coords=cut_coords, vmin=0, vmax=snr_max, black_bg=True) %}
+                        <p>{{ func|title }}:</p>
+                        <img src="{{ imgstr }}" width="100%"><br><br>
+
+                    {% endfor %}
+
+
+                    {% if has_group_qc %}
+
+
+                        {% set grp0 = grp_qc[['raw_snr_mean', 'clean_snr_mean']] %}
+                        {% set ind0 = qc_df[['raw_snr_mean', 'clean_snr_mean']].astype('float64') %}
+
+                        {% set imgstr = plot.to_base64(plot.raincloudplot, grp0, marker=ind0, z=False, figsize=(12,4), width_viol=0.5, xticklabels=['Raw', 'Clean'], title='Group (n='+ grp_N|string + ') Mean tSNR', markerlegend=("This subject (" + qc['subid'] + "-" + qc['sesid']+")",)) %}
+                        <img src="{{ imgstr }}" width="100%">
+
+                    {% endif %}
+
+
+                </div>
+            </div>
+{#        </div> {# END COL #}
+
+
+        {# ------ CNR ------ #}
+
+        {% if ('raw_cnr' in qc.keys()) and ('clean_cnr' in qc.keys())  %}
+
+{#            <div class="col-xl-6"> {# START COL #}
+                <div class="card border-secondary mt-2" id="cnr">
+                    <div class="card-header">
+                        CNR <span class="badge badge-pill badge-secondary" data-toggle="popover" data-html=true data-placement="bottom" data-title="Contrast-to-noise ratio (CNR)" data-content="{{ cnr_def }}">?</span>
+                    </div>
+                    <div class="card-body">
+
+{#                        <h5>CNR#}
+{#                            <span class="badge badge-pill badge-secondary" data-toggle="popover" data-html=true data-placement="bottom" data-title="Contrast-to-noise ratio (CNR)" data-content="{{ cnr_def }}">?</span>#}
+{#                        </h5>#}
+
+                        {% set cnr_max = [] %}
+                        {% for k, v in qc.items() if k.endswith('_cnr_p95') %}
+                            {% set tmp = cnr_max.append(v|float) %}
+                        {% endfor %}
+                        {% set cnr_max = numpy.mean(cnr_max) %}
+
+                        {% for func in ['raw','clean'] %}
+
+                            {% set cnr = ind_obj.get_image(func+'_cnr') %}
+
+                            {% set imgstr = plot.to_base64(nl_plot.plot_anat, cnr, colorbar=True, cmap='hot', display_mode='z', cut_coords=cut_coords, vmin=0, vmax=cnr_max, black_bg=True) %}
+                            <p>{{ func|title }}:</p>
+                            <img src="{{ imgstr }}" width="100%"><br><br>
+
+                        {% endfor %}
+
+
+                        {% if has_group_qc %}
+
+
+                            {% set grp0 = grp_qc[['raw_cnr_mean', 'clean_cnr_mean']] %}
+                            {% set ind0 = qc_df[['raw_cnr_mean', 'clean_cnr_mean']].astype('float64') %}
+
+                            {% set imgstr = plot.to_base64(plot.raincloudplot, grp0, marker=ind0, z=False, figsize=(12,4), width_viol=0.5, xticklabels=['Raw', 'Clean'], title='Group (n='+ grp_N|string + ') Mean CNR', markerlegend=("This subject (" + qc['subid'] + "-" + qc['sesid']+")",)) %}
+                            <img src="{{ imgstr }}" width="100%">
+
+                        {% endif %}
+
+
+                    </div>
+                </div>
+{#            </div> {# END COL #}
+
+        {% endif %}
+
+
+        {# ------ RSNs ------ #}
+
+        {% if ('raw_netmat' in qc.keys()) and ('clean_netmat' in qc.keys())  %}
+
+{#            <div class="col-xl-6"> {# START COL #}
+                <div class="card border-secondary mt-2" id="rsn">
+                    <div class="card-header">
+                        RSNs <span class="badge badge-pill badge-secondary" data-toggle="popover" data-html=true data-placement="bottom" data-title="Resting-state Networks (RSNs)" data-content="{{ netmat_def }}">?</span>
+                    </div>
+                    <div class="card-body">
+
+                        <table>
+                            <tr>
+                                {% set imgstr = plot.to_base64(plot.netmat, qc['raw_netmat_z'], figsize=(6,6), title='Raw Netmat Z', clim=(-5, 5)) %}
+                                <td><img src="{{ imgstr }}" width="100%"></td>
+                                {% set imgstr = plot.to_base64(plot.spatialcor, numpy.array(qc['raw_spatial_corr']), figsize=(7,6), title='Raw Spatial Correlation', xlabel='spatial-maps', ymax=0.5, xtickrot=90) %}
+                                <td><img src="{{ imgstr }}" width="100%"></td>
+                            </tr>
+                            <tr>
+                                {% set imgstr = plot.to_base64(plot.netmat, qc['clean_netmat_z'], figsize=(6,6), title='Clean Netmat Z', clim=(-5, 5)) %}
+                                <td><img src="{{ imgstr }}" width="100%"></td>
+                                {% set imgstr = plot.to_base64(plot.spatialcor, numpy.array(qc['clean_spatial_corr']), figsize=(7,6), title='Clean Spatial Correlation', xlabel='spatial-maps', ymax=0.5, xtickrot=90) %}
+                                <td><img src="{{ imgstr }}" width="100%"></td>
+                            </tr>
+                        </table>
+
+                        {% if has_group_qc %}
+
+                            <table>
+
+                                {% for func in ['raw','clean'] %}
+
+                                    {% set grp0 = pandas.DataFrame(numpy.stack(grp_qc[func+'_spatial_corr'].dropna().values, axis=0)) %}
+                                    {% set ind0 = pandas.DataFrame(qc_df[func+'_spatial_corr'].values[0]).T %}
+
+                                    {% set imgstr = plot.to_base64(plot.raincloudplot, grp0, marker=ind0, z=False, figsize=(12,4), width_viol=0.5, ylim=(0, 0.6), title=func|title+' Group (n='+ grp_N|string + ') Spatial Correlation', markerlegend=("This subject (" + qc['subid'] + "-" + qc['sesid']+")",), ylabel='correlation', xlabel='spatial-maps')  %}
+                                    <tr>
+                                        <td><img src="{{ imgstr }}" width="100%"></td>
+                                    </tr>
+
+                                {% endfor %}
+
+                            </table>
+
+                        {% endif %}
+
+                    </div>
+                </div>
+{#            </div> {# END COL #}
+
+        {% endif %}
+
+        {# ------ REGISTRATION ------ #}
+
+
+{#        <div class="col-xl-6"> {# START COL #}
+            <div class="card border-secondary mt-2" id="reg">
+                <div class="card-header">
+                    Registration
+                </div>
+                <div class="card-body">
+
+                    {% for reg in reg_labels %}
+
+                        {% set popstr = "<b>Base Image</b> = source image ("+ qc[reg+'_source_fname'] +") resampled to reference space ("+ qc[reg+'_ref_fname'] +")" %}
+                        {% if ind_obj.has(reg+'_ref_dseg_fname')  %}
+                            {%  set popstr = popstr + " <br><b>Overlay outline (red)</b> = ("+ qc[reg+'_ref_dseg_fname']+")" %}
+                        {% endif %}
+
+                        <h5>{{ reg }} <span class="badge badge-pill badge-secondary" data-toggle="popover" data-html=true data-placement="bottom" data-content="{{ popstr }}">?</span></h5>
+
+                        {% set coords = nl_plot.find_cut_slices(ind_obj.get_image(reg+'_ref_fname'), direction='z', n_cuts=7) %}
+
+                        {% set src = ind_obj.get_image(reg+'_source_fname') %}
+                        {% if ind_obj.has(reg+'_ref_dseg_fname')  %}
+                            {% set ref_dseg = ind_obj.get_image(reg+'_ref_dseg_fname') %}
+                            {% set imgstr = plot.to_base64(plot.plot_overlay, src, overlay=ref_dseg, black_bg=True, display_mode='z', cut_coords=coords, vmin=0) %}
+                            <img src="{{ imgstr }}" width="100%">
+                        {% else %}
+                            {% set imgstr = plot.to_base64(plot.plot_overlay, src, black_bg=True, display_mode='z', cut_coords=coords, vmin=0) %}
+                            <img src="{{ imgstr }}" width="100%">
+                        {% endif %}
+
+                        <table class="table table-hover table-bordered">
+                            <tr>
+                                <td>Normalised Mutual Info: <span class="badge badge-pill badge-secondary" data-toggle="popover" data-html=true data-placement="bottom"
+                                                               data-content="More negative NORMMI implies better alignment">?</span></td><td>{{ qc[reg+'_normmi'] }}</td>
+                            </tr>
+                            {% if ind_obj.has(reg+'_bbr')  %}
+                                <tr>
+                                    <td>Boundary Based Registration: <span class="badge badge-pill badge-secondary" data-toggle="popover" data-html=true data-placement="bottom"
+                                                               data-content="More positive BBR implies better alignment">?</span></td><td>{{ qc[reg+'_bbr'] }}</td>
+                                </tr>
+                            {% endif %}
+
+                        </table><br>
+
+                    {% endfor %}
+
+                    {% if has_group_qc %}
+                        <table>
+
+                            {% for metric, metric_name in [('normmi', 'Normalised Mutual Info (normmi)'), ('bbr', 'Boundary Based Registration (bbr)')] %}
+
+                                {% set cols = [] %}
+                                {% set labels = [] %}
+                                {% for r in reg_labels %}
+                                    {%  do cols.append(r+'_'+metric) if r+'_'+metric in qc.keys() %}
+                                    {%  do labels.append(r) if r+'_'+metric in qc.keys() %}
+                                {% endfor %}
+
+                                {% set grp0 = grp_qc[cols] %}
+                                {% set ind0 = qc_df[cols] %}
+                                {% set imgstr = plot.to_base64(plot.raincloudplot, grp0, marker=ind0, z=True, ylabel='z-score', figsize=(12,4), width_viol=0.5, xticklabels=labels, title='Group (n='+ grp_N|string + ') '+metric_name, markerlegend=("This subject (" + qc['subid'] + "-" + qc['sesid']+")",)) %}
+
+                                <tr>
+                                    <td><img src="{{ imgstr }}" width="100%"></td>
+                                </tr>
+
+                            {% endfor %}
+                        </table>
+                    {% endif %}
+
+                </div>
+            </div>
+{#        </div> {# END COL #}
+
+
+        {# ------ FIELDMAPS ------ #}
+
+
+        {% for fmap in fmap_labels %}
+{#            <div class="col-xl-6">#}
+                <div class="card border-secondary mt-2" id="fmap">
+                    <div class="card-header">
+                        Fieldmap
+                    </div>
+                    <div class="card-body">
+
+                        <table class="table table-hover table-bordered">
+                            <tr>
+                                <td><b>Fieldmap:</b></td>
+                                <td>{{ qc[fmap+'_ph_fname'] }}</td>
+                            </tr>
+                            <tr>
+                                <td><b>Fieldmap magnitude:</b></td>
+                                <td>{{ qc[fmap+'_mag_fname'] }}</td>
+                            </tr>
+                        </table>
+
+
+                        {% set fmap_ph = ind_obj.get_image(fmap+'_ph_fname') %}
+                        {% set fmap_mag = ind_obj.get_image(fmap+'_mag_fname') %}
+
+                        {% set coords = nl_plot.find_cut_slices(fmap_mag, direction='z', n_cuts=7) %}
+
+                        <h5 class="card-title">Fieldmap magnitude</h5>
+
+                        {% set imgstr = plot.to_base64(plot.plot_overlay, fmap_mag, black_bg=True, display_mode='z', cut_coords=coords, vmin=0) %}
+                        <img src="{{ imgstr }}" width="100%">
+
+                        <h5 class="card-title">Fieldmap (rad/s)</h5>
+{#                        {% set imgstr = plot.to_base64(plot.plot_overlay, fmap_ph, black_bg=True, display_mode='z', cut_coords=coords, colorbar=True) %}#}
+                        {% set imgstr = plot.to_base64(nl_plot.plot_stat_map, fmap_ph, black_bg=True, bg_img=None, symmetric_cbar=True, display_mode='z', cut_coords=coords) %}
+                        <img src="{{ imgstr }}" width="100%">
+
+                    </div>
+                </div>
+{#            </div>#}
+        {% endfor %}
+{#    </div> {# END ROW #}
+</div>
+
+    <div class="row">
+
+         <div class="col-xl-12">
+                <div class="card border-secondary mt-2" id="{{ fmap }}">
+                    <div class="card-body">
+                        This report was built using:
+                        <a target='_blank' href="http://jinja.pocoo.org/docs/2.10/">Jinja2</a> |
+                        <a target='_blank' href="http://nilearn.github.io">Nilearn</a> |
+                        <a target='_blank' href="https://getbootstrap.com">Bootstrap</a> |
+                        <a target='_blank' href="https://pandas.pydata.org">Pandas</a> |
+                        <a target='_blank' href="https://www.numpy.org">Numpy</a> |
+                        <a target='_blank' href="https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/">FSL</a> |
+                        <a target='_blank' href="https://github.com/pog87/PtitPrince">PtitPrince</a>
+                    </div>
+                </div>
+            </div>
+    </div>
+
+</div>
+
+<!-- Optional JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+<script>
+$(document).ready(function(){
+    $('[data-toggle="popover"]').popover({ container: 'body' });
+});
+
+</script>
+
+
+
+</body>
+
+</html>
