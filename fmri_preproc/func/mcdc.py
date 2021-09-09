@@ -121,27 +121,9 @@ def mcdc(func: str,
         raise RuntimeError('func_brainmask is required to use EDDY.')
     
     # Define output files
-    # if use_mcflirt:
-    #     mc_name: str = 'mc'
-    # else:
-    #     mc_name: str = 'mcdc'
-
     out: MCDCFiles = MCDCFiles(outdir=outdir)
     outputs: Dict[str,str] = out.outputs(dc=(not use_mcflirt))
     mcdir: str = outputs.get('mcdir')
-
-    # outputs: Dict[str,str] = {
-    #                             "func_mcdc": os.path.join(mcdir,f"func_{mc_name}.nii.gz"),
-    #                             "motparams": os.path.join(mcdir,f"func_{mc_name}_motion.tsv"),
-    #                             "func_metrics": os.path.join(mcdir,f"func_{mc_name}_regressors.tsv"),
-    #                             "func_out_plot": os.path.join(mcdir,f"func_{mc_name}_outliers.png"),
-    #                             "mcdc_mean": os.path.join(mcdir,f"func_{mc_name}_mean.nii.gz"),
-    #                             "mcdc_std": os.path.join(mcdir,f"func_{mc_name}_std.nii.gz"),
-    #                             "mcdc_tsnr": os.path.join(mcdir,f"func_{mc_name}_tsnr.nii.gz"),
-    #                             "mcdc_brainmask": os.path.join(mcdir,f"func_{mc_name}_brainmask.nii.gz"),
-    #                             "func_mcdc_fovmask": os.path.join(mcdir,f"func_{mc_name}_fovmask.nii.gz"),
-    #                             "func_mcdc_fovpercent": os.path.join(mcdir,f"func_{mc_name}_fovpercent.nii.gz")
-    #                         }
 
     # Perform MCDC
     if use_mcflirt:
@@ -354,7 +336,7 @@ def eddy_mcdc(func: str,
     idx: str = write_index(num_frames=num_vols, out_file=outputs.get('idx'))
     bvals: str = write_bvals(num_frames=num_vols, out_file=outputs.get('bvals'))
     bvecs: str = write_bvecs(num_frames=num_vols, out_file=outputs.get('bvecs'))
-    acqp: str = write_func_params(epi=func,
+    acqp, _ = write_func_params(epi=func,
                                   echospacing=func_echospacing,
                                   pedir=PhaseEncodeDirection(func_pedir).name,
                                   out=outputs.get('acqp'),
