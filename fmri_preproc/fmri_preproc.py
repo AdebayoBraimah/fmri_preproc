@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 """Performs preprocessing of neonatal resting-state functional MR neuroimages.
 """
-# TODO: Recompress UNC.tar.gz on a linux computer
+# TODO: 
+#   * Write CLI
+#   * Write function for multi-atlas registration
+#   * Create settings function(s)/module and corresponding settings(.json) file.
+
 import os
 import argparse
 
