@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Fetch dHCP volumetric atlas, group maps, and/or group QC files.
+"""Fetch dHCP volumetric atlas, group maps, and/or group QC files from the dHCP study.
 
 NOTE: This does not include the dHCP FIX training data as it is assumed that the data being preprocessed will not 
     likely match the acquisition parameters used for the dHCP study.
@@ -68,7 +68,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
     """Argument parser.
     """
     # Init parser
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 
     # Parse Arguments
 
