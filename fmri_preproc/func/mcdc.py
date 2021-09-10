@@ -445,7 +445,7 @@ def eddy_mcdc(func: str,
             mot_params: str = f.sym_link(mot_params)
     
     # Re-write TR in output NIFTI file header
-    func: nib.load(func)
+    func: nib.Nifti1Image = nib.load(func)
 
     nib.Nifti1Image(nib.load(func_mcdc).get_fdata(),
                     header=func.header,
