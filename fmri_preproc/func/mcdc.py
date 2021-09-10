@@ -149,7 +149,7 @@ def mcdc(func: str,
                                        fmap=fmap,
                                        fmap2func_xfm=fmap2func_affine,
                                        mb_factor=mb_factor,
-                                       mot_params=outputs.get('motfile'),
+                                       mot_params=outputs.get('motparams'),
                                        mbs=mbs,
                                        s2v_corr=s2v,
                                        log=log)
