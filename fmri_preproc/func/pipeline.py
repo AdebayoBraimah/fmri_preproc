@@ -27,7 +27,6 @@
 # 
 # 
 # TODO:
-#   * Figure out a way to transport and rename atlses
 #   * Figure out a way to perform multiple registrations
 
 import os
@@ -99,10 +98,6 @@ from fmri_preproc.func.denoise import (
     fix_extract
 )
 
-# TODO: 
-#   * Create outputs module that handles output
-#       dictionaries for all of the other modules.
-#   * Import the dictionaries from the outputs modules.
 
 class Pipeline:
     """class doc-string

@@ -26,6 +26,7 @@ from fmri_preproc.utils.fslpy import fslmaths
 with TmpDir(src=os.getcwd()) as tmpd:
     with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
         log: LogFile = LogFile(log_file=tmpf.src)
+        tmpd.rmdir()
 
 
 @timeops(log)
