@@ -603,7 +603,7 @@ class Pipeline:
 
         # Check if mc(dc) files exist
         outmcdc: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
-        outmcdc_dict: Dict[str,str] = outmcdc.outputs()
+        outmcdc_dict: Dict[str,str] = outmcdc.outputs(dc=(not use_mcflirt))
         outmcdc_files: Tuple[str] = ('func_mcdc', 
                                      'mcdc_mean',
                                      'motparams',
