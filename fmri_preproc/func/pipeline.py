@@ -162,7 +162,7 @@ class Pipeline:
                     func_pedir: Optional[str] = None,
                     T2w: Optional[str] = None,
                     T2w_brainmask: Optional[str] = None,
-                    dseg: Optional[str] = None,  # Required and up [test]
+                    dseg: Optional[str] = None,
                     func_brainmask: Optional[str] = None,
                     func_slorder: Optional[str] = None,
                     func_inplane_accel: Optional[float] = 1,
