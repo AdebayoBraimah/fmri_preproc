@@ -168,7 +168,7 @@ def fix_extract(func_filt: str,
     cmd: Command = Command("fix")
     cmd.opt("-f")
     cmd.opt(f"{fixdir}")
-    cmd.run(log=log)
+    cmd.run(log=log, raise_exc=False)
 
     return fixdir
 
