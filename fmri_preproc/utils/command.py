@@ -174,8 +174,8 @@ class Command:
             (0, '', '')
         
         Arguments:
-            log: LogFile object
-            debug: Sets logging function verbosity to DEBUG level
+            log: ``LogFile`` object.
+            debug: Sets logging function verbosity to DEBUG level.
             dryrun: Dry run -- does not run task. Command is recorded to log file.
             path_envs: List of directory paths to append to the system's 'PATH' variable.
             env: Dictionary of environment variables to add to subshell.
