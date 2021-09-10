@@ -87,7 +87,7 @@ def fix_extract(func_filt: str,
         outfix: FIXExtract = FIXExtract(outdir=od.abspath())
         outputs: Dict[str,str] = outfix.outputs()
         with WorkDir(src=outputs.get('fixdir')) as fd:
-            # denoisedir: str = outputs.get('denoisedir')
+            denoisedir: str = outputs.get('denoisedir')
             fixdir: str = fd.abspath()
     
     # Setup fake FIX directory
