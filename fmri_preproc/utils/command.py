@@ -16,9 +16,11 @@ from typing import (
 from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.logutil import LogFile
 
+
 class DependencyError(Exception):
     """Exception intended for unment dependencies"""
     pass
+
 
 class Command:
     """Creates a command and an empty command list for UNIX command line programs/applications. Primary use and
