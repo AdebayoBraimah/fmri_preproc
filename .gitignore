@@ -3,3 +3,6 @@ data/*
 # *.tar.gz
 fmri_preproc/resources/atlases/*/*.nii*
 fmri_preproc/resources/atlases/*dHCP*/*
+__pycache__/
+unc_infant_atlas_2020/
+group_qc/
