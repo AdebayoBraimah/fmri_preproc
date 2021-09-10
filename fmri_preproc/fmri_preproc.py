@@ -70,7 +70,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                metavar="<path>",
                                dest="T2w_brainmask",
                                help="Path to input T2w brainmask image data (_brainmask_bet).")
-    importoptions.add_argument('--tissue-seg',
+    importoptions.add_argument('--T2w-tissue-seg',
                                type=str,
                                metavar="<path>",
                                dest="dseg",
