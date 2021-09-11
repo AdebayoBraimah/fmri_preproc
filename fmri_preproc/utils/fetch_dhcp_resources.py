@@ -78,7 +78,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                             type=str,
                             metavar="<path>",
                             dest="path",
-                            help="Location for resources (default = <FMRI_PREPROC_DIR>/resources).")
+                            help="Location for resources (default=<FMRI_PREPROC_DIR>/resources).")
 
     reqoptions.add_argument('--skip-volumetric-atlas',
                             action='store_false',
@@ -92,7 +92,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                             action='store_false',
                             dest="fetch_group_qc")
     
-    args: parser.parse_args = parser.parse_args()
+    args: argparse.ArgumentParser.parse_args = parser.parse_args()
 
     return args, parser
 
