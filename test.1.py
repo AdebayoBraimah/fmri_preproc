@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import sys
-_mod_path: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc"
-sys.path.append(_mod_path)
+# import os
+# import sys
+# _mod_path: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc"
+# sys.path.append(_mod_path)
 
 from fmri_preproc.func.pipeline import Pipeline
 
