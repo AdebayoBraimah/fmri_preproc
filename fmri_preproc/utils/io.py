@@ -111,7 +111,9 @@ class IOBaseObj(ABC):
                     os.path.dirname(dst)),
                     os.path.basename(self.src)))
         else:
-            return os.path.relpath(dst, self.abspath())
+            return os.path.relpath(
+                self.abspath(),
+                os.path.dirname(dst))
 
     def abspath(self,
                 follow_sym_links: bool = False
@@ -205,8 +207,6 @@ class IOBaseObj(ABC):
             warn(f"WARNING: Symlinked file of the name {dst} already exists. It is being replaced.")
             os.remove(dst)
             cmd.extend([f"{src}",f"{dst}"])
-        elif os.path.isdir(src):
-            cmd.extend([f"{dst}",f"{src}"])
         else:
             cmd.extend([f"{src}",f"{dst}"])
         
