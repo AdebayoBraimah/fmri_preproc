@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# import os
-# import sys
-# _mod_path: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc"
-# sys.path.append(_mod_path)
+import os
+import sys
+_mod_path: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc"
+sys.path.append(_mod_path)
 
 from fmri_preproc.func.pipeline import Pipeline
 
@@ -22,6 +22,8 @@ from fmri_preproc.func.pipeline import Pipeline
 outdir: str = "/users/brac4g/fmri_neonate/FMRI_test_1/test/test.2"
 
 # # (Local) File variables
+# outdir: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc/test/test.1"
+# 
 # func: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc/data/sub-194/functional/sub-194/func/sub-194_task-rest_dir-PA_run-01_bold.nii.gz"
 # sbref: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc/data/sub-194/functional/sub-194/func/sub-194_task-rest_dir-PA_run-01_sbref.nii.gz"
 # 
