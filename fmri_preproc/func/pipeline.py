@@ -323,8 +323,8 @@ class Pipeline:
         fmap_out: FmapFiles = FmapFiles(outdir=self.outputs.get('workdir'))
         fmap_info_dict: Dict[str,str] = fmap_out.outputs()
         fmap_files: Tuple[str] = ('fmap',
-                                 'fmap_mag',
-                                 'fmap_mask')
+                                  'fmap_mag',
+                                  'fmap_mask')
 
         if not fmap_out.check_exists(*fmap_files):
             _: Tuple[str] = fieldmap(outdir=self.outputs.get('workdir'),
@@ -925,6 +925,7 @@ class Pipeline:
             **self.outputs,
             "func_filt": func_filt,
             "icadir": icadir,
+            "meldir": ica_dict.get('meldir'),
         }
         _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
         return self.outputs
@@ -963,7 +964,7 @@ class Pipeline:
                                     dseg_type=dseg_type,
                                     func2struct_mat=self.outputs.get('func_mcdc2struct_affine'),
                                     mot_param=self.outputs.get('motparams'),
-                                    icadir=self.outputs.get('icadir'),
+                                    icadir=self.outputs.get('meldir'),
                                     temporal_fwhm=temporal_fwhm,
                                     log=fix_log)
         else:
