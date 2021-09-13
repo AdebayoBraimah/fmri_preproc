@@ -43,11 +43,11 @@ from fmri_preproc.utils.enums import (
     SliceAcqOrder
 )
 
+
 # Globlally define (temporary) log file object
 with TmpDir(src=os.getcwd()) as tmpd:
     with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
         log: LogFile = LogFile(log_file=tmpf.src)
-        tmpd.rmdir()
 
 
 @timeops(log)
@@ -149,7 +149,7 @@ def mcdc(func: str,
                                        fmap=fmap,
                                        fmap2func_xfm=fmap2func_affine,
                                        mb_factor=mb_factor,
-                                       mot_params=outputs.get('motfile'),
+                                       mot_params=outputs.get('motparams'),
                                        mbs=mbs,
                                        s2v_corr=s2v,
                                        log=log)
@@ -445,7 +445,7 @@ def eddy_mcdc(func: str,
             mot_params: str = f.sym_link(mot_params)
     
     # Re-write TR in output NIFTI file header
-    func: nib.load(func)
+    func: nib.Nifti1Image = nib.load(func)
 
     nib.Nifti1Image(nib.load(func_mcdc).get_fdata(),
                     header=func.header,

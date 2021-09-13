@@ -31,6 +31,7 @@
 
 import os
 import numpy as np
+from collections import OrderedDict
 from io import TextIOWrapper
 
 from typing import (
@@ -38,6 +39,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Set,
     Tuple,
     Union
 )
@@ -162,7 +164,7 @@ class Pipeline:
                     func_pedir: Optional[str] = None,
                     T2w: Optional[str] = None,
                     T2w_brainmask: Optional[str] = None,
-                    dseg: Optional[str] = None,  # Required and up [test]
+                    dseg: Optional[str] = None,
                     func_brainmask: Optional[str] = None,
                     func_slorder: Optional[str] = None,
                     func_inplane_accel: Optional[float] = 1,
@@ -323,8 +325,8 @@ class Pipeline:
         fmap_out: FmapFiles = FmapFiles(outdir=self.outputs.get('workdir'))
         fmap_info_dict: Dict[str,str] = fmap_out.outputs()
         fmap_files: Tuple[str] = ('fmap',
-                                 'fmap_mag',
-                                 'fmap_mask')
+                                  'fmap_mag',
+                                  'fmap_mask')
 
         if not fmap_out.check_exists(*fmap_files):
             _: Tuple[str] = fieldmap(outdir=self.outputs.get('workdir'),
@@ -603,7 +605,7 @@ class Pipeline:
 
         # Check if mc(dc) files exist
         outmcdc: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
-        outmcdc_dict: Dict[str,str] = outmcdc.outputs()
+        outmcdc_dict: Dict[str,str] = outmcdc.outputs(dc=(not use_mcflirt))
         outmcdc_files: Tuple[str] = ('func_mcdc', 
                                      'mcdc_mean',
                                      'motparams',
@@ -733,14 +735,20 @@ class Pipeline:
         _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
 
         return self.outputs
+    
+    def _reg_to_standard(self,
+                         template_source: str,
+                         template_space: str,
+                         template_age: Union[int,str],
+                         standard_age: Union[int,str] = 40,
+                         quick: bool = False,
+                         atlasdir: Optional[str] = None
+                        ) -> Dict[Any,str]:
+        """doc-stirng
 
-    def standard(self,
-                 standard_age: Union[int,str] = 40,
-                 quick: bool = False,
-                #  template_ages: Optional[Union[List[int,str],int,str]] = None,
-                 atlasdir: Optional[str] = None
-                ) -> Dict[Any,str]:
-        """doc-string
+        NOTE: 
+            * Template source should be the aged match template.
+            * Template space should be the standard aged template.
         """
         with WorkDir(src=self.logdir) as lgd:
             _std_log: str = lgd.join('standard.log')
@@ -748,31 +756,15 @@ class Pipeline:
 
         self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
 
-        # if not isinstance(template_ages, list):
-        #     template_ages: List[int,str] = [template_ages]
-        
-        # for template_age in template_ages:
-        #     try:
-        #         template_age: int = int(template_age)
-        #     except(TypeError,ValueError):
-        #         template_age: str = template_age
-        
-        # try:
-        #     template_ages.remove(standard_age)
-        # except ValueError:
-        #     pass
-
-        # template_ages.append(standard_age)
-        
         try:
-            scan_pma: Union[float,str] = self.outputs.get('scan_pma')
-            age: int = int(np.round(scan_pma))
+            age: int = int(np.round(template_age))
         except (TypeError,ValueError):
-            age: Union[int,float,str] = scan_pma
+            age: Union[int,float,str] = template_age
         
         #  template -> struct
 
-        src_space: str = f'template-{age}wks'
+        # src_space: str = f'template-{age}wks'
+        src_space: str = template_source
         ref_space: str ='struct'
 
         tm2st_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
@@ -814,7 +806,8 @@ class Pipeline:
         # struct -> age-matched template -> standard template (composite)
 
         src_space: str = 'struct'
-        ref_space: str = 'standard'
+        # ref_space: str = 'standard'
+        ref_space: str = template_space
 
         st2std_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
         st2std_dict: Dict[str,str] = st2std_reg.outputs(src_space=src_space, ref_space=ref_space)
@@ -850,7 +843,8 @@ class Pipeline:
         # func (undistorted) -> struct -> age-matched template -> standard template (composite)
 
         src_space: str = 'func-mcdc'
-        ref_space: str = 'standard'
+        # ref_space: str = 'standard'
+        ref_space: str = template_space
 
         fn2tm_reg: MRreg = MRreg(outdir=self.outputs.get('workdir'))
         fn2tm_dict: Dict[str,str] = fn2tm_reg.outputs(src_space=src_space, ref_space=ref_space)
@@ -885,6 +879,100 @@ class Pipeline:
         }
         _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
 
+        return self.outputs
+
+    def standard(self,
+                 standard_age: Union[int,str] = 40,
+                 quick: bool = False,
+                 template_ages: Optional[Union[List[Union[int,str]],int,str]] = None,
+                 atlasdir: Optional[str] = None
+                ) -> Dict[Any,str]:
+        """doc-string
+        """
+        # with WorkDir(src=self.logdir) as lgd:
+        #     _std_log: str = lgd.join('standard.log')
+        #     std_log: LogFile = LogFile(_std_log, format_log_str=True)
+
+        self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
+
+        # TODO: 
+        # try-except for standard_age - could be int | float | str
+        # Log file updates for which atlas/template is being used for the 
+        #   multi-template registration process
+
+        if template_ages is not None:
+            if not isinstance(template_ages, list):
+                template_ages: List[str] = template_ages.split(",")
+            
+            # Create set of unique template ages
+            age_set: Set = set(template_ages)
+
+            if ('neo' in template_ages) or ('neonate' in template_ages):
+                try:
+                    age_set.remove('neo')
+                except KeyError:
+                    age_set.remove('neonate')
+                
+                # Sort
+                template_ages: List[str] = list(age_set)
+                template_ages.sort()
+                template_ages.insert(0,'neonate')
+                # template_ages.insert(0,'neo')
+            else:
+                # Sort
+                template_ages: List[str] = list(age_set)
+                template_ages.sort()
+        else:
+            template_ages: List[str] = []
+        
+        try:
+            scan_pma: Union[float,str] = self.outputs.get('scan_pma')
+            age: int = int(np.round(scan_pma))
+        except (TypeError,ValueError):
+            age: Union[int,float,str] = self.outputs.get('scan_pma')
+        
+        # Append scan age to age list
+        template_ages.append(age)
+
+        # Fill dictionary
+        age_dict: OrderedDict = OrderedDict()
+
+        for template_age in template_ages:
+            if (template_age == 'neo') or (template_age == 'neonate'):
+                template_source: str = f'UNCAAL-{template_age}'
+                template_space: str = f'UNCAAL-{template_age}'
+                temp_age: Union[int,str] = template_age
+                std_age: Union[int,str] = template_age
+            elif (template_age == 1) or (template_age == 2):
+                template_source: str = f'UNCAAL-{template_age}yrs'
+                template_space: str = f'UNCAAL-{template_age}yrs'
+                temp_age: Union[int,str] = template_age
+                std_age: Union[int,str] = template_age
+            elif template_age == age:
+                template_source: str = f'template-{template_age}wks'
+                template_space: str = 'standard'
+                temp_age: Union[int,str] = template_age
+                std_age: Union[int,str] = standard_age
+            else:
+                template_source: str = f'template-{template_age}wks'
+                template_space: str = f'template-{template_age}wks'
+                temp_age: Union[int,str] = template_age
+                std_age: Union[int,str] = template_age
+            
+            tmp_dict: Dict[str,str] = {
+                template_age: {
+                    "template_source": template_source,
+                    "template_space": template_space,
+                    "template_age": temp_age,
+                    "standard_age": std_age,
+                }
+            }
+
+            age_dict.update(**tmp_dict)
+
+            _: Dict[str,str] = self._reg_to_standard(**age_dict.get(template_age), 
+                                                     quick=quick, 
+                                                     atlasdir=atlasdir)
         return self.outputs
 
     def ica(self,
@@ -925,6 +1013,7 @@ class Pipeline:
             **self.outputs,
             "func_filt": func_filt,
             "icadir": icadir,
+            "meldir": ica_dict.get('meldir'),
         }
         _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
         return self.outputs
@@ -963,7 +1052,7 @@ class Pipeline:
                                     dseg_type=dseg_type,
                                     func2struct_mat=self.outputs.get('func_mcdc2struct_affine'),
                                     mot_param=self.outputs.get('motparams'),
-                                    icadir=self.outputs.get('icadir'),
+                                    icadir=self.outputs.get('meldir'),
                                     temporal_fwhm=temporal_fwhm,
                                     log=fix_log)
         else:
@@ -1068,6 +1157,7 @@ class Pipeline:
 
     def post_mcdc(self,
                   standard_age: Union[int,str] = 40,
+                  template_ages: Optional[Union[List[Union[int,str]],int,str]] = None,
                   temporal_fwhm: float = 150.0,
                   icadim: Optional[int] = None,
                   rdata: Optional[str] = None,
@@ -1076,6 +1166,7 @@ class Pipeline:
                  ) -> Dict[Any,str]:
         """Perform all post-motion-and-distortion-correction stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
+                                                    template_ages=template_ages,
                                                     atlasdir=atlasdir)
 
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
@@ -1087,6 +1178,7 @@ class Pipeline:
 
     def run_all(self,
                 standard_age: Union[int,str] = 40,
+                template_ages: Optional[Union[List[Union[int,str]],int,str]] = None,
                 temporal_fwhm: float = 150.0,
                 use_mcflirt: bool = False,
                 s2v: bool = False,
@@ -1105,6 +1197,7 @@ class Pipeline:
                                                 mbs=mbs)
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
                                                     quick=True, # Remove this later after testing
+                                                    template_ages=template_ages,
                                                     atlasdir=atlasdir)
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
                                                icadim=icadim)

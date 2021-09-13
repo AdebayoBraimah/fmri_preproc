@@ -46,7 +46,6 @@ from fmri_preproc.utils.fslpy import (
 with TmpDir(src=os.getcwd()) as tmpd:
     with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
         log: LogFile = LogFile(log_file=tmpf.src)
-        tmpd.rmdir()
 
 
 @timeops(log)
@@ -89,6 +88,7 @@ def fix_extract(func_filt: str,
         with WorkDir(src=outputs.get('fixdir')) as fd:
             # denoisedir: str = outputs.get('denoisedir')
             fixdir: str = fd.abspath()
+            fix_log: str = fd.join('fix','logMatlab.txt')
     
     # Setup fake FIX directory
     if log: log.log("Setting up FIX directory")
@@ -168,7 +168,14 @@ def fix_extract(func_filt: str,
     cmd: Command = Command("fix")
     cmd.opt("-f")
     cmd.opt(f"{fixdir}")
-    cmd.run(log=log)
+
+    try:
+        cmd.run(log=log, raise_exc=False)
+    except Exception as _:
+        with open(fix_log, 'r') as f:
+            s: str = f.read()
+            if log: log.error(s)
+        raise RuntimeError(s)
 
     return fixdir
 
@@ -191,7 +198,7 @@ def _classify(fixdir: str,
             raise FileNotFoundError(f"Input FIX directory does not exist.")
         
         fixdir: str = fd.abspath()
-        fix_log: str = os.path.join(fd.abspath(),'.fix_2b_predict.log')
+        fix_log: str = fd.join('.fix_2b_predict.log')
     
     if fix_src:
         cmd: Command = Command(f"{fix_src}")

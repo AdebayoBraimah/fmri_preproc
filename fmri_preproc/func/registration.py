@@ -60,7 +60,6 @@ from fmri_preproc.utils.fslpy import (
 with TmpDir(src=os.getcwd()) as tmpd:
     with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
         log: LogFile = LogFile(log_file=tmpf.src)
-        tmpd.rmdir()
 
 
 @timeops(log)
@@ -630,7 +629,7 @@ def _select_atlas(age: Union[int,str],
                 seg: str = ' '.join(map(str, glob.glob(f"*{age}*dseg*.nii*")))
                 
                 if t2 == "":
-                    t2: str = ' '.join(map(str, glob.glob(f"*{age}*wtihCere*.nii*")))
+                    t2: str = ' '.join(map(str, glob.glob(f"*{age}*withCere*.nii*")))
                 
                 if seg == "":
                     seg: str = ' '.join(map(str, glob.glob(f"*{age}*-seg.nii*")))
@@ -644,8 +643,11 @@ def _select_atlas(age: Union[int,str],
                 
                 os.chdir(warpsdir)
 
-                xfm: str = ' '.join(map(str, glob.glob(f"*{age}*to*{int(standard_age)}_warp*.nii*")))
-                invxfm: str = ' '.join(map(str, glob.glob(f"*{age}*to*{int(standard_age)}_invwarp*.nii*")))
+                # xfm: str = ' '.join(map(str, glob.glob(f"*{age}*to*{int(standard_age)}_warp*.nii*")))
+                # invxfm: str = ' '.join(map(str, glob.glob(f"*{age}*to*{int(standard_age)}_invwarp*.nii*")))
+
+                xfm: str = ' '.join(map(str, glob.glob(f"*{age}*to*{standard_age}_warp*.nii*")))
+                invxfm: str = ' '.join(map(str, glob.glob(f"*{age}*to*{standard_age}_invwarp*.nii*")))
 
                 # Set variables to None if no atlas file is found
                 if t1 == "": 

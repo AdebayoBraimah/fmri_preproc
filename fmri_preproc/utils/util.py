@@ -158,7 +158,7 @@ def fetch_dhcp_volumetric_atlas(path: Optional[str] = None,
                 tar.extract(member=m, path=path)
         
         unc_data: str = os.path.join(ATLASDIR,'UNC.tar.gz')
-        path: str = os.path.join(ATLASDIR,'unc_infant_atlas_2020')
+        path: str = ATLASDIR
         if os.path.exists(unc_data):
             print('Unpack UNC atlas:')
             with tarfile.open(name=unc_data) as tar:

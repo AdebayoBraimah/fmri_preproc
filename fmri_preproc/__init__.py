@@ -24,6 +24,7 @@ It is split into the following sub-packages:
 import os
 name: str = "fmri_preproc"
 
+
 # Define constants
 RESOURCEDIR: str = os.path.join(os.path.dirname(__file__), 'resources')
 ATLASDIR: str = os.path.join(RESOURCEDIR,'atlases')
@@ -33,14 +34,17 @@ GROUP_MAP_DIR: str = os.path.join(RESOURCEDIR,'group_maps')
 GROUP_QC_DIR: str = os.path.join(RESOURCEDIR,'group_qc')
 SETTINGS: str = os.path.join(RESOURCEDIR,'settings.default.json')
 
+
 _version_file: str = os.path.abspath(
     os.path.join(RESOURCEDIR,'version.txt')
 )
+
 
 with open(_version_file,'r') as f:
     file_contents: str = f.read()
     _version: str = file_contents.strip("\n")
     f.close()
+
 
 __author__          = "Adebayo Braimah"
 __credits__         = ["Adebayo Braimah",
