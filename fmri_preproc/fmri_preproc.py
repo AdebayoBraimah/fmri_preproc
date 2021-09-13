@@ -131,7 +131,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                type=float,
                                metavar="<float>",
                                dest="sbref_echospacing",
-                               help="Single band reference MR image echospacing. If not specified, then it is assumed match '--func-echospacing'.")
+                               help="Single band reference MR image echospacing. If not specified, then it is assumed to match '--func-echospacing'.")
     importoptions.add_argument('--sbref-pedir',
                                type=str,
                                metavar="<PE-dir>",
@@ -148,7 +148,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                type=float,
                                metavar="<float>",
                                dest="spinecho_echospacing",
-                               help="Spinecho MR image echospacing. If not specified, then it is assumed match '--func-echospacing'.")
+                               help="Spinecho MR image echospacing. If not specified, then it is assumed to match '--func-echospacing'.")
     importoptions.add_argument('--sp-pedir',
                                type=str,
                                metavar="<PE-dir,PE-dir,..,PE-dir>",
@@ -158,7 +158,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                type=float,
                                metavar="<float>",
                                dest="spinecho_inplaneacc",
-                               help="Spinecho MR image inplane acceleration . If not specified, then it is assumed match '--func-inplane-accel'.")
+                               help="Spinecho MR image inplane acceleration . If not specified, then it is assumed to match '--func-inplane-accel'.")
 
     args: argparse.ArgumentParser.parse_args = parser.parse_args()
 
