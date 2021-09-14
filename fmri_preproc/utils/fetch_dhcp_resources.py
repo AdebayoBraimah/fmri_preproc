@@ -8,7 +8,10 @@ NOTE: This does not include the dHCP FIX training data as it is assumed that the
 import os
 import argparse
 
-from typing import Optional, Tuple
+from typing import (
+    Optional, 
+    Tuple
+)
 
 from fmri_preproc.utils.util import (
     fetch_dhcp_group_maps,

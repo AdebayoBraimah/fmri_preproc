@@ -16,7 +16,6 @@ import fmri_preproc.utils.qc.plot as plot
 import warnings
 
 from fmri_preproc.utils.qc.util import load_img
-
 from tempfile import TemporaryDirectory
 
 class Subject(object):
@@ -49,7 +48,7 @@ class Subject(object):
     def parse(self, template: str, outname: str, group_json: str=None):
 
         env = jinja2.Environment(
-            loader=jinja2.PackageLoader('dhcp', 'resources'),
+            loader=jinja2.PackageLoader('fmri_preproc','resources/html'),
             autoescape=jinja2.select_autoescape(['html', 'xml']),
             extensions=['jinja2.ext.do']
         )

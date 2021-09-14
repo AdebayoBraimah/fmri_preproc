@@ -139,7 +139,7 @@ def import_info(outdir: str,
                             "birth_ga": birth_ga,
                             **kwargs,
                           }
-    info_name: str = dict2json(dict=info, jsonfile=info_name)
+    _: str = dict2json(dict=info, jsonfile=info_name)
 
     return info_dir, logdir, info_name, info
 

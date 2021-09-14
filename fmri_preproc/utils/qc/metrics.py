@@ -69,11 +69,11 @@ def dr(func: Image,
     """
     # create output template dictionary
     ft: Dict[str,str] = dict(
-        dr1='{basename}_dr1.txt',
-        dr2='{basename}_dr2.nii.gz',
-        dr2_standard='{basename}_standard_dr2.nii.gz',
-        cnr='{basename}_cnr.nii.gz',
-        cnr_standard='{basename}_standard_cnr.nii.gz',
+        dr1=f'{basename}_dr1.txt',
+        dr2=f'{basename}_dr2.nii.gz',
+        dr2_standard=f'{basename}_standard_dr2.nii.gz',
+        cnr=f'{basename}_cnr.nii.gz',
+        cnr_standard=f'{basename}_standard_cnr.nii.gz',
     )
 
     # update template with kwargs
@@ -82,7 +82,7 @@ def dr(func: Image,
             raise ValueError(f'unknown output template {k}')
         ft[k] = v
     
-    dname, _, _ = split(fname=v)
+    dname, _, _ = split(fname=ft.get('dr1'))
 
     if not os.path.exists(dname):
         os.makedirs(name=dname, exist_ok=True)
@@ -143,7 +143,7 @@ def dr(func: Image,
 
         # calculate the cnr: contrast_std / noise_std
         # cnr = basename + '_space-orig_cnr.nii.gz'
-        run(['fslmaths', tmp_contrast_std, '-div', tmp_noise_std, '-nan', ft.get('cnr', make_dir=True)])
+        run(['fslmaths', tmp_contrast_std, '-div', tmp_noise_std, '-nan', ft.get('cnr')])
         cnr = nib.load(ft.get('cnr'))
         cnr_stats = img_descriptives(cnr, func_brainmask, prefix='cnr')
 
@@ -176,12 +176,13 @@ def tSNR(func: Image,
 
     # create output template dictionary
     ft: Dict[str,str] = dict(
-        mean='{basename}_tmean.nii.gz',
-        mean_standard='{basename}_standard_tmean.nii.gz',
-        std='{basename}_tstd.nii.gz',
-        std_standard='{basename}_standard_tstd.nii.gz',
-        snr='{basename}_tsnr.nii.gz',
-        snr_standard='{basename}_standard_tsnr.nii.gz',
+        mean=f'{basename}_tmean.nii.gz',
+        mean_standard=f'{basename}_standard_tmean.nii.gz',
+        std=f'{basename}_tstd.nii.gz',
+        std_standard=f'{basename}_standard_tstd.nii.gz',
+        snr=f'{basename}_tsnr.nii.gz',
+        snr_standard=f'{basename}_standard_tsnr.nii.gz',
+        tmpdir=None,
     )
 
     # update template with kwargs
@@ -190,7 +191,7 @@ def tSNR(func: Image,
             raise ValueError(f'unknown output template {k}')
         ft[k] = v
 
-    dname, _, _ = split(fname=v)
+    dname, _, _ = split(fname=ft.get('mean'))
 
     if not os.path.exists(dname):
         os.makedirs(name=dname, exist_ok=True)
@@ -213,7 +214,7 @@ def tSNR(func: Image,
 
     if standard is not None and func2standard_warp is not None:
         run([
-            'applywarp', '-i', snr, '-o', ft.get('snr_standard', make_dir=True),
+            'applywarp', '-i', snr, '-o', ft.get('snr_standard'),
             '-r', standard,
             '-w', func2standard_warp, '--interp=spline'
         ])

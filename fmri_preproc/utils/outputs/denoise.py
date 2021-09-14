@@ -109,7 +109,6 @@ class FIXApply(OutDict):
             fixdir: str = od.join('fix')
             self.output: Dict[str,str] = {
                 "fix_labels": od.join("fix_labels.txt"),
-                "fix_labels": od.join('fix_labels.txt'),
                 "func_clean": od.join('func_clean.nii.gz'),
                 "func_clean_mean": od.join('func_clean_mean.nii.gz'),
                 "func_clean_std": od.join('func_clean_std.nii.gz'),

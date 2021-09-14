@@ -170,7 +170,8 @@ def fix_extract(func_filt: str,
     cmd.opt(f"{fixdir}")
 
     try:
-        cmd.run(log=log, raise_exc=False)
+        # cmd.run(log=log, raise_exc=False)
+        cmd.run(log=log)
     except Exception as _:
         with open(fix_log, 'r') as f:
             s: str = f.read()
