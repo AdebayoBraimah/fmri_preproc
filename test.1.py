@@ -76,5 +76,11 @@ preproc.import_data(func_echospacing=echospacing,
 
 # preproc.import_data()
 
+# preproc.run_all(use_mcflirt=False, s2v=True, rdata=rdata, fix_threshold=20)
+# preproc.run_all(use_mcflirt=True, s2v=False, rdata=rdata, fix_threshold=20)
+
+# preproc.run_all(use_mcflirt=False, s2v=True, rdata=rdata, fix_threshold=20, template_ages='neo')
+# preproc.run_all(use_mcflirt=True, s2v=False, rdata=rdata, fix_threshold=20, template_ages='neo')
+
 preproc.run_all(use_mcflirt=False, s2v=True, rdata=rdata, fix_threshold=20, template_ages=['neo', 1, 2, 38, 44])
 # preproc.run_all(use_mcflirt=True, s2v=False, rdata=rdata, fix_threshold=20, template_ages=['neo', 1, 2, 38, 44])
