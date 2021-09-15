@@ -1,12 +1,14 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 
-# Add to python path
-export PYTHONPATH=${PYTHONPATH}:$(realpath ../)
-
 # Script dir
-scripts_dir=$(realpath ../)
+scripts_dir=$(realpath $(dirname $(realpath ${0}))/..)
 fmri_preproc=${scripts_dir}/fmri_preproc.py
+
+# echo ${scripts_dir}
+
+# Add to python path
+export PYTHONPATH=${PYTHONPATH}:${scripts_dir}
 
 # Define variables
 
@@ -26,7 +28,7 @@ fmri_preproc=${scripts_dir}/fmri_preproc.py
 # config="/Users/adebayobraimah/Desktop/projects/fmri_preproc/test/settigs.test.json"
 
 # HPC
-outdir="/users/brac4g/fmri_neonate/FMRI_test_1/test/test.2"
+outdir="/users/brac4g/fmri_neonate/FMRI_test_1/test/test.3"
 
 func="/users/brac4g/fmri_neonate/test_data/func/func/sub-194_task-rest_dir-PA_run-01_bold.nii.gz"
 sbref="/users/brac4g/fmri_neonate/test_data/func/func/sub-194_task-rest_dir-PA_run-01_sbref.nii.gz"
@@ -38,7 +40,7 @@ dseg="/users/brac4g/fmri_neonate/test_data/struct/ses-session1/anat/sub-1_ses-1_
 ap="/users/brac4g/fmri_neonate/test_data/func/func/sub-194_task-rest_dir-AP_run-01_sbref.nii.gz"
 pa=${sbref}
 
-config=$(realpath settigs.test.json)
+config=$(realpath /users/brac4g/fmri_neonate/fmri_preproc/test/settigs.test.json)
 
 # Rdata (for testing purposes)
 rdata="/usr/local/fix/1.6.15/training_files/Standard.RData"
