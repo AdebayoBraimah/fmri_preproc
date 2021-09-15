@@ -25,7 +25,6 @@
 # 7. QC
 #   a. PENDING
 
-from fmri_preproc.utils.fileio import NiiFile
 import os
 import numpy as np
 import nibabel as nib
@@ -42,11 +41,12 @@ from typing import (
 )
 
 from fmri_preproc import (
+    FIXDATADIR,
     GROUP_MAP_DIR,
-    GROUP_QC_DIR,
-    HTMLDIR
+    GROUP_QC_DIR
 )
 
+from fmri_preproc.utils.fileio import NiiFile
 from fmri_preproc.func.qc import Subject
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
@@ -62,7 +62,8 @@ from fmri_preproc.utils.fslpy import (
 from fmri_preproc.utils.util import (
     dict2json,
     json2dict,
-    load_sidecar, 
+    load_sidecar,
+    settings,
     update_sidecar
 )
 
@@ -109,7 +110,10 @@ from fmri_preproc.func.denoise import (
     fix_extract
 )
 
-from fmri_preproc.utils.mask import create_mask, get_dseg_labels
+from fmri_preproc.utils.mask import (
+    create_mask, 
+    get_dseg_labels
+)
 
 
 class Pipeline:
@@ -122,12 +126,21 @@ class Pipeline:
                  birth_ga: Optional[float] = None,
                  verbose: bool = False,
                  log_level: str = 'info',
+                 settings_json_dict: Optional[Union[Dict[str,Any],str]] = None,
                  **kwargs
                 ) -> None:
         """Constructor for pipeline class.
         """
         # Import information
         self.verbose: bool = verbose
+
+        # TODO: Reference class settings dictionary for relevant arguments/variables
+        if isinstance(settings_json_dict,str) :
+            self.settings: Dict[str,Any] = settings(jsonfile=settings_json_dict)
+        elif isinstance(settings_json_dict,dict):
+            self.settings: Dict[str,Any] = settings(**settings_json_dict)
+        else:
+            self.settings: Dict[str,Any] = settings()
 
         (sub_workdir, 
         logdir, 
@@ -191,7 +204,7 @@ class Pipeline:
                     T1w: Optional[str] = None,
                     mask_func: bool = False,
                     spinecho: Optional[str] = None,
-                    spinecho_echospacing: Optional[float] = 0.1,
+                    spinecho_echospacing: Optional[float] = None,
                     spinecho_pedir: Union[str,List[str]] = None,
                     ap_dir: Optional[str] = None,
                     pa_dir: Optional[str] = None,
@@ -200,7 +213,7 @@ class Pipeline:
                     is_dir: Optional[str] = None,
                     si_dir: Optional[str] = None,
                     spinecho_epifactor: Optional[int] = None,
-                    spinecho_inplaneacc: Optional[float] = 1
+                    spinecho_inplaneacc: Optional[float] = None
                    ) -> Dict[Any,str]:
         """Import data class-function.
         """
@@ -210,6 +223,9 @@ class Pipeline:
         sub_dict: Dict[Any,Any] = self.sub_dict
         func: str = self.func
         sub_json: str = self.sub_json
+        settings_file: str = os.path.join(sub_workdir, 'log', 'settings.json')
+
+        _: str = dict2json(dict=self.settings, jsonfile=settings_file)
         
         # Check if func has been imported
         out_func: ImportFunc = ImportFunc(outdir=sub_workdir)
@@ -307,6 +323,7 @@ class Pipeline:
             **sub_dict,
             **func_info_dict,
             **struct_info_dict,
+            "settings_file": settings_file,
             "subject_info": sub_json,
             "workdir": sub_workdir,
             "spinecho": spinecho,
@@ -1088,12 +1105,10 @@ class Pipeline:
         if not outfix2.check_exists(*outfiles2):
 
             if rdata is None:
-                # Raise exception for now.
-                raise RuntimeError ("Rdata file is required.")
+                rdata: str = os.path.join(FIXDATADIR,'fix.Rdata') # TODO: This is a temp variable for now.
             
             if fix_threshold is None:
-                # Raise exception for now - grab this from settings file.
-                raise RuntimeError("Must define FIX threshold.")
+                fix_threshold: int = int(self.settings('fix_threshold'))
             
             if (rdata is not None) and (fix_threshold is not None):
                 fix_labels, _ = fix_classify(outdir=self.outputs.get('workdir'),
@@ -1239,7 +1254,6 @@ class Pipeline:
         else:
             qc_log.warning("Fieldmap not found")
         
-
         #==========================
         # Registration: fmap2struct
         #==========================
@@ -1559,6 +1573,7 @@ class Pipeline:
                   standard_age: Union[int,str] = 40,
                   template_ages: Optional[Union[List[Union[int,str]],int,str]] = None,
                   temporal_fwhm: float = 150.0,
+                  quick: bool = False,
                   icadim: Optional[int] = None,
                   rdata: Optional[str] = None,
                   fix_threshold: Optional[int] = None,
@@ -1569,6 +1584,7 @@ class Pipeline:
                  ) -> Dict[Any,str]:
         """Perform all post-motion-and-distortion-correction stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
+                                                    quick=quick,
                                                     template_ages=template_ages,
                                                     atlasdir=atlasdir)
 
@@ -1593,6 +1609,7 @@ class Pipeline:
                 s2v: bool = False,
                 dc: bool = False,
                 mbs: bool = False,
+                quick: bool = False,
                 icadim: Optional[int] = None,
                 rdata: Optional[str] = None,
                 fix_threshold: Optional[int] = None,
@@ -1609,11 +1626,15 @@ class Pipeline:
                                                 mbs=mbs)
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
                                                     quick=True, # Remove this later after testing
+                                                    # quick=quick,
                                                     template_ages=template_ages,
                                                     atlasdir=atlasdir)
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
                                                icadim=icadim)
 
+        # TODO:
+        #   Fix HPC FIX implementation
+        # 
         # self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
         #                                            fix_threshold=fix_threshold)
         

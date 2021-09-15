@@ -9,6 +9,7 @@ import urllib.request as urllib
 from time import time
 from tqdm import tqdm
 from tempfile import TemporaryDirectory
+from json import JSONDecodeError
 
 from typing import (
     Any,
@@ -69,11 +70,72 @@ def timeops(log: Optional[LogFile] = None) -> callable:
     return decor
 
 
+def settings(jsonfile: Optional[str] = None,
+             **kwargs
+            ) -> Dict[str,Any]:
+    """Read configuration/settings JSON file.
+    """
+    # Define defaults
+    defaults: Dict[str,Any] = {
+        "func_inplane_accel": float(1),
+        "func_slorder": None,
+        "mb_factor": None,
+        "sbref_echospacing": None,
+        "dseg_type": "drawem",
+        "probseg_type": "drawem",
+        "mask_func": False,
+        "spinecho_echospacing": None,
+        "spinecho_epifactor": None,
+        "spinecho_inplaneacc": None,
+        "use_mcflirt": False,
+        "s2v": False,
+        "dc": False,
+        "mbs": False,
+        "standard_age": 40,
+        "quick": False,
+        "atlasdir": None,
+        "template_ages": [],
+        "temporal_fwhm": float(150),
+        "icadim": None,
+        "rdata": None, # TODO: set this default with FIX rdata trained from CCHMC
+        "fix_threshold": 10,
+        "group_qc": None,
+        "group_map": None,
+        "standard_res": 1.5,
+        "verbose": False,
+        "log_level": "info"
+    }
+
+    if jsonfile is not None:
+        user_settings: Dict[str,Any] = json2dict(jsonfile=jsonfile)
+
+        # Check that input settings are valid, then overwrite defaults
+        for key,val in user_settings.items():
+            if not defaults.get(key):
+                raise KeyError(f"INPUT_JSON_FILE: Input setting option is invalid: {key} | mapped to desired argument: {val}")
+            if val is not None:
+                defaults[key] = user_settings.get(key)
+    
+    # Overwrite input keys from keyword arguments
+    if kwargs:
+        for key,val in kwargs.items():
+            if not defaults.get(key):
+                raise KeyError(f"INPUT_KEYWORD: Input setting option is invalid: {key} | mapped to desired argument: {val}")
+            if val is not None:
+                defaults[key] = kwargs.get(key)
+        
+    return defaults
+
+
 def json2dict(jsonfile: str) -> Dict[Any,Any]:
     """Read JSON file to dictionary.
     """
+    d: Dict = {}
     with open(jsonfile, 'r') as file:
-        d: Dict[Any,Any] = json.load(file)
+        try:
+            d: Dict[Any,Any] = json.load(file)
+        except JSONDecodeError:
+            pass
     return d
 
 
@@ -201,7 +263,6 @@ def fetch_dhcp_group_maps(path: Optional[str] = None) -> None:
                      desc=rdata_url.split('/')[-1]) as t:  # all optional kwargs
         urllib.urlretrieve(rdata_url, filename=path, reporthook=t.update_to)
     return None
-
 
 
 # FROM TQDM DOCS https://github.com/tqdm/tqdm#table-of-contents
