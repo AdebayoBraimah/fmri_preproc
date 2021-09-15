@@ -53,7 +53,7 @@ mb_factor=3
 epifactor=63
 inplane_acc=1
 
-# Run
+# Run test
 ${fmri_preproc} \
 run-all \
 --outdir=${outdir} \
