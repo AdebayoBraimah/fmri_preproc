@@ -141,7 +141,7 @@ class Pipeline:
             self.settings: Dict[str,Any] = settings(**settings_json_dict)
         else:
             self.settings: Dict[str,Any] = settings()
-        
+
         (sub_workdir, 
         logdir, 
         sub_json, 
@@ -1625,8 +1625,7 @@ class Pipeline:
                                                 dc=dc,
                                                 mbs=mbs)
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
-                                                    quick=True, # Remove this later after testing
-                                                    # quick=quick,
+                                                    quick=quick,
                                                     template_ages=template_ages,
                                                     atlasdir=atlasdir)
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,

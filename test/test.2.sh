@@ -69,4 +69,3 @@ run-all \
 --sp-AP=${ap} \
 --sp-PA=${pa} \
 --config=$(realpath ${config})
-
