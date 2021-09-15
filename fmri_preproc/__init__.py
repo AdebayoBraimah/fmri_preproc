@@ -32,7 +32,7 @@ HTMLDIR: str = os.path.join(RESOURCEDIR,'html')
 FIXDATADIR: str = os.path.join(RESOURCEDIR,'fix')
 GROUP_MAP_DIR: str = os.path.join(RESOURCEDIR,'group_maps')
 GROUP_QC_DIR: str = os.path.join(RESOURCEDIR,'group_qc')
-SETTINGS: str = os.path.join(RESOURCEDIR,'settings.default.json')
+DEFAULT_SETTINGS_FILE: str = os.path.join(RESOURCEDIR,'settings.default.json')
 
 
 _version_file: str = os.path.abspath(
