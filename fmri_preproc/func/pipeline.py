@@ -141,7 +141,7 @@ class Pipeline:
             self.settings: Dict[str,Any] = settings(**settings_json_dict)
         else:
             self.settings: Dict[str,Any] = settings()
-
+        
         (sub_workdir, 
         logdir, 
         sub_json, 
@@ -223,9 +223,9 @@ class Pipeline:
         sub_dict: Dict[Any,Any] = self.sub_dict
         func: str = self.func
         sub_json: str = self.sub_json
-        settings_file: str = os.path.join(sub_workdir, 'log', 'settings.json')
+        settings_file: str = os.path.join(sub_workdir, 'logs', 'settings.json')
 
-        _: str = dict2json(dict=self.settings, jsonfile=settings_file)
+        settings_file: str = dict2json(dict=self.settings, jsonfile=settings_file)
         
         # Check if func has been imported
         out_func: ImportFunc = ImportFunc(outdir=sub_workdir)

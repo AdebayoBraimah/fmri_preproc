@@ -52,7 +52,8 @@ def key_to_none(d: Dict[Any,Any]) -> Dict[Any,Any]:
     # Only looking for files that do not exist.
     # Leave other non-filepath dictionary values as is.
     for key,val in d.items():
-        if (key == 'subid') or (key == 'sesid'):
+        if ((key == 'subid') or (key == 'sesid') or (key == 'scan_pma') or
+            (key == 'birth_ga')):
             continue
         try:
             val: str = os.path.abspath(val)

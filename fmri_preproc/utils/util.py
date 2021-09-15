@@ -77,7 +77,7 @@ def settings(jsonfile: Optional[str] = None,
     """
     # Define defaults
     defaults: Dict[str,Any] = {
-        "func_inplane_accel": float(1),
+        "func_inplane_accel": 1.0,
         "func_slorder": None,
         "mb_factor": None,
         "sbref_echospacing": None,
@@ -110,20 +110,21 @@ def settings(jsonfile: Optional[str] = None,
         user_settings: Dict[str,Any] = json2dict(jsonfile=jsonfile)
 
         # Check that input settings are valid, then overwrite defaults
-        for key,val in user_settings.items():
-            if not defaults.get(key):
-                raise KeyError(f"INPUT_JSON_FILE: Input setting option is invalid: {key} | mapped to desired argument: {val}")
-            if val is not None:
-                defaults[key] = user_settings.get(key)
-    
+        if user_settings:
+            for key,val in user_settings.items():
+                if defaults.get(key,'key not found') == 'key not found':
+                    raise KeyError(f"INPUT_JSON_FILE: Input setting option is invalid: {key} | mapped to desired argument: {val}")
+                if val is not None:
+                    defaults[key] = user_settings.get(key)
+
     # Overwrite input keys from keyword arguments
     if kwargs:
         for key,val in kwargs.items():
-            if not defaults.get(key):
+            if defaults.get(key,'key not found') == 'key not found':
                 raise KeyError(f"INPUT_KEYWORD: Input setting option is invalid: {key} | mapped to desired argument: {val}")
             if val is not None:
                 defaults[key] = kwargs.get(key)
-        
+    
     return defaults
 
 
@@ -147,7 +148,7 @@ def dict2json(dict: Dict[Any,Any],
     """
     with open(jsonfile, 'w') as out:
         json.dump(dict, out, indent=indent)
-    return out
+    return jsonfile
 
 
 def update_sidecar(file: str, **kwargs) -> str:
