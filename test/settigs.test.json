@@ -9,10 +9,10 @@
     "spinecho_echospacing": null,
     "spinecho_epifactor": null,
     "spinecho_inplaneacc": null,
-    "use_mcflirt": false,
-    "s2v": true,
-    "dc": true,
-    "mbs": true,
+    "use_mcflirt": true,
+    "s2v": false,
+    "dc": false,
+    "mbs": false,
     "standard_age": 40,
     "quick": false,
     "atlasdir": null,
@@ -25,5 +25,6 @@
     "group_map": null,
     "standard_res": 1.5,
     "verbose": false,
-    "log_level": "info"
+    "log_level": "info",
+    "preproc_only": true
 }

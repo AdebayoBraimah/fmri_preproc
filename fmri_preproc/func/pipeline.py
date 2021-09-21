@@ -1,29 +1,8 @@
 # -*- coding: utf-8 -*-
 """fMRI preprocessing pipeline - main pipeline.
 """
-# NOTE:
-# 
-# Pipeline overview
-# 
-# 0. Import/copy data to working directory
-# 
-# 1. [X] Prepare fieldmap
-#   a. [X] Topup [mc]
-# 2. [X] Motion correction, distortion correction
-#   a. [X] eddy [mc]
-#   b. [X] mcflirt [mc]
-# 3. Registration (linear, and non-linear)
-#   a. flirt ( + mcflirt) [reg]
-#       i. sym-link field map files from [mc]
-# 4. [X] ICA
-#   a. [X] melodic
-# 5. [X] Denoise
-#   a. [X] FIX
-# 6. [X] Post-processing
-#   a. [X] Spatial smooting
-#   b. [X] Intensity norm
-# 7. QC
-#   a. PENDING
+# TODO:
+#   * Add post-processing to the end of the pipeline.
 
 import os
 import numpy as np
@@ -1181,7 +1160,8 @@ class Pipeline:
            group_map: Optional[str] = None,
            standard_age: Optional[int] = 40,
            standard_res: Optional[float] = 1.5,
-           atlasdir: Optional[str] = None
+           atlasdir: Optional[str] = None,
+           preproc_only: bool = False
           ) -> Dict[Any,Any]:
         """doc-string
         """
@@ -1478,50 +1458,48 @@ class Pipeline:
         # Func: Clean
         #==========================
 
-        # TODO:
-        # 
-        # ORIGINAL CODE:
-        # 
-        # wd1: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
-        # _: Dict[str,str] = wd1.outputs()
-        # # wd1_files: Tuple[str] = ('func_clean',)
-        #
-        # if wd0.check_exists('mcdc_brainmask') and wd1.check_exists('func_clean'):
-        #     qc_log.log('Add func_clean to QC')
-        #
-        #     qc.add_func(func=self.outputs.get('func_clean'),
-        #                 label='clean',
-        #                 brainmask=self.outputs.get('mcdc_brainmask'),
-        #                 standard=standard,
-        #                 func2standard_warp=func2standard,
-        #                 template=group_map,
-        #                 template2func_warp=standard2func,
-        #                 template_dseg=standard_dseg,
-        #                 template_dseg_labels=get_dseg_labels(seg_type='drawem'))
-        # else:
-        #     qc_log.warning("func_clean not added")
-
-        # MOCK CODE:
-        # 
-        # REVERT back to original code after testing
-        wd1: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
-        _: Dict[str,str] = wd1.outputs()
-        # wd1_files: Tuple[str] = ('func_clean',)
-
-        if wd0.check_exists(*wd0_files):
-            qc_log.log('Add func_clean to QC')
-
-            qc.add_func(func=self.outputs.get('func_mcdc'),
-                        label='clean',
-                        brainmask=self.outputs.get('mcdc_brainmask'),
-                        standard=standard,
-                        func2standard_warp=func2standard,
-                        template=group_map,
-                        template2func_warp=standard2func,
-                        template_dseg=standard_dseg,
-                        template_dseg_labels=get_dseg_labels(seg_type='drawem'))
+        # Include FIX cleaned data to QC report
+        if (not preproc_only) or (preproc_only is None):
+            wd1: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
+            _: Dict[str,str] = wd1.outputs()
+            
+            if wd0.check_exists('mcdc_brainmask') and wd1.check_exists('func_clean'):
+                qc_log.log('Add func_clean to QC')
+            
+                qc.add_func(func=self.outputs.get('func_clean'),
+                            label='clean',
+                            brainmask=self.outputs.get('mcdc_brainmask'),
+                            standard=standard,
+                            func2standard_warp=func2standard,
+                            template=group_map,
+                            template2func_warp=standard2func,
+                            template_dseg=standard_dseg,
+                            template_dseg_labels=get_dseg_labels(seg_type='drawem'))
+            else:
+                qc_log.warning("func_clean not added")
         else:
-            qc_log.warning("func_clean not added")
+            # MOCK CODE:
+            # 
+            # This code block is used ONLY on the condition that FIX has not
+            #   run. With that being the case - this used as a place holder
+            #   for data that will be displayed in the QC report.
+            wd1: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
+            _: Dict[str,str] = wd1.outputs()
+            
+            if wd0.check_exists(*wd0_files):
+                qc_log.log('Add func_clean [place holder] to QC')
+            
+                qc.add_func(func=self.outputs.get('func_mcdc'),
+                            label='clean',
+                            brainmask=self.outputs.get('mcdc_brainmask'),
+                            standard=standard,
+                            func2standard_warp=func2standard,
+                            template=group_map,
+                            template2func_warp=standard2func,
+                            template_dseg=standard_dseg,
+                            template_dseg_labels=get_dseg_labels(seg_type='drawem'))
+            else:
+                qc_log.warning("func_clean [place holder] not added")
 
         #==========================
         # Motion parameters
@@ -1580,7 +1558,8 @@ class Pipeline:
                   group_map: Optional[str] = None,
                   standard_res: Optional[float] = 1.5,
                   group_qc: Optional[str] = None,
-                  atlasdir: Optional[str] = None
+                  atlasdir: Optional[str] = None,
+                  preproc_only: Optional[bool] = False
                  ) -> Dict[Any,str]:
         """Perform all post-motion-and-distortion-correction stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
@@ -1591,12 +1570,14 @@ class Pipeline:
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
                                                icadim=icadim)
 
-        self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
-                                                   fix_threshold=fix_threshold)
+        if not preproc_only:
+            self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
+                                                       fix_threshold=fix_threshold)
 
         self.outputs: Dict[Any,str] = self.qc(group_map=group_map,
                                               standard_res=standard_res,
-                                              standard_age=standard_age)
+                                              standard_age=standard_age,
+                                              preproc_only=preproc_only)
 
         _: str = self.report(group_qc=group_qc)
         return self.outputs
@@ -1616,7 +1597,8 @@ class Pipeline:
                 group_map: Optional[str] = None,
                 standard_res: Optional[float] = 1.5,
                 group_qc: Optional[str] = None,
-                atlasdir: Optional[str] = None
+                atlasdir: Optional[str] = None,
+                preproc_only: Optional[bool] = False
                ) -> None:
         """Perform all stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.prepare_fieldmap()
@@ -1630,16 +1612,15 @@ class Pipeline:
                                                     atlasdir=atlasdir)
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
                                                icadim=icadim)
-
-        # TODO:
-        #   Fix HPC FIX implementation
-        # 
-        # self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
-        #                                            fix_threshold=fix_threshold)
+        
+        if not preproc_only:
+            self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
+                                                       fix_threshold=fix_threshold)
         
         self.outputs: Dict[Any,str] = self.qc(group_map=group_map,
                                               standard_res=standard_res,
-                                              standard_age=standard_age)
+                                              standard_age=standard_age,
+                                              preproc_only=preproc_only)
 
         _: str = self.report(group_qc=group_qc)
         return self.outputs

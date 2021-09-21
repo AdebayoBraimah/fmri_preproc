@@ -13,6 +13,7 @@ export PYTHONPATH=${PYTHONPATH}:${scripts_dir}
 # Define variables
 
 # # Local
+# fmri_preproc="/Users/adebayobraimah/Desktop/projects/fmri_preproc/fmri_preproc.py"
 # outdir="/Users/adebayobraimah/Desktop/projects/fmri_preproc/test/TEST001/test.1"
 # 
 # func="/Users/adebayobraimah/Desktop/projects/fmri_preproc/data/sub-194/functional/sub-194/func/sub-194_task-rest_dir-PA_run-01_bold.nii.gz"

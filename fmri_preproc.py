@@ -8,6 +8,7 @@ import argparse
 from typing import (
     Any,
     Dict,
+    Literal,
     Tuple
 )
 
@@ -24,16 +25,14 @@ from fmri_preproc.utils.util import (
 )
 
 
-def main() -> int:
+def main() -> Literal[0]:
     """Main function.
     """
-    
     preproc_data()
-    
     return 0
 
 
-def preproc_data():
+def preproc_data() -> Literal[0]:
     """Preprocess rs-fMRI data.
     """
     args, parser = arg_parser()
@@ -156,7 +155,8 @@ def preproc_data():
                               group_map=settings_dict.get('group_map'),
                               standard_res=settings_dict.get('standard_res'),
                               group_qc=settings_dict.get('group_qc'),
-                              atlasdir=settings_dict.get('atlasdir'))
+                              atlasdir=settings_dict.get('atlasdir'),
+                              preproc_only=settings_dict.get('preproc_only'))
         elif args.method == 'run_all':
             # Import data
             preproc.import_data(func_echospacing=args.func_echospacing,
@@ -201,12 +201,13 @@ def preproc_data():
                             group_map=settings_dict.get('group_map'),
                             standard_res=settings_dict.get('standard_res'),
                             group_qc=settings_dict.get('group_qc'),
-                            atlasdir=settings_dict.get('atlasdir'))
+                            atlasdir=settings_dict.get('atlasdir'),
+                            preproc_only=settings_dict.get('preproc_only'))
     else:
         print("\nREQUIRED: '--outdir', '--func', and '--age'.\n")
         parser.print_help()
 
-    pass
+    return 0
 
 
 def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentParser]:

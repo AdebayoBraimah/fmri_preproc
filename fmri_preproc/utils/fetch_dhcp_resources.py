@@ -9,6 +9,7 @@ import os
 import argparse
 
 from typing import (
+    Literal,
     Optional, 
     Tuple
 )
@@ -20,7 +21,7 @@ from fmri_preproc.utils.util import (
 )
 
 
-def main() -> int:
+def main() -> Literal[0]:
     """Main function.
     """
     args, parser = arg_parser()

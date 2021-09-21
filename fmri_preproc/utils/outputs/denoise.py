@@ -34,11 +34,20 @@ class FIXClassify(OutDict):
         
         denoisedir: str = os.path.join(outdir,'denoise')
 
+        if os.path.exists(denoisedir):
+            remove_dir: bool = False
+        else:
+            remove_dir: bool = True
+
         with WorkDir(src=denoisedir) as od:
             self.output: Dict[str,str] = {
                 "fix_labels": od.join("fix_labels.txt"),
                 "fix_regressors": od.join("fix_regressors.tsv")
             }
+
+            if remove_dir: 
+                od.rmdir()
+
         return self.output
 
 
@@ -105,6 +114,11 @@ class FIXApply(OutDict):
         
         denoisedir: str = os.path.join(outdir,'denoise')
 
+        if os.path.exists(denoisedir):
+            remove_dir: bool = False
+        else:
+            remove_dir: bool = True
+
         with WorkDir(src=denoisedir) as od:
             fixdir: str = od.join('fix')
             self.output: Dict[str,str] = {
@@ -115,4 +129,8 @@ class FIXApply(OutDict):
                 "func_clean_tsnr": od.join('func_clean_tsnr.nii.gz'),
                 "fix_clean": os.path.join(fixdir,'filtered_func_data_clean.nii.gz')
             }
+
+            if remove_dir: 
+                od.rmdir()
+                
         return self.output

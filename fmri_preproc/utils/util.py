@@ -74,6 +74,8 @@ def settings(jsonfile: Optional[str] = None,
              **kwargs
             ) -> Dict[str,Any]:
     """Read configuration/settings JSON file.
+
+    NOTE: Special keyword ``preproc_only`` is used ONLY in the case of generating minimally preprocessed data for training the FIX classifier.
     """
     # Define defaults
     defaults: Dict[str,Any] = {
@@ -112,6 +114,12 @@ def settings(jsonfile: Optional[str] = None,
         # Check that input settings are valid, then overwrite defaults
         if user_settings:
             for key,val in user_settings.items():
+                if key == 'preproc_only':
+                    if (user_settings.get(key) == True) or (user_settings.get(key) == False):
+                        defaults[key] = user_settings.get(key)
+                    else:
+                        defaults[key] = False
+                    continue
                 if defaults.get(key,'key not found') == 'key not found':
                     raise KeyError(f"INPUT_JSON_FILE: Input setting option is invalid: {key} | mapped to desired argument: {val}")
                 if val is not None:
@@ -120,6 +128,12 @@ def settings(jsonfile: Optional[str] = None,
     # Overwrite input keys from keyword arguments
     if kwargs:
         for key,val in kwargs.items():
+            if key == 'preproc_only':
+                if (kwargs.get(key) == True) or (kwargs.get(key) == False):
+                    defaults[key] = kwargs.get(key)
+                else:
+                    defaults[key] = False
+                continue
             if defaults.get(key,'key not found') == 'key not found':
                 raise KeyError(f"INPUT_KEYWORD: Input setting option is invalid: {key} | mapped to desired argument: {val}")
             if val is not None:
