@@ -19,7 +19,7 @@ from fmri_preproc.func.pipeline import Pipeline
 
 # Directory variables
 # outdir: str = "/users/brac4g/fmri_neonate/FMRI_test_1/test/test.1"
-outdir: str = "/users/brac4g/fmri_neonate/FMRI_test_1/test/test.2"
+outdir: str = "/users/brac4g/fmri_neonate/FMRI_test_1/test/test.4"
 
 # # (Local) File variables
 # outdir: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc/test/test.1"
@@ -72,6 +72,7 @@ preproc.import_data(func_echospacing=echospacing,
                     sbref_echospacing=echospacing,
                     ap_dir=ap,
                     pa_dir=pa,
+		    spinecho_echospacing=echospacing,
                     spinecho_inplaneacc=inplane_acc)
 
 # preproc.import_data()
@@ -82,5 +83,5 @@ preproc.import_data(func_echospacing=echospacing,
 # preproc.run_all(use_mcflirt=False, s2v=True, rdata=rdata, fix_threshold=20, template_ages='neo')
 # preproc.run_all(use_mcflirt=True, s2v=False, rdata=rdata, fix_threshold=20, template_ages='neo')
 
-preproc.run_all(use_mcflirt=False, s2v=True, rdata=rdata, fix_threshold=20, template_ages=['neo', 1, 2, 38, 44])
+preproc.run_all(use_mcflirt=False, dc=True, mbs=True, s2v=True, rdata=rdata, fix_threshold=20, template_ages=['neo', 1, 2, 38, 44])
 # preproc.run_all(use_mcflirt=True, s2v=False, rdata=rdata, fix_threshold=20, template_ages=['neo', 1, 2, 38, 44])
