@@ -72,7 +72,7 @@ preproc.import_data(func_echospacing=echospacing,
                     sbref_echospacing=echospacing,
                     ap_dir=ap,
                     pa_dir=pa,
-		    spinecho_echospacing=echospacing,
+		            spinecho_echospacing=echospacing,
                     spinecho_inplaneacc=inplane_acc)
 
 # preproc.import_data()
