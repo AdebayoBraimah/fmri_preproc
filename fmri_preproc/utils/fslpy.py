@@ -501,7 +501,7 @@ def topup(img: str,
 
     cmd: Command = Command("topup")
     cmd.opt(f"--imain={img.abspath()}")
-    cmd.opt(f"--out={out.abspath()}")
+    cmd.opt(f"--out={out.rm_ext()}")
     cmd.opt(f"--datain={param.abspath()}")
     cmd.opt(f"--scale={scale}")
 
