@@ -11,7 +11,8 @@ import numpy as np
 from typing import (
     Dict,
     Optional,
-    Tuple
+    Tuple,
+    Union
 )
 
 from fmri_preproc.utils.util import timeops
@@ -89,8 +90,14 @@ def fix_extract(func_filt: str,
             # denoisedir: str = outputs.get('denoisedir')
             fixdir: str = fd.abspath()
             fix_log: str = fd.join('fix','logMatlab.txt')
+            fsf_file: str = fd.join('design.fsf')
+            
+            # Write fake FEAT set-up file
+            with File(src=fsf_file, assert_exists=False) as fsf:
+                fsf_file: str = _write_fsf(fsf=fsf, 
+                                           temporal_fwhm=temporal_fwhm)
     
-    # Setup fake FIX directory
+    # Setup fake FEAT directory
     if log: log.log("Setting up FIX directory")
 
     with NiiFile(src=func_filt) as ff:
@@ -179,6 +186,27 @@ def fix_extract(func_filt: str,
         raise RuntimeError(s)
 
     return fixdir
+
+
+def _write_fsf(fsf: Union[File,str],
+               temporal_fwhm: Optional[float] = 150):
+    """Helper function that writes a (fake) FEAT setup file (.fsf) with the 
+    necessary information required for FSL's FIX to run.
+    """
+    if isinstance(fsf,File):
+        fsf_file: str = fsf.abspath()
+    else:
+        fsf_file: str = os.path.abspath(fsf)
+    
+    # Write fake FEAT set-up file
+    with File(src=fsf_file, assert_exists=False) as fsf:
+        fsf.write(f"""# Highpass temporal filtering
+set fmri(temphp_yn) 1
+
+# High pass filter cutoff
+set fmri(paradigm_hp) {temporal_fwhm}
+                """)
+    return fsf_file
 
 
 def _classify(fixdir: str,
