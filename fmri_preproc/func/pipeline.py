@@ -57,6 +57,7 @@ from fmri_preproc.utils.outputs.fieldmap import FmapFiles
 from fmri_preproc.utils.outputs.registration import MRreg
 from fmri_preproc.utils.outputs.mcdc import MCDCFiles
 from fmri_preproc.utils.outputs.ica import ICAFiles
+from fmri_preproc.func.postprocess import postprocess
 
 from fmri_preproc.utils.outputs.denoise import (
     FIXApply,
@@ -1559,7 +1560,9 @@ class Pipeline:
                   standard_res: Optional[float] = 1.5,
                   group_qc: Optional[str] = None,
                   atlasdir: Optional[str] = None,
-                  preproc_only: Optional[bool] = False
+                  preproc_only: Optional[bool] = False,
+                  spatial_fwhm: Optional[float] = None,
+                  intnorm: bool = False
                  ) -> Dict[Any,str]:
         """Perform all post-motion-and-distortion-correction stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
@@ -1580,6 +1583,26 @@ class Pipeline:
                                               preproc_only=preproc_only)
 
         _: str = self.report(group_qc=group_qc)
+
+        if (spatial_fwhm is not None) or intnorm:
+
+            with WorkDir(src=self.logdir) as lgd:
+                _post_log: str = lgd.join('postprocess.log')
+                post_log: LogFile = LogFile(_post_log, format_log_str=True)
+            
+            if os.path.exists(self.outputs.get('func_clean')):
+                func: str = self.outputs.get('func_clean')
+            else:
+                func: str = self.outputs.get('func_mcdc')
+
+            _: Tuple[str] = postprocess(func=func,
+                                        func_mean=self.outputs.get('mcdc_mean'),
+                                        func_brainmask=self.outputs.get('mcdc_brainmask'),
+                                        outdir=self.outputs.get('workdir'),
+                                        spatial_fwhm=spatial_fwhm,
+                                        intnorm=intnorm,
+                                        log=post_log)
+        
         return self.outputs
 
     def run_all(self,
@@ -1598,7 +1621,9 @@ class Pipeline:
                 standard_res: Optional[float] = 1.5,
                 group_qc: Optional[str] = None,
                 atlasdir: Optional[str] = None,
-                preproc_only: Optional[bool] = False
+                preproc_only: Optional[bool] = False,
+                spatial_fwhm: Optional[float] = None,
+                intnorm: bool = False
                ) -> None:
         """Perform all stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.prepare_fieldmap()
@@ -1623,4 +1648,24 @@ class Pipeline:
                                               preproc_only=preproc_only)
 
         _: str = self.report(group_qc=group_qc)
+
+        if (spatial_fwhm is not None) or intnorm:
+
+            with WorkDir(src=self.logdir) as lgd:
+                _post_log: str = lgd.join('postprocess.log')
+                post_log: LogFile = LogFile(_post_log, format_log_str=True)
+            
+            if os.path.exists(self.outputs.get('func_clean')):
+                func: str = self.outputs.get('func_clean')
+            else:
+                func: str = self.outputs.get('func_mcdc')
+
+            _: Tuple[str] = postprocess(func=func,
+                                        func_mean=self.outputs.get('mcdc_mean'),
+                                        func_brainmask=self.outputs.get('mcdc_brainmask'),
+                                        outdir=self.outputs.get('workdir'),
+                                        spatial_fwhm=spatial_fwhm,
+                                        intnorm=intnorm,
+                                        log=post_log)
+
         return self.outputs
