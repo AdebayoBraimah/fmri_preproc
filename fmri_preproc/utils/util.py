@@ -105,7 +105,9 @@ def settings(jsonfile: Optional[str] = None,
         "group_map": None,
         "standard_res": 1.5,
         "verbose": False,
-        "log_level": "info"
+        "log_level": "info",
+        "smooth": 0,
+        "intnorm": False
     }
 
     if jsonfile is not None:
