@@ -233,6 +233,11 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
 
     mainargparser = parser.add_subparsers(help="Data preprocessing pipeline sections for 'fmri_preproc'.")
 
+    # TODO: 
+    #   * Make 'outdir', 'func', 'age', 'birth_age' parent parser variables
+    #   * Add parent parser variables to all the subparsers
+    #   * Add subject and session IDs to parent parsers
+
     # IMPORT DATA ARGS
     importoptions = mainargparser.add_parser('import-data', help="Imports the subject's imaging data into a working directory for image preprocessing.")
 
