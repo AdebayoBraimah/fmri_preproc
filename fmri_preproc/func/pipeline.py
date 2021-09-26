@@ -1049,21 +1049,21 @@ class Pipeline:
 
         outfix1: FIXExtract = FIXExtract(outdir=self.outputs.get('workdir'))
         outdict1: Dict[str,str] = outfix1.outputs()
-        outfiles1: Tuple[str] = ('fixdir')
+        outfiles1: Tuple[str] = ('fixdir',)
 
         if not outfix1.check_exists(*outfiles1):
             fixdir: str = fix_extract(outdir=self.outputs.get('workdir'),
-                                    func_filt=func_filt,
-                                    func_ref=self.outputs.get('mcdc_mean'),
-                                    struct=self.outputs.get('T2w'),
-                                    struct_brainmask=self.outputs.get('T2w_brainmask'),
-                                    struct_dseg=struct_dseg,
-                                    dseg_type=dseg_type,
-                                    func2struct_mat=self.outputs.get('func_mcdc2struct_affine'),
-                                    mot_param=self.outputs.get('motparams'),
-                                    icadir=self.outputs.get('meldir'),
-                                    temporal_fwhm=temporal_fwhm,
-                                    log=fix_log)
+                                      func_filt=func_filt,
+                                      func_ref=self.outputs.get('mcdc_mean'),
+                                      struct=self.outputs.get('T2w'),
+                                      struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                      struct_dseg=struct_dseg,
+                                      dseg_type=dseg_type,
+                                      func2struct_mat=self.outputs.get('func_mcdc2struct_affine'),
+                                      mot_param=self.outputs.get('motparams'),
+                                      icadir=self.outputs.get('meldir'),
+                                      temporal_fwhm=temporal_fwhm,
+                                      log=fix_log)
         else:
             fixdir: str = outdict1.get('fixdr')
         
@@ -1458,7 +1458,7 @@ class Pipeline:
 
         # Include FIX cleaned data to QC report
         if (not preproc_only) or (preproc_only is None):
-            wd1: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
+            wd1: FIXApply = FIXApply(outdir=self.outputs.get('workdir'))
             _: Dict[str,str] = wd1.outputs()
             
             # if wd0.check_exists('mcdc_brainmask') and wd1.check_exists('func_clean'):
