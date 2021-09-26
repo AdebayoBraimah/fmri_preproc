@@ -1088,10 +1088,10 @@ class Pipeline:
                 fix_threshold: int = int(self.settings('fix_threshold'))
             
             if (rdata is not None) and (fix_threshold is not None):
-                fix_labels, _ = fix_classify(outdir=self.outputs.get('workdir'),
-                                                rdata=rdata,
-                                                thr=fix_threshold,
-                                                log=fix_log)
+                fix_labels, fix_regressors = fix_classify(outdir=self.outputs.get('workdir'),
+                                                          rdata=rdata,
+                                                          thr=fix_threshold,
+                                                          log=fix_log)
         else:
             fix_labels: str = outdict2.get('fix_labels')
             fix_regressors: str = outdict2.get('fix_regressors')
