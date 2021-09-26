@@ -1159,7 +1159,7 @@ class Pipeline:
            standard_age: Optional[int] = 40,
            standard_res: Optional[float] = 1.5,
            atlasdir: Optional[str] = None,
-           preproc_only: bool = False
+           preproc_only: Optional[bool] = None
           ) -> Dict[Any,Any]:
         """doc-string
         """
@@ -1461,7 +1461,8 @@ class Pipeline:
             wd1: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
             _: Dict[str,str] = wd1.outputs()
             
-            if wd0.check_exists('mcdc_brainmask') and wd1.check_exists('func_clean'):
+            # if wd0.check_exists('mcdc_brainmask') and wd1.check_exists('func_clean'):
+            if wd1.check_exists('func_clean'):
                 qc_log.log('Add func_clean to QC')
             
                 qc.add_func(func=self.outputs.get('func_clean'),
@@ -1557,7 +1558,7 @@ class Pipeline:
                   standard_res: Optional[float] = 1.5,
                   group_qc: Optional[str] = None,
                   atlasdir: Optional[str] = None,
-                  preproc_only: Optional[bool] = False,
+                  preproc_only: Optional[bool] = None,
                   spatial_fwhm: Optional[float] = None,
                   intnorm: bool = False
                  ) -> Dict[Any,str]:
@@ -1618,7 +1619,7 @@ class Pipeline:
                 standard_res: Optional[float] = 1.5,
                 group_qc: Optional[str] = None,
                 atlasdir: Optional[str] = None,
-                preproc_only: Optional[bool] = False,
+                preproc_only: Optional[bool] = None,
                 spatial_fwhm: Optional[float] = None,
                 intnorm: bool = False
                ) -> None:
