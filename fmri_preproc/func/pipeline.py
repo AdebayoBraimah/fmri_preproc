@@ -98,8 +98,11 @@ class Pipeline:
     """
     def __init__(self,
                  outdir: str,
-                 func: str,
-                 scan_pma: float,
+                 func: Optional[str] = None,
+                 subid: Optional[str] = None,
+                 sesid: Optional[str] = None,
+                 runid: Optional[str] = None,
+                 scan_pma: Optional[float] = None,
                  birth_ga: Optional[float] = None,
                  verbose: bool = False,
                  log_level: str = 'info',
@@ -124,6 +127,9 @@ class Pipeline:
         sub_json, 
         sub_dict) = import_info(outdir=outdir,
                                 func=func,
+                                subid=subid,
+                                sesid=sesid,
+                                runid=runid,
                                 scan_pma=scan_pma,
                                 birth_ga=birth_ga,
                                 log=None,
@@ -202,6 +208,10 @@ class Pipeline:
         sub_json: str = self.sub_json
         settings_file: str = os.path.join(sub_workdir, 'logs', 'settings.json')
 
+        # Use previuos settings if present
+        if os.path.exists(settings_file):
+            self.settings: Dict[str,Any] = json2dict(jsonfile=settings_file)
+        
         settings_file: str = dict2json(dict=self.settings, jsonfile=settings_file)
         
         # Check if func has been imported
@@ -900,11 +910,6 @@ class Pipeline:
             std_log: LogFile = LogFile(_std_log, format_log_str=True)
 
         self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
-
-        # TODO: 
-        # try-except for standard_age - could be int | float | str
-        # Log file updates for which atlas/template is being used for the 
-        #   multi-template registration process
 
         if template_ages is not None:
             if not isinstance(template_ages, list):
