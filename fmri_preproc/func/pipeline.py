@@ -1146,7 +1146,6 @@ class Pipeline:
         if group_qc is None:
             group_qc: str = os.path.join(GROUP_QC_DIR, 'grp_qc_512_anon.json')
         
-        # template: str = os.path.join(HTMLDIR,'individual_qc_report_template.html')
         template: str = 'individual_qc_report_template.html'
         qcdir: str = self.outputs.get('qcdir')
 
@@ -1184,14 +1183,15 @@ class Pipeline:
             fname: str = f'sub-{subid}_qc.html'
 
         with WorkDir(src=qcdir) as qdir:
-            qcdir: str = qdir.abspath()
-            qc_report: str = qdir.join(fname)
-            self.outputs: Dict[str,str] = {
-                **self.outputs,
-                "qcdir": qcdir,
-                "qc_report": qc_report,
-            }
-            _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+            with WorkDir(src=self.outputs.get('workdir')) as od:
+                qcdir: str = qdir.abspath()
+                qc_report: str = od.join(fname)
+                self.outputs: Dict[str,str] = {
+                    **self.outputs,
+                    "qcdir": qcdir,
+                    "qc_report": qc_report,
+                }
+                _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
         
         qc: Subject = Subject(workdir=qcdir)
         
