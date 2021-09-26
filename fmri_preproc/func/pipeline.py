@@ -1584,6 +1584,8 @@ class Pipeline:
 
         if (spatial_fwhm is not None) and (spatial_fwhm != 0) or intnorm:
 
+            if spatial_fwhm is None: spatial_fwhm: int = 0
+
             with WorkDir(src=self.logdir) as lgd:
                 _post_log: str = lgd.join('postprocess.log')
                 post_log: LogFile = LogFile(_post_log, format_log_str=True)
@@ -1648,6 +1650,8 @@ class Pipeline:
         _: str = self.report(group_qc=group_qc)
 
         if (spatial_fwhm is not None) and (spatial_fwhm != 0) or intnorm:
+
+            if spatial_fwhm is None: spatial_fwhm: int = 0
 
             with WorkDir(src=self.logdir) as lgd:
                 _post_log: str = lgd.join('postprocess.log')
