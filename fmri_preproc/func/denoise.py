@@ -5,6 +5,7 @@ NOTE:
     External dependency: FIX - https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIX/UserGuide.
 """
 import os
+import shutil
 import pandas as pd
 import numpy as np
 
@@ -172,6 +173,8 @@ def fix_extract(func_filt: str,
     # Extract FIX features
     if log: log.log("Performing FIX feature extraction")
 
+    _source_fix_directory()
+
     cmd: Command = Command("fix")
     cmd.opt("-f")
     cmd.opt(f"{fixdir}")
@@ -204,9 +207,24 @@ def _write_fsf(fsf: Union[File,str],
 set fmri(temphp_yn) 1
 
 # High pass filter cutoff
-set fmri(paradigm_hp) {temporal_fwhm}
-                """)
+set fmri(paradigm_hp) {temporal_fwhm}""")
     return fsf_file
+
+
+def _source_fix_directory(log: Optional[LogFile] = None):
+    """Helper function that sources and appends FSL's FIX settings to the current
+    shell's ``PATH`` variable.
+
+    NOTE: FIX MUST be in the shell's ``PATH`` variable for this function to
+        work properly.
+    """
+    FIXDIR: str = os.path.dirname(shutil.which("fix"))
+    FIXSETTINGS: str = os.path.join(FIXDIR,'settings.sh')
+
+    cmd: Command = Command("source")
+    cmd.opt(FIXSETTINGS)
+    cmd.run(log=log)
+    return None
 
 
 def _classify(fixdir: str,
@@ -228,6 +246,8 @@ def _classify(fixdir: str,
         
         fixdir: str = fd.abspath()
         fix_log: str = fd.join('.fix_2b_predict.log')
+    
+    _source_fix_directory(log=log)
     
     if fix_src:
         cmd: Command = Command(f"{fix_src}")
@@ -327,8 +347,17 @@ def fix_apply(outdir: str,
     func_stdev: str = outputs.get('func_clean_std')
     func_tsnr: str = outputs.get('func_clean_tsnr')
 
+    # Copy FIX labels to FIX directory
+    with File(src=labels, assert_exists=True) as lbl:
+        with WorkDir(src=fixdir) as fx:
+            tmpfile: str = fx.join("fix_label_file.txt")
+            labels: str = lbl.copy(dst=tmpfile)
+
     # FIX apply
     if log: log.log("Performing FIX noise/nuissance regression")
+    
+    _source_fix_directory(log=log)
+
     cmd: Command = Command("fix")
     cmd.opt("-a")
     cmd.opt(f"{labels}")
