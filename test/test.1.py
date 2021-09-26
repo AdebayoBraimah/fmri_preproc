@@ -19,7 +19,7 @@ from fmri_preproc.func.pipeline import Pipeline
 
 # Directory variables
 # outdir: str = "/users/brac4g/fmri_neonate/FMRI_test_1/test/test.1"
-outdir: str = "/users/brac4g/fmri_neonate/FMRI_test_1/test/test.5"
+outdir: str = "/users/brac4g/fmri_neonate/FMRI_test_1/test/test.6"
 
 # # (Local) File variables
 # outdir: str = "/Users/adebayobraimah/Desktop/projects/fmri_preproc/test/test.1"
