@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 """fMRI preprocessing pipeline - main pipeline.
 """
-# TODO:
-#   * Add post-processing to the end of the pipeline.
-
 import os
 import numpy as np
 import nibabel as nib
@@ -1120,8 +1117,8 @@ class Pipeline:
             func_clean_mean,
             func_clean_std,
             func_clean_tsnr) = fix_apply(outdir=self.outputs.get('workdir'),
-                                    temporal_fwhm=temporal_fwhm,
-                                    log=fix_log)
+                                         temporal_fwhm=temporal_fwhm,
+                                         log=fix_log)
         else:
             func_clean: str = outdict3.get('func_clean')
             func_clean_mean: str = outdict3.get('func_clean_mean')
@@ -1584,7 +1581,7 @@ class Pipeline:
 
         _: str = self.report(group_qc=group_qc)
 
-        if (spatial_fwhm is not None) or intnorm:
+        if (spatial_fwhm is not None) or (spatial_fwhm != 0) or intnorm:
 
             with WorkDir(src=self.logdir) as lgd:
                 _post_log: str = lgd.join('postprocess.log')
@@ -1649,7 +1646,7 @@ class Pipeline:
 
         _: str = self.report(group_qc=group_qc)
 
-        if (spatial_fwhm is not None) or intnorm:
+        if (spatial_fwhm is not None) or (spatial_fwhm != 0) or intnorm:
 
             with WorkDir(src=self.logdir) as lgd:
                 _post_log: str = lgd.join('postprocess.log')
