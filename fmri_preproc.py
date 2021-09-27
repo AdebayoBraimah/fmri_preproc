@@ -111,7 +111,8 @@ def preproc_data() -> Literal[0]:
                                      log_level=settings_dict.get('log_level'), 
                                      settings_json_dict=settings_dict)
         if args.method == 'import':
-            preproc.import_data(func_echospacing=args.func_echospacing,
+            preproc.import_data(func=args.func,
+                                func_echospacing=args.func_echospacing,
                                 func_pedir=args.func_pedir,
                                 T2w=args.T2w,
                                 T2w_brainmask=args.T2w_brainmask,

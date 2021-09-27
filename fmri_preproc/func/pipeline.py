@@ -167,6 +167,7 @@ class Pipeline:
         return None
     
     def import_data(self,
+                    func: Optional[str] = None,
                     func_echospacing: Optional[float] = None,
                     func_pedir: Optional[str] = None,
                     T2w: Optional[str] = None,
@@ -204,9 +205,13 @@ class Pipeline:
         sub_workdir: str = self.workdir
         import_log: str = self.import_log
         sub_dict: Dict[Any,Any] = self.sub_dict
-        func: str = self.func
+        # func: str = self.func
         sub_json: str = self.sub_json
         settings_file: str = os.path.join(sub_workdir, 'logs', 'settings.json')
+
+        # Check if func has been passed as class arg
+        if self.func:
+            func: str = self.func
 
         # Use previuos settings if present
         if os.path.exists(settings_file):
@@ -1493,7 +1498,7 @@ class Pipeline:
             if wd0.check_exists(*wd0_files):
                 qc_log.log('Add func_clean [place holder] to QC')
             
-                qc.add_func(func=self.outputs.get('func_mcdc'),
+                qc.add_func(func=self.outputs.get('func_filt'),
                             label='clean',
                             brainmask=self.outputs.get('mcdc_brainmask'),
                             standard=standard,
@@ -1598,7 +1603,7 @@ class Pipeline:
             if os.path.exists(self.outputs.get('func_clean')):
                 func: str = self.outputs.get('func_clean')
             else:
-                func: str = self.outputs.get('func_mcdc')
+                func: str = self.outputs.get('func_filt')
 
             _: Tuple[str] = postprocess(func=func,
                                         func_mean=self.outputs.get('mcdc_mean'),
@@ -1665,7 +1670,7 @@ class Pipeline:
             if os.path.exists(self.outputs.get('func_clean')):
                 func: str = self.outputs.get('func_clean')
             else:
-                func: str = self.outputs.get('func_mcdc')
+                func: str = self.outputs.get('func_filt')
 
             _: Tuple[str] = postprocess(func=func,
                                         func_mean=self.outputs.get('mcdc_mean'),
