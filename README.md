@@ -19,7 +19,7 @@ module load fix/1.6.15
 module load cuda/9.1
 ```
 
-> If at CCHMC:
+> If at CCHMC:         
 > FIX uses GNU Octave. Make sure the executable can be called from the command line prior to running the pipeline.
 
 Followed by setting other path and environment variables:
@@ -41,7 +41,7 @@ export PYTHONPATH=${PYTHONPATH}:$(which python3):${pkg_path}
 source $(dirname $(which fix))/settings.sh
 
 # Append package executable to PATH
-export PATH=${PATH}:${pkg_path}/fmri_preproc.py
+export PATH=${PATH}:${pkg_path}
 ```
 
 # Help menus
@@ -49,9 +49,9 @@ export PATH=${PATH}:${pkg_path}/fmri_preproc.py
 
 Once the environmental variables are set, simply typing `fmri_preproc.py` or `fmri_preproc.py -h` should pull up the main help menu. 
 
-The pipeline is split into four main sections - each accessible via a subcommand (the first positional argument) with their own separate help and usage menus.
+The pipeline is split into four main sections (plus the `run-all` option) - each accessible via a subcommand (the first positional argument) with their own separate help and usage menus.
 
-The main help menu is shown below.
+The main help menu is shown below.        
 
 ```
 usage: fmri_preproc.py [-h] [-s <str>] [-r <str>] [-o <str>] [-e <str>] [-version]
@@ -62,24 +62,6 @@ Performs preprocessing of neonatal resting-state functional MR neuroimages.
 
 optional arguments:
   -h, --help                                     show this help message and exit
-
-Required Arguments:
-  -s <str>, --sub <str>                          REQUIRED: Subject ID.
-  -r <str>, --run <str>                          REQUIRED: Run number.
-  -o <str>, --outdir <str>                       REQUIRED: Output parent directory.
-  -e <str>, --ses <str>                          Session ID.
-
-Optional Arguments:
-  -version, --version                            Prints version, then exits.
-  --write-config <file>                          Writes a template configuration (JSON) to file.
-  -v, --verbose                                  Enables verbose output to the command and log
-                                                 files.
-  --log-level <str>                              Log level to be written to output log files.
-                                                 Acceptable inputs include: 'info', 'debug',
-                                                 'critical', 'warning', and 'error'
-                                                 [default='info'].
-  --config <file>, --settings <file>             Configuration (JSON) file that contains additional
-                                                 input arguments not specified at the command line.
 
 subcommands:
   Data preprocessing pipeline sections for 'fmri_preproc'.
@@ -96,4 +78,22 @@ subcommands:
                                                  (web page).
     run-all                                      Perform/Run all preprocessing steps of the
                                                  pipeline.
+
+Required Arguments:
+  -s <str>, --sub <str>                          REQUIRED: Subject ID.
+  -r <str>, --run <str>                          REQUIRED: Run number.
+  -o <str>, --outdir <str>                       REQUIRED: Output parent directory.
+
+Optional Arguments:
+  -e <str>, --ses <str>                          OPTIONAL: Session ID.
+  -version, --version                            Prints version, then exits.
+  --write-config <file>                          Writes a template configuration (JSON) to file.
+  -v, --verbose                                  Enables verbose output to the command and log
+                                                 files.
+  --log-level <str>                              Log level to be written to output log files.
+                                                 Acceptable inputs include: 'info', 'debug',
+                                                 'critical', 'warning', and 'error'
+                                                 [default='info'].
+  --config <file>, --settings <file>             Configuration (JSON) file that contains additional
+                                                 input arguments not specified at the command line.
 ```
