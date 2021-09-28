@@ -23,7 +23,7 @@ A resting-state fMRI preprocessing pipeline for neonatal neuroimaging data.
 >             
 > `FIX` uses [`GNU Octave`](https://www.gnu.org/software/octave/index). Make sure the executable can be called from the command line prior to running the pipeline.
 
-Followed by setting other path and environment variables:
+Set path and environment variables:
 
 **NOTE**: Only append to the `LD_LIBRARY_PATH` **IF** python issues arise when calling FSL executables.        
 
@@ -52,7 +52,7 @@ Once the environmental variables are set, simply typing `fmri_preproc.py` or `fm
 
 The pipeline is split into four main sections (plus the `run-all` option) - each accessible via a subcommand (the first positional argument) with their own separate help and usage menus.
 
-The main help menu is shown below.        
+The main help menu is shown below:        
 
 ```
 usage: fmri_preproc.py [-h] [-s <str>] [-r <str>] [-o <str>] [-e <str>] [-version]
@@ -99,7 +99,7 @@ Optional Arguments:
                                                  input arguments not specified at the command line.
 ```
 
-# How to Cite
+# How to cite
 ----------------
 
 This preprocessing pipeline is based off of the [`dhcp-fmri preprocessing pipeline`](https://git.fmrib.ox.ac.uk/seanf/dhcp-neonatal-fmri-pipeline).
