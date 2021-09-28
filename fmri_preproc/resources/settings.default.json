@@ -25,5 +25,7 @@
     "group_map": null,
     "standard_res": 1.5,
     "verbose": false,
-    "log_level": "info"
+    "log_level": "info",
+    "smooth": 0,
+    "intnorm": false
 }

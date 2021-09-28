@@ -98,8 +98,11 @@ class Pipeline:
     """
     def __init__(self,
                  outdir: str,
-                 func: str,
-                 scan_pma: float,
+                 func: Optional[str] = None,
+                 subid: Optional[str] = None,
+                 sesid: Optional[str] = None,
+                 runid: Optional[str] = None,
+                 scan_pma: Optional[float] = None,
                  birth_ga: Optional[float] = None,
                  verbose: bool = False,
                  log_level: str = 'info',
@@ -110,8 +113,7 @@ class Pipeline:
         """
         # Import information
         self.verbose: bool = verbose
-
-        # TODO: Reference class settings dictionary for relevant arguments/variables
+        
         if isinstance(settings_json_dict,str) :
             self.settings: Dict[str,Any] = settings(jsonfile=settings_json_dict)
         elif isinstance(settings_json_dict,dict):
@@ -124,6 +126,9 @@ class Pipeline:
         sub_json, 
         sub_dict) = import_info(outdir=outdir,
                                 func=func,
+                                subid=subid,
+                                sesid=sesid,
+                                runid=runid,
                                 scan_pma=scan_pma,
                                 birth_ga=birth_ga,
                                 log=None,
@@ -161,6 +166,7 @@ class Pipeline:
         return None
     
     def import_data(self,
+                    func: Optional[str] = None,
                     func_echospacing: Optional[float] = None,
                     func_pedir: Optional[str] = None,
                     T2w: Optional[str] = None,
@@ -198,10 +204,18 @@ class Pipeline:
         sub_workdir: str = self.workdir
         import_log: str = self.import_log
         sub_dict: Dict[Any,Any] = self.sub_dict
-        func: str = self.func
+        # func: str = self.func
         sub_json: str = self.sub_json
         settings_file: str = os.path.join(sub_workdir, 'logs', 'settings.json')
 
+        # Check if func has been passed as class arg
+        if self.func:
+            func: str = self.func
+
+        # Use previuos settings if present
+        if os.path.exists(settings_file):
+            self.settings: Dict[str,Any] = json2dict(jsonfile=settings_file)
+        
         settings_file: str = dict2json(dict=self.settings, jsonfile=settings_file)
         
         # Check if func has been imported
@@ -901,11 +915,6 @@ class Pipeline:
 
         self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
 
-        # TODO: 
-        # try-except for standard_age - could be int | float | str
-        # Log file updates for which atlas/template is being used for the 
-        #   multi-template registration process
-
         if template_ages is not None:
             if not isinstance(template_ages, list):
                 template_ages: List[str] = template_ages.split(",")
@@ -1146,7 +1155,6 @@ class Pipeline:
         if group_qc is None:
             group_qc: str = os.path.join(GROUP_QC_DIR, 'grp_qc_512_anon.json')
         
-        # template: str = os.path.join(HTMLDIR,'individual_qc_report_template.html')
         template: str = 'individual_qc_report_template.html'
         qcdir: str = self.outputs.get('qcdir')
 
@@ -1184,14 +1192,15 @@ class Pipeline:
             fname: str = f'sub-{subid}_qc.html'
 
         with WorkDir(src=qcdir) as qdir:
-            qcdir: str = qdir.abspath()
-            qc_report: str = qdir.join(fname)
-            self.outputs: Dict[str,str] = {
-                **self.outputs,
-                "qcdir": qcdir,
-                "qc_report": qc_report,
-            }
-            _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+            with WorkDir(src=self.outputs.get('workdir')) as od:
+                qcdir: str = qdir.abspath()
+                qc_report: str = od.join(fname)
+                self.outputs: Dict[str,str] = {
+                    **self.outputs,
+                    "qcdir": qcdir,
+                    "qc_report": qc_report,
+                }
+                _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
         
         qc: Subject = Subject(workdir=qcdir)
         
@@ -1488,7 +1497,7 @@ class Pipeline:
             if wd0.check_exists(*wd0_files):
                 qc_log.log('Add func_clean [place holder] to QC')
             
-                qc.add_func(func=self.outputs.get('func_mcdc'),
+                qc.add_func(func=self.outputs.get('func_filt'),
                             label='clean',
                             brainmask=self.outputs.get('mcdc_brainmask'),
                             standard=standard,
@@ -1593,7 +1602,7 @@ class Pipeline:
             if os.path.exists(self.outputs.get('func_clean')):
                 func: str = self.outputs.get('func_clean')
             else:
-                func: str = self.outputs.get('func_mcdc')
+                func: str = self.outputs.get('func_filt')
 
             _: Tuple[str] = postprocess(func=func,
                                         func_mean=self.outputs.get('mcdc_mean'),
@@ -1660,7 +1669,7 @@ class Pipeline:
             if os.path.exists(self.outputs.get('func_clean')):
                 func: str = self.outputs.get('func_clean')
             else:
-                func: str = self.outputs.get('func_mcdc')
+                func: str = self.outputs.get('func_filt')
 
             _: Tuple[str] = postprocess(func=func,
                                         func_mean=self.outputs.get('mcdc_mean'),
