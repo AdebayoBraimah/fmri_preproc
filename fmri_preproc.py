@@ -232,6 +232,10 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
 
     # Parse Arguments
 
+    mainargparser = parser.add_subparsers(title="subcommands",
+                                          description="Data preprocessing pipeline sections for 'fmri_preproc'.",
+                                          help="Type the 'subcommand' name followed by '-h' or '--help' for more information.")
+
     reqoptions = parser.add_argument_group('Required Arguments')
 
     reqoptions.add_argument('-s','--sub',
@@ -252,15 +256,15 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                             metavar="<str>",
                             default=None,
                             help="REQUIRED: Output parent directory.")
-    reqoptions.add_argument('-e','--ses',
+    
+    optoptions = parser.add_argument_group('Optional Arguments')
+
+    optoptions.add_argument('-e','--ses',
                             dest="ses",
                             type=str,
                             metavar="<str>",
                             default=None,
-                            help="Session ID.")
-
-    optoptions = parser.add_argument_group('Optional Arguments')
-
+                            help="OPTIONAL: Session ID.")
     optoptions.add_argument('-version','--version',
                             dest="version",
                             action="store_true",
@@ -289,10 +293,6 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                             dest="settings",
                             default=DEFAULT_SETTINGS_FILE,
                             help="Configuration (JSON) file that contains additional input arguments not specified at the command line.")
-
-    mainargparser = parser.add_subparsers(title="subcommands",
-                                          description="Data preprocessing pipeline sections for 'fmri_preproc'.",
-                                          help="Type the 'subcommand' name followed by '-h' or '--help' for more information.")
 
     # IMPORT DATA ARGS
     importoptions = mainargparser.add_parser('import-data', 
