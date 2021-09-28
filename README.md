@@ -6,6 +6,16 @@ A resting-state fMRI preprocessing pipeline for neonatal neuroimaging data.
 # Quick start
 ----------------
 
+## External Dependencies        
+
+| Dependency  | Environmental variable (if applicable)  |
+|---|---|
+| [`FSL`](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/)  | `FSLDIR`  |
+| [`ANTs`](http://stnava.github.io/ANTs/)  | `ANTSPATH`  |
+| [`C3D`](http://www.itksnap.org/pmwiki/pmwiki.php?n=Convert3D.Documentation)  | ***Must be in system path**  |
+| [`FIX`](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIX)  | ***Must be in system path**  |
+| [The dHCP structural pipeline](https://github.com/BioMedIA/dhcp-structural-pipeline)  | N/A  |
+
 > If at CCHMC:    
 >            
 > ```bash
