@@ -8,6 +8,15 @@ import numpy as np
 import jinja2
 import pandas as pd
 from collections import OrderedDict
+
+# NOTE: Added here to catch nilearn's FutureWarning
+# 
+# nilearn/datasets/__init__.py:86: FutureWarning: 
+# Fetchers from the nilearn.datasets module will be updated in version 0.9 to return python 
+#   strings instead of bytes and Pandas dataframes instead of Numpy arrays.
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import nilearn.plotting as nilearn_plot
 
 import fmri_preproc.utils.qc.util as util
