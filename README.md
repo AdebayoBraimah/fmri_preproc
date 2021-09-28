@@ -6,25 +6,25 @@ A resting-state fMRI preprocessing pipeline for neonatal neuroimaging data.
 # Quick start
 ----------------
 
-> If at CCHMC:
-```bash
-# Load modules
-module load anaconda3/1.0.0
-module load fsl/6.0.4
-module load ants/2.3.1
-module load c3d/1.0.0
-module load R/4.0.2
-module load octave/6.2.0
-module load fix/1.6.15
-module load cuda/9.1
-```
+> If at CCHMC:        
+> ```bash
+> # Load modules
+> module load anaconda3/1.0.0
+> module load fsl/6.0.4
+> module load ants/2.3.1
+> module load c3d/1.0.0
+> module load R/4.0.2
+> module load octave/6.2.0
+> module load fix/1.6.15
+> module load cuda/9.1
+> ```
 
 > If at CCHMC:         
-> FIX uses GNU Octave. Make sure the executable can be called from the command line prior to running the pipeline.
+>   FIX uses GNU Octave. Make sure the executable can be called from the command line prior to running the pipeline.
 
 Followed by setting other path and environment variables:
 
-**NOTE**: Only append to the `LD_LIBRARY_PATH` if python issues arise when calling FSL executables.
+**NOTE**: Only append to the `LD_LIBRARY_PATH` if python issues arise when calling FSL executables.        
 
 ```bash
 # Set path variables
