@@ -33,10 +33,19 @@ class FmapFiles(OutDict):
         
         fmapdir: str = os.path.join(outdir,'fmap')
 
+        if os.path.exists(fmapdir):
+            remove_dir: bool = False
+        else:
+            remove_dir: bool = True
+
         with WorkDir(src=fmapdir) as od:
             self.output: Dict[str,str] = {
                 "fmap": od.join("fieldmap.nii.gz"),
                 "fmap_mag": od.join("fieldmap_magnitude.nii.gz"),
                 "fmap_mask": od.join("fieldmap_brainmask.nii.gz"),
             }
+
+            if remove_dir:
+                od.rmdir()
+                
         return self.output

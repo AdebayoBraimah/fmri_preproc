@@ -1,38 +1,10 @@
 # -*- coding: utf-8 -*-
 """fMRI preprocessing pipeline - main pipeline.
 """
-# NOTE:
-# 
-# Pipeline overview
-# 
-# 0. Import/copy data to working directory
-# 
-# 1. [X] Prepare fieldmap
-#   a. [X] Topup [mc]
-# 2. [X] Motion correction, distortion correction
-#   a. [X] eddy [mc]
-#   b. [X] mcflirt [mc]
-# 3. Registration (linear, and non-linear)
-#   a. flirt ( + mcflirt) [reg]
-#       i. sym-link field map files from [mc]
-# 4. [X] ICA
-#   a. [X] melodic
-# 5. [X] Denoise
-#   a. [X] FIX
-# 6. [X] Post-processing
-#   a. [X] Spatial smooting
-#   b. [X] Intensity norm
-# 7. QC
-#   a. PENDING
-# 
-# 
-# TODO:
-#   * Figure out a way to perform multiple registrations
-
 import os
 import numpy as np
+import nibabel as nib
 from collections import OrderedDict
-from io import TextIOWrapper
 
 from typing import (
     Any,
@@ -44,6 +16,13 @@ from typing import (
     Union
 )
 
+from fmri_preproc import (
+    FIXDATADIR,
+    GROUP_MAP_DIR,
+    GROUP_QC_DIR
+)
+
+from fmri_preproc.utils.fileio import NiiFile
 from fmri_preproc.func.qc import Subject
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
@@ -51,10 +30,16 @@ from fmri_preproc.func.fieldmap import fieldmap
 from fmri_preproc.func.mcdc import mcdc
 from fmri_preproc.func.ica import ica
 
+from fmri_preproc.utils.fslpy import (
+    FSLDIR, 
+    flirt
+)
+
 from fmri_preproc.utils.util import (
     dict2json,
     json2dict,
-    load_sidecar, 
+    load_sidecar,
+    settings,
     update_sidecar
 )
 
@@ -69,6 +54,7 @@ from fmri_preproc.utils.outputs.fieldmap import FmapFiles
 from fmri_preproc.utils.outputs.registration import MRreg
 from fmri_preproc.utils.outputs.mcdc import MCDCFiles
 from fmri_preproc.utils.outputs.ica import ICAFiles
+from fmri_preproc.func.postprocess import postprocess
 
 from fmri_preproc.utils.outputs.denoise import (
     FIXApply,
@@ -90,6 +76,7 @@ from fmri_preproc.func.registration import (
     func_to_struct_composite,
     func_to_template_composite,
     sbref_to_struct,
+    _select_atlas as select_atlas,
     struct_to_template_composite,
     template_to_struct
 )
@@ -100,17 +87,26 @@ from fmri_preproc.func.denoise import (
     fix_extract
 )
 
+from fmri_preproc.utils.mask import (
+    create_mask, 
+    get_dseg_labels
+)
+
 
 class Pipeline:
     """class doc-string
     """
     def __init__(self,
                  outdir: str,
-                 func: str,
-                 scan_pma: float,
+                 func: Optional[str] = None,
+                 subid: Optional[str] = None,
+                 sesid: Optional[str] = None,
+                 runid: Optional[str] = None,
+                 scan_pma: Optional[float] = None,
                  birth_ga: Optional[float] = None,
                  verbose: bool = False,
                  log_level: str = 'info',
+                 settings_json_dict: Optional[Union[Dict[str,Any],str]] = None,
                  **kwargs
                 ) -> None:
         """Constructor for pipeline class.
@@ -118,11 +114,22 @@ class Pipeline:
         # Import information
         self.verbose: bool = verbose
 
+        # TODO: Reference class settings dictionary for relevant arguments/variables
+        if isinstance(settings_json_dict,str) :
+            self.settings: Dict[str,Any] = settings(jsonfile=settings_json_dict)
+        elif isinstance(settings_json_dict,dict):
+            self.settings: Dict[str,Any] = settings(**settings_json_dict)
+        else:
+            self.settings: Dict[str,Any] = settings()
+
         (sub_workdir, 
         logdir, 
         sub_json, 
         sub_dict) = import_info(outdir=outdir,
                                 func=func,
+                                subid=subid,
+                                sesid=sesid,
+                                runid=runid,
                                 scan_pma=scan_pma,
                                 birth_ga=birth_ga,
                                 log=None,
@@ -136,8 +143,8 @@ class Pipeline:
         self.verbose: bool = verbose
         self.workdir: str = sub_workdir
         self.sub_dict: str = sub_dict
-        self.outdir: str = outdir
         self.func: str = func
+        self.sub_json: str = sub_json
         
         with WorkDir(src=self.logdir) as lgd:
             _import_log: str = lgd.join('import.log')
@@ -148,9 +155,9 @@ class Pipeline:
             sesid: str = sub_dict.get('sesid')
 
             if sesid:
-                self.proc: TextIOWrapper = lgd.join(f'sub-{subid}_ses-{sesid}_fmripreproc.json')
+                self.proc: str = lgd.join(f'sub-{subid}_ses-{sesid}_fmripreproc.json')
             else:
-                self.proc: TextIOWrapper = lgd.join(f'sub-{subid}_fmripreproc.json')
+                self.proc: str = lgd.join(f'sub-{subid}_fmripreproc.json')
             
             if os.path.exists(self.proc):
                 self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
@@ -160,6 +167,7 @@ class Pipeline:
         return None
     
     def import_data(self,
+                    func: Optional[str] = None,
                     func_echospacing: Optional[float] = None,
                     func_pedir: Optional[str] = None,
                     T2w: Optional[str] = None,
@@ -180,7 +188,7 @@ class Pipeline:
                     T1w: Optional[str] = None,
                     mask_func: bool = False,
                     spinecho: Optional[str] = None,
-                    spinecho_echospacing: Optional[float] = 0.1,
+                    spinecho_echospacing: Optional[float] = None,
                     spinecho_pedir: Union[str,List[str]] = None,
                     ap_dir: Optional[str] = None,
                     pa_dir: Optional[str] = None,
@@ -189,7 +197,7 @@ class Pipeline:
                     is_dir: Optional[str] = None,
                     si_dir: Optional[str] = None,
                     spinecho_epifactor: Optional[int] = None,
-                    spinecho_inplaneacc: Optional[float] = 1
+                    spinecho_inplaneacc: Optional[float] = None
                    ) -> Dict[Any,str]:
         """Import data class-function.
         """
@@ -197,13 +205,19 @@ class Pipeline:
         sub_workdir: str = self.workdir
         import_log: str = self.import_log
         sub_dict: Dict[Any,Any] = self.sub_dict
-        outdir: str = self.outdir
-        func: str = self.func
+        # func: str = self.func
+        sub_json: str = self.sub_json
+        settings_file: str = os.path.join(sub_workdir, 'logs', 'settings.json')
 
-        attrs: Tuple[str] = ('func','workdir', 'import_log', 'sub_dict', 'sub_json')
+        # Check if func has been passed as class arg
+        if self.func:
+            func: str = self.func
 
-        for attr in attrs:
-            self.__dict__.pop(attr, None) 
+        # Use previuos settings if present
+        if os.path.exists(settings_file):
+            self.settings: Dict[str,Any] = json2dict(jsonfile=settings_file)
+        
+        settings_file: str = dict2json(dict=self.settings, jsonfile=settings_file)
         
         # Check if func has been imported
         out_func: ImportFunc = ImportFunc(outdir=sub_workdir)
@@ -301,13 +315,23 @@ class Pipeline:
             **sub_dict,
             **func_info_dict,
             **struct_info_dict,
+            "settings_file": settings_file,
+            "subject_info": sub_json,
             "workdir": sub_workdir,
-            "spinecho": spinecho
+            "spinecho": spinecho,
+            # "subject_info": sub_json.name,
         }
 
         # Set files that do not exist to None
         self.outputs: Dict[str,str] = key_to_none(d=self.outputs)
         _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+
+        # Remove unneeded class variables
+        attrs: Tuple[str] = ('func','workdir', 'import_log', 'sub_dict', 'sub_json')
+
+        for attr in attrs:
+            self.__dict__.pop(attr, None) 
+
         return self.outputs
 
     def prepare_fieldmap(self) -> Dict[Any,str]:
@@ -742,7 +766,8 @@ class Pipeline:
                          template_age: Union[int,str],
                          standard_age: Union[int,str] = 40,
                          quick: bool = False,
-                         atlasdir: Optional[str] = None
+                         atlasdir: Optional[str] = None,
+                         std_log: Optional[LogFile] = None
                         ) -> Dict[Any,str]:
         """doc-stirng
 
@@ -750,10 +775,6 @@ class Pipeline:
             * Template source should be the aged match template.
             * Template space should be the standard aged template.
         """
-        with WorkDir(src=self.logdir) as lgd:
-            _std_log: str = lgd.join('standard.log')
-            std_log: LogFile = LogFile(_std_log, format_log_str=True)
-
         self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
 
         try:
@@ -889,16 +910,11 @@ class Pipeline:
                 ) -> Dict[Any,str]:
         """doc-string
         """
-        # with WorkDir(src=self.logdir) as lgd:
-        #     _std_log: str = lgd.join('standard.log')
-        #     std_log: LogFile = LogFile(_std_log, format_log_str=True)
+        with WorkDir(src=self.logdir) as lgd:
+            _std_log: str = lgd.join('standard.log')
+            std_log: LogFile = LogFile(_std_log, format_log_str=True)
 
         self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
-
-        # TODO: 
-        # try-except for standard_age - could be int | float | str
-        # Log file updates for which atlas/template is being used for the 
-        #   multi-template registration process
 
         if template_ages is not None:
             if not isinstance(template_ages, list):
@@ -970,9 +986,12 @@ class Pipeline:
 
             age_dict.update(**tmp_dict)
 
+            std_log.log(f"Performing registration of structural and functional data to: {age_dict.get(template_age).get('template_space')}", use_header=True)
+
             _: Dict[str,str] = self._reg_to_standard(**age_dict.get(template_age), 
                                                      quick=quick, 
-                                                     atlasdir=atlasdir)
+                                                     atlasdir=atlasdir,
+                                                     std_log=std_log)
         return self.outputs
 
     def ica(self,
@@ -1040,21 +1059,21 @@ class Pipeline:
 
         outfix1: FIXExtract = FIXExtract(outdir=self.outputs.get('workdir'))
         outdict1: Dict[str,str] = outfix1.outputs()
-        outfiles1: Tuple[str] = ('fixdir')
+        outfiles1: Tuple[str] = ('fixdir',)
 
         if not outfix1.check_exists(*outfiles1):
             fixdir: str = fix_extract(outdir=self.outputs.get('workdir'),
-                                    func_filt=func_filt,
-                                    func_ref=self.outputs.get('mcdc_mean'),
-                                    struct=self.outputs.get('T2w'),
-                                    struct_brainmask=self.outputs.get('T2w_brainmask'),
-                                    struct_dseg=struct_dseg,
-                                    dseg_type=dseg_type,
-                                    func2struct_mat=self.outputs.get('func_mcdc2struct_affine'),
-                                    mot_param=self.outputs.get('motparams'),
-                                    icadir=self.outputs.get('meldir'),
-                                    temporal_fwhm=temporal_fwhm,
-                                    log=fix_log)
+                                      func_filt=func_filt,
+                                      func_ref=self.outputs.get('mcdc_mean'),
+                                      struct=self.outputs.get('T2w'),
+                                      struct_brainmask=self.outputs.get('T2w_brainmask'),
+                                      struct_dseg=struct_dseg,
+                                      dseg_type=dseg_type,
+                                      func2struct_mat=self.outputs.get('func_mcdc2struct_affine'),
+                                      mot_param=self.outputs.get('motparams'),
+                                      icadir=self.outputs.get('meldir'),
+                                      temporal_fwhm=temporal_fwhm,
+                                      log=fix_log)
         else:
             fixdir: str = outdict1.get('fixdr')
         
@@ -1073,18 +1092,16 @@ class Pipeline:
         if not outfix2.check_exists(*outfiles2):
 
             if rdata is None:
-                # Raise exception for now.
-                raise RuntimeError ("Rdata file is required.")
+                rdata: str = os.path.join(FIXDATADIR,'fix.Rdata') # TODO: This is a temp variable for now.
             
             if fix_threshold is None:
-                # Raise exception for now - grab this from settings file.
-                raise RuntimeError("Must define FIX threshold.")
+                fix_threshold: int = int(self.settings('fix_threshold'))
             
             if (rdata is not None) and (fix_threshold is not None):
-                fix_labels, fix_reg = fix_classify(outdir=self.outputs.get('workdir'),
-                                                rdata=rdata,
-                                                thr=fix_threshold,
-                                                log=fix_log)
+                fix_labels, fix_regressors = fix_classify(outdir=self.outputs.get('workdir'),
+                                                          rdata=rdata,
+                                                          thr=fix_threshold,
+                                                          log=fix_log)
         else:
             fix_labels: str = outdict2.get('fix_labels')
             fix_regressors: str = outdict2.get('fix_regressors')
@@ -1110,8 +1127,8 @@ class Pipeline:
             func_clean_mean,
             func_clean_std,
             func_clean_tsnr) = fix_apply(outdir=self.outputs.get('workdir'),
-                                    temporal_fwhm=temporal_fwhm,
-                                    log=fix_log)
+                                         temporal_fwhm=temporal_fwhm,
+                                         log=fix_log)
         else:
             func_clean: str = outdict3.get('func_clean')
             func_clean_mean: str = outdict3.get('func_clean_mean')
@@ -1129,26 +1146,410 @@ class Pipeline:
 
         return self.outputs
     
-    # def report(self,
-    #            group_qc: Optional[str] = None
-    #           ) -> None:
-    #     """doc-string
-    #     """
-    #     if group_qc is None:
-    #         # TODO: set a default for this - use a settings file
-    #         group_qc: str = 'PLACE_HOLDER_TEXT'
-        
-    #     template: str = 'individual_qc_report_template.html'
-    #     qcdir: str = 'PLACE_HOLDER_TEXT' # TODO: set a default for this - use a settings file
+    def report(self,
+               group_qc: Optional[str] = None
+              ) -> str:
+        """doc-string
+        """
+        self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
 
-    #     qc0: Subject = Subject.from_qcdir()
-    #     # qc0.parse(template, self.defaults.get('qc_report', make_dir=True), group_json=group_qc) # TODO: Set output dict for report
-    #     return None
+        if group_qc is None:
+            group_qc: str = os.path.join(GROUP_QC_DIR, 'grp_qc_512_anon.json')
+        
+        template: str = 'individual_qc_report_template.html'
+        qcdir: str = self.outputs.get('qcdir')
+
+        qc0: Subject = Subject.from_qcdir(workdir=qcdir)
+        qc0.parse(template, self.outputs.get('qc_report'), group_json=group_qc)
+        return self.outputs.get('qc_report')
     
-    # def qc(self) -> None:
-    #     """doc-string
-    #     """
-    #     pass
+    def qc(self,
+           group_map: Optional[str] = None,
+           standard_age: Optional[int] = 40,
+           standard_res: Optional[float] = 1.5,
+           atlasdir: Optional[str] = None,
+           preproc_only: Optional[bool] = None
+          ) -> Dict[Any,Any]:
+        """doc-string
+        """
+        # Set up logging
+        with WorkDir(src=self.logdir) as lgd:
+            _qc_log: str = lgd.join('qc.log')
+            qc_log: LogFile = LogFile(_qc_log, format_log_str=True)
+        
+        if group_map is None:
+            group_map: str = os.path.join(GROUP_MAP_DIR, 'group_maps.nii.gz')
+
+        self.outputs: Dict[str,str] = json2dict(jsonfile=self.proc)
+        qcdir: str = os.path.join(self.outputs.get('workdir'), 'qc')
+
+        subid: str = json2dict(jsonfile=self.outputs.get('subject_info')).get('subid')
+        sesid: str = json2dict(jsonfile=self.outputs.get('subject_info')).get('sesid')
+
+        if sesid:
+            fname: str = f'sub-{subid}_ses-{sesid}_qc.html'
+        else:
+            sesid: str = '000'
+            fname: str = f'sub-{subid}_qc.html'
+
+        with WorkDir(src=qcdir) as qdir:
+            with WorkDir(src=self.outputs.get('workdir')) as od:
+                qcdir: str = qdir.abspath()
+                qc_report: str = od.join(fname)
+                self.outputs: Dict[str,str] = {
+                    **self.outputs,
+                    "qcdir": qcdir,
+                    "qc_report": qc_report,
+                }
+                _: str = dict2json(dict=self.outputs, jsonfile=self.proc)
+        
+        qc: Subject = Subject(workdir=qcdir)
+        
+        #==========================
+        # Add subject information  
+        #==========================
+
+        scan_pma: Union[int,float] = json2dict(jsonfile=self.outputs.get('subject_info')).get('scan_pma')
+        birth_ga: Union[int,float] = json2dict(jsonfile=self.outputs.get('subject_info')).get('birth_ga')
+        qc.add_subjectinfo(subject_id=subid, session_id=sesid, scan_age=scan_pma, birth_age=birth_ga)
+
+        #==========================
+        # Add fmap  
+        #==========================
+
+        fmap_out: FmapFiles = FmapFiles(outdir=self.outputs.get('workdir'))
+        _: Dict[str,str] = fmap_out.outputs()
+        fmap_files: Tuple[str] = ('fmap','fmap_mag')
+
+        if fmap_out.check_exists(*fmap_files):
+
+            out_sp: ImportSpinEcho = ImportSpinEcho(outdir=self.outputs.get('workdir'))
+            _: Dict[str,str] = out_sp.outputs()
+            sp_files: Tuple[str] = ('spinecho',)
+
+            if out_sp.check_exists(*sp_files):
+                spinecho: str = self.outputs.get('spinecho')
+            else:
+                spinecho: str = None
+            
+            qc_log.log('Add fieldmap to QC')
+
+            qc.add_fmap(label='fmap',
+                        fmap=self.outputs.get('fmap'),
+                        fmap_mag=self.outputs.get('fmap_mag'),
+                        fmap_brainmask=self.outputs.get('fmap_mask'),
+                        spinecho=spinecho)
+        else:
+            qc_log.warning("Fieldmap not found")
+        
+        #==========================
+        # Registration: fmap2struct
+        #==========================
+
+        struct_brainmask: str = os.path.join(qcdir, 'struct_brainmask.nii.gz')
+        sidecar: Dict[str,str] = load_sidecar(file=self.outputs.get('T2w_dseg'))
+
+        struct_brainmask: str = create_mask(dseg=self.outputs.get('T2w_dseg'),
+                                            dseg_type=sidecar.get('dseg_type'),
+                                            labels=['wm', 'gm', 'sc', 'cb', 'bs'],
+                                            out=struct_brainmask)
+
+        wd0: ImportStruct = ImportStruct(outdir=self.outputs.get('workdir'))
+        _: Dict[str,str] = wd0.outputs()
+        wd0_files: Tuple[str] = ('T2w',
+                                 'T2w_brainmask',
+                                 'T2w_dseg',
+                                 'T2w_wmmask')
+
+        if wd0.check_exists(*wd0_files) and os.path.exists(self.outputs.get('fmap2struct_src2ref')):
+            qc_log.log('Add fieldmap2struct to QC')
+            
+            qc.add_reg(label='fmap2struct',
+                       source=self.outputs.get('fmap2struct_src2ref'),
+                       ref=self.outputs.get('T2w'),
+                       ref_brainmask=struct_brainmask,
+                       ref_boundarymask=self.outputs.get('T2w_wmmask'),
+                       ref_dseg=self.outputs.get('T2w_wmmask'))
+        else:
+            qc_log.warning("fmap2struct not added")
+        
+        #==========================
+        # Registration: sbref2struct
+        #==========================
+
+        wd0: ImportStruct = ImportStruct(outdir=self.outputs.get('workdir'))
+        _: Dict[str,str] = wd0.outputs()
+        wd0_files: Tuple[str] = ('T2w',
+                                 'T2w_brainmask',
+                                 'T2w_dseg',
+                                 'T2w_wmmask')
+
+        if wd0.check_exists(*wd0_files) and os.path.exists(self.outputs.get('sbref2struct_src2ref')):
+            qc_log.log('Add sbref2struct to QC')
+            
+            qc.add_reg(label='sbref2struct',
+                       source=self.outputs.get('sbref2struct_src2ref'),
+                       ref=self.outputs.get('T2w'),
+                       ref_brainmask=struct_brainmask,
+                       ref_boundarymask=self.outputs.get('T2w_wmmask'),
+                       ref_dseg=self.outputs.get('T2w_wmmask'))
+        else:
+            qc_log.warning("sbref2struct not added")
+        
+        #==========================
+        # Registration: func2sbref
+        #==========================
+
+        wd0: ImportFunc = ImportFunc(outdir=self.outputs.get('workdir'))
+        _: Dict[str,str] = wd0.outputs()
+        wd0_files: Tuple[str] = ('sbref', 'sbref_brainmask')
+
+        if wd0.check_exists(*wd0_files) and os.path.exists(self.outputs.get('func2sbref_src2ref')):
+            qc_log.log('Add func2sbref to QC')
+
+            qc.add_reg(label='func2sbref',
+                       source=self.outputs.get('func2sbref_src2ref'),
+                       ref=self.outputs.get('sbref'),
+                       ref_brainmask=self.outputs.get('sbref_brainmask'))
+        else:
+            qc_log.warning("func2sbref not added")
+        
+        #==========================
+        # Registration: func-mcdc2sbref
+        #==========================
+
+        wd0: ImportFunc = ImportFunc(outdir=self.outputs.get('workdir'))
+        _: Dict[str,str] = wd0.outputs()
+        wd0_files: Tuple[str] = ('sbref', 'sbref_brainmask')
+
+        if wd0.check_exists(*wd0_files) and os.path.exists(self.outputs.get('func_mcdc2sbref_dc_src2ref')):
+            qc_log.log('Add func-mcdc2sbref to QC')
+
+            qc.add_reg(label='func-mcdc2sbref',
+                       source=self.outputs.get('func_mcdc2sbref_dc_src2ref'),
+                       ref=self.outputs.get('sbref'),
+                       ref_brainmask=self.outputs.get('sbref_brainmask'))
+        else:
+            qc_log.warning("func-mcdc2sbref not added")
+        
+        #==========================
+        # Registration: template2struct
+        #==========================
+
+        # scan_pma: int = int(np.round(scan_pma))
+
+        wd0: ImportStruct = ImportStruct(outdir=self.outputs.get('workdir'))
+        _: Dict[str,str] = wd0.outputs()
+        wd0_files: Tuple[str] = ('T2w',
+                                 'T2w_brainmask',
+                                 'T2w_dseg',
+                                 'T2w_wmmask')
+
+        if wd0.check_exists(*wd0_files) and os.path.exists(self.outputs.get('template2struct_src2ref')):
+            qc_log.log('Add template2struct to QC')
+
+            qc.add_reg(label='template2struct',
+                       source=self.outputs.get('template2struct_src2ref'),
+                       ref=self.outputs.get('T2w'),
+                       ref_brainmask=struct_brainmask,
+                       ref_boundarymask=self.outputs.get('T2w_wmmask'),
+                       ref_dseg=self.outputs.get('T2w_wmmask'))
+        else:
+            qc_log.warning("template2struct not added")
+        
+        #==========================
+        # Prepare standard space
+        #==========================
+
+        # Resample standard and standard_dseg to specified resolution (typically down sampled)
+
+        atlas: Dict[str,str] = select_atlas(age=standard_age, 
+                                            standard_age=standard_age, 
+                                            atlasdir=atlasdir)
+
+        standard: str = atlas.get('template_T2')
+
+        if os.path.exists(standard):
+            std_resamp: str = flirt(src=standard, 
+                                    ref=standard, 
+                                    applyisoxfm=standard_res,
+                                    init=os.path.join(FSLDIR,'etc/flirtsch/ident.mat'),
+                                    out=os.path.join(self.outputs.get('qcdir'),f'standard-{standard_res}mm.nii.gz'),
+                                    interp='spline',
+                                    log=qc_log)
+            
+            standard: nib.Nifti1Image = nib.load(std_resamp[0])
+        else:
+            standard: str = None
+
+        standard_dseg: str = atlas.get('seg')
+
+        if os.path.exists(standard_dseg):
+            std_resamp: str = flirt(src=standard_dseg, 
+                                    ref=standard_dseg, 
+                                    applyisoxfm=standard_res,
+                                    init=os.path.join(FSLDIR,'etc/flirtsch/ident.mat'),
+                                    out=os.path.join(self.outputs.get('qcdir'),f'standard-desg-{standard_res}mm.nii.gz'),
+                                    interp='nearestneighbour',
+                                    log=qc_log)
+            
+            standard_dseg: nib.Nifti1Image = nib.load(std_resamp[0])
+        else:
+            standard_dseg: str = None
+        
+        # Load warps
+
+        func2standard: str = self.outputs.get('func2std_warp')
+        standard2func: str = self.outputs.get('func2std_inv_warp')
+
+        if not os.path.exists(func2standard):
+            func2standard: str = None
+        
+        if not os.path.exists(standard2func):
+            standard2func: str = None
+        
+        #==========================
+        # Func: Raw
+        #==========================
+
+        wd0: ImportFunc = ImportFunc(outdir=self.outputs.get('workdir'))
+        _: Dict[str,str] = wd0.outputs()
+        wd0_files: Tuple[str] = ('func','func_brainmask')
+
+        if wd0.check_exists(*wd0_files):
+            qc_log.log('Add func_raw to QC')
+
+            qc.add_func(func=self.outputs.get('func'),
+                        label='raw',
+                        brainmask=self.outputs.get('func_brainmask'),
+                        standard=standard,
+                        func2standard_warp=func2standard,
+                        template=group_map,
+                        template2func_warp=standard2func,
+                        template_dseg=standard_dseg,
+                        template_dseg_labels=get_dseg_labels(seg_type='drawem'))
+        else:
+            qc_log.warning("func_raw not added")
+
+        #==========================
+        # Func: MCDC
+        #==========================
+
+        with NiiFile(src=self.outputs.get('func_mcdc'), assert_exists=True, validate_nifti=True) as fm:
+            _, fname, _ = fm.file_parts()
+
+            if 'dc' in fname.lower():
+                dc: bool = True
+            else:
+                dc: bool = False
+
+        wd0: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
+        _: Dict[str,str] = wd0.outputs(dc=dc)
+        wd0_files: Tuple[str] = ('func_mcdc','mcdc_brainmask')
+
+        if wd0.check_exists(*wd0_files):
+            qc_log.log('Add func_mcdc to QC')
+
+            qc.add_func(func=self.outputs.get('func_mcdc'),
+                        label='mcdc',
+                        brainmask=self.outputs.get('mcdc_brainmask'),
+                        standard=standard,
+                        func2standard_warp=func2standard,
+                        template=group_map,
+                        template2func_warp=standard2func,
+                        template_dseg=standard_dseg,
+                        template_dseg_labels=get_dseg_labels(seg_type='drawem'))
+        else:
+            qc_log.warning("func_mcdc not added")
+
+        #==========================
+        # Func: Clean
+        #==========================
+
+        # Include FIX cleaned data to QC report
+        if (not preproc_only) or (preproc_only is None):
+            wd1: FIXApply = FIXApply(outdir=self.outputs.get('workdir'))
+            _: Dict[str,str] = wd1.outputs()
+            
+            # if wd0.check_exists('mcdc_brainmask') and wd1.check_exists('func_clean'):
+            if wd1.check_exists('func_clean'):
+                qc_log.log('Add func_clean to QC')
+            
+                qc.add_func(func=self.outputs.get('func_clean'),
+                            label='clean',
+                            brainmask=self.outputs.get('mcdc_brainmask'),
+                            standard=standard,
+                            func2standard_warp=func2standard,
+                            template=group_map,
+                            template2func_warp=standard2func,
+                            template_dseg=standard_dseg,
+                            template_dseg_labels=get_dseg_labels(seg_type='drawem'))
+            else:
+                qc_log.warning("func_clean not added")
+        else:
+            # MOCK CODE:
+            # 
+            # This code block is used ONLY on the condition that FIX has not
+            #   run. With that being the case - this used as a place holder
+            #   for data that will be displayed in the QC report.
+            wd1: MCDCFiles = MCDCFiles(outdir=self.outputs.get('workdir'))
+            _: Dict[str,str] = wd1.outputs()
+            
+            if wd0.check_exists(*wd0_files):
+                qc_log.log('Add func_clean [place holder] to QC')
+            
+                qc.add_func(func=self.outputs.get('func_filt'),
+                            label='clean',
+                            brainmask=self.outputs.get('mcdc_brainmask'),
+                            standard=standard,
+                            func2standard_warp=func2standard,
+                            template=group_map,
+                            template2func_warp=standard2func,
+                            template_dseg=standard_dseg,
+                            template_dseg_labels=get_dseg_labels(seg_type='drawem'))
+            else:
+                qc_log.warning("func_clean [place holder] not added")
+
+        #==========================
+        # Motion parameters
+        #==========================
+
+        if os.path.exists(self.outputs.get('motparams')):
+            qc_log.log('Add motion parameters to QC')
+            qc.add_motparam(label='motparam', motparams=self.outputs.get('motparams'))
+        else:
+            qc_log.warning("motion parameters not added")
+
+        #==========================
+        # FIX
+        #==========================
+
+        meldir: str = self.outputs.get('meldir')
+
+        if os.path.exists(meldir):
+
+            with WorkDir(src=meldir) as md:
+                mel_ic: str = md.join('melodic_IC.nii.gz')
+                mel_mix: str = md.join('melodic_mix')
+            
+            wd0: FIXClassify(outdir=self.outputs.get('workdir'))
+            _: Dict[str,str] = wd0.outputs()
+
+            if wd0.check_exists('fix_labels'):
+                labels: str = self.outputs.get('fix_labels')
+            else:
+                labels: str = None
+            
+            qc_log.log('Add FIX to QC')
+
+            qc.add_fix(label='fix',
+                       ic=mel_ic,
+                       mix=mel_mix,
+                       labels=labels)
+        else:
+           qc_log.warning("FIX/ICA not found")
+        
+        return self.outputs
 
     def pre_mcdc(self) -> Dict[Any,str]:
         """Perform all pre-motion-and-distortion-correction stages of the preprocessing pipeline."""
@@ -1159,21 +1560,59 @@ class Pipeline:
                   standard_age: Union[int,str] = 40,
                   template_ages: Optional[Union[List[Union[int,str]],int,str]] = None,
                   temporal_fwhm: float = 150.0,
+                  quick: bool = False,
                   icadim: Optional[int] = None,
                   rdata: Optional[str] = None,
                   fix_threshold: Optional[int] = None,
-                  atlasdir: Optional[str] = None
+                  group_map: Optional[str] = None,
+                  standard_res: Optional[float] = 1.5,
+                  group_qc: Optional[str] = None,
+                  atlasdir: Optional[str] = None,
+                  preproc_only: Optional[bool] = None,
+                  spatial_fwhm: Optional[float] = None,
+                  intnorm: bool = False
                  ) -> Dict[Any,str]:
         """Perform all post-motion-and-distortion-correction stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
+                                                    quick=quick,
                                                     template_ages=template_ages,
                                                     atlasdir=atlasdir)
 
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
                                                icadim=icadim)
 
-        self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
-                                                   fix_threshold=fix_threshold)
+        if not preproc_only:
+            self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
+                                                       fix_threshold=fix_threshold)
+
+        self.outputs: Dict[Any,str] = self.qc(group_map=group_map,
+                                              standard_res=standard_res,
+                                              standard_age=standard_age,
+                                              preproc_only=preproc_only)
+
+        _: str = self.report(group_qc=group_qc)
+
+        if (spatial_fwhm is not None) and (spatial_fwhm != 0) or intnorm:
+
+            if spatial_fwhm is None: spatial_fwhm: int = 0
+
+            with WorkDir(src=self.logdir) as lgd:
+                _post_log: str = lgd.join('postprocess.log')
+                post_log: LogFile = LogFile(_post_log, format_log_str=True)
+            
+            if os.path.exists(self.outputs.get('func_clean')):
+                func: str = self.outputs.get('func_clean')
+            else:
+                func: str = self.outputs.get('func_filt')
+
+            _: Tuple[str] = postprocess(func=func,
+                                        func_mean=self.outputs.get('mcdc_mean'),
+                                        func_brainmask=self.outputs.get('mcdc_brainmask'),
+                                        outdir=self.outputs.get('workdir'),
+                                        spatial_fwhm=spatial_fwhm,
+                                        intnorm=intnorm,
+                                        log=post_log)
+        
         return self.outputs
 
     def run_all(self,
@@ -1184,10 +1623,17 @@ class Pipeline:
                 s2v: bool = False,
                 dc: bool = False,
                 mbs: bool = False,
+                quick: bool = False,
                 icadim: Optional[int] = None,
                 rdata: Optional[str] = None,
                 fix_threshold: Optional[int] = None,
-                atlasdir: Optional[str] = None
+                group_map: Optional[str] = None,
+                standard_res: Optional[float] = 1.5,
+                group_qc: Optional[str] = None,
+                atlasdir: Optional[str] = None,
+                preproc_only: Optional[bool] = None,
+                spatial_fwhm: Optional[float] = None,
+                intnorm: bool = False
                ) -> None:
         """Perform all stages of the preprocessing pipeline."""
         self.outputs: Dict[Any,str] = self.prepare_fieldmap()
@@ -1196,12 +1642,42 @@ class Pipeline:
                                                 dc=dc,
                                                 mbs=mbs)
         self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
-                                                    quick=True, # Remove this later after testing
+                                                    quick=quick,
                                                     template_ages=template_ages,
                                                     atlasdir=atlasdir)
         self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
                                                icadim=icadim)
+        
+        if not preproc_only:
+            self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
+                                                       fix_threshold=fix_threshold)
+        
+        self.outputs: Dict[Any,str] = self.qc(group_map=group_map,
+                                              standard_res=standard_res,
+                                              standard_age=standard_age,
+                                              preproc_only=preproc_only)
 
-        self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
-                                                   fix_threshold=fix_threshold)
+        _: str = self.report(group_qc=group_qc)
+
+        if (spatial_fwhm is not None) and (spatial_fwhm != 0) or intnorm:
+
+            if spatial_fwhm is None: spatial_fwhm: int = 0
+
+            with WorkDir(src=self.logdir) as lgd:
+                _post_log: str = lgd.join('postprocess.log')
+                post_log: LogFile = LogFile(_post_log, format_log_str=True)
+            
+            if os.path.exists(self.outputs.get('func_clean')):
+                func: str = self.outputs.get('func_clean')
+            else:
+                func: str = self.outputs.get('func_filt')
+
+            _: Tuple[str] = postprocess(func=func,
+                                        func_mean=self.outputs.get('mcdc_mean'),
+                                        func_brainmask=self.outputs.get('mcdc_brainmask'),
+                                        outdir=self.outputs.get('workdir'),
+                                        spatial_fwhm=spatial_fwhm,
+                                        intnorm=intnorm,
+                                        log=post_log)
+
         return self.outputs

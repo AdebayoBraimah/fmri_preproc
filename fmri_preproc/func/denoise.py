@@ -5,13 +5,15 @@ NOTE:
     External dependency: FIX - https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIX/UserGuide.
 """
 import os
+import shutil
 import pandas as pd
 import numpy as np
 
 from typing import (
     Dict,
     Optional,
-    Tuple
+    Tuple,
+    Union
 )
 
 from fmri_preproc.utils.util import timeops
@@ -89,8 +91,14 @@ def fix_extract(func_filt: str,
             # denoisedir: str = outputs.get('denoisedir')
             fixdir: str = fd.abspath()
             fix_log: str = fd.join('fix','logMatlab.txt')
+            fsf_file: str = fd.join('design.fsf')
+            
+            # Write fake FEAT set-up file
+            with File(src=fsf_file, assert_exists=False) as fsf:
+                fsf_file: str = _write_fsf(fsf=fsf, 
+                                           temporal_fwhm=temporal_fwhm)
     
-    # Setup fake FIX directory
+    # Setup fake FEAT directory
     if log: log.log("Setting up FIX directory")
 
     with NiiFile(src=func_filt) as ff:
@@ -165,12 +173,15 @@ def fix_extract(func_filt: str,
     # Extract FIX features
     if log: log.log("Performing FIX feature extraction")
 
+    # _source_fix_directory(log=log)
+
     cmd: Command = Command("fix")
     cmd.opt("-f")
     cmd.opt(f"{fixdir}")
 
     try:
-        cmd.run(log=log, raise_exc=False)
+        # cmd.run(log=log, raise_exc=False)
+        cmd.run(log=log)
     except Exception as _:
         with open(fix_log, 'r') as f:
             s: str = f.read()
@@ -178,6 +189,42 @@ def fix_extract(func_filt: str,
         raise RuntimeError(s)
 
     return fixdir
+
+
+def _write_fsf(fsf: Union[File,str],
+               temporal_fwhm: Optional[float] = 150):
+    """Helper function that writes a (fake) FEAT setup file (.fsf) with the 
+    necessary information required for FSL's FIX to run.
+    """
+    if isinstance(fsf,File):
+        fsf_file: str = fsf.abspath()
+    else:
+        fsf_file: str = os.path.abspath(fsf)
+    
+    # Write fake FEAT set-up file
+    with File(src=fsf_file, assert_exists=False) as fsf:
+        fsf.write(f"""# Highpass temporal filtering
+set fmri(temphp_yn) 1
+
+# High pass filter cutoff
+set fmri(paradigm_hp) {temporal_fwhm}""")
+    return fsf_file
+
+
+# def _source_fix_directory(log: Optional[LogFile] = None):
+#     """Helper function that sources and appends FSL's FIX settings to the current
+#     shell's ``PATH`` variable.
+# 
+#     NOTE: FIX MUST be in the shell's ``PATH`` variable for this function to
+#         work properly.
+#     """
+#     FIXDIR: str = os.path.dirname(shutil.which("fix"))
+#     FIXSETTINGS: str = os.path.join(FIXDIR,'settings.sh')
+# 
+#     cmd: Command = Command("source")
+#     cmd.opt(FIXSETTINGS)
+#     cmd.run(log=log)
+#     return None
 
 
 def _classify(fixdir: str,
@@ -199,6 +246,8 @@ def _classify(fixdir: str,
         
         fixdir: str = fd.abspath()
         fix_log: str = fd.join('.fix_2b_predict.log')
+    
+    # _source_fix_directory(log=log)
     
     if fix_src:
         cmd: Command = Command(f"{fix_src}")
@@ -298,8 +347,17 @@ def fix_apply(outdir: str,
     func_stdev: str = outputs.get('func_clean_std')
     func_tsnr: str = outputs.get('func_clean_tsnr')
 
+    # Copy FIX labels to FIX directory
+    with File(src=labels, assert_exists=True) as lbl:
+        with WorkDir(src=fixdir) as fx:
+            tmpfile: str = fx.join("fix_label_file.txt")
+            labels: str = lbl.copy(dst=tmpfile)
+
     # FIX apply
     if log: log.log("Performing FIX noise/nuissance regression")
+    
+    # _source_fix_directory(log=log)
+
     cmd: Command = Command("fix")
     cmd.opt("-a")
     cmd.opt(f"{labels}")

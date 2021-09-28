@@ -40,6 +40,12 @@ def postprocess(func: str,
                ) -> Tuple[str,str]:
     """Perform post-processing spatial smoothing and intensity normalization. 
     """
+    if isinstance(spatial_fwhm, int) or isinstance(spatial_fwhm, float):
+        pass
+    else:
+        if log: log.error(f"RuntimeError: Input spatial smoothing kernel is neither an integer nor a float: {spatial_fwhm}")
+        raise RuntimeError(f"Input spatial smoothing kernel is neither an integer nor a float: {spatial_fwhm}")
+
     with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
         with NiiFile(src=func_mean, assert_exists=True, validate_nifti=True) as fm:
             with NiiFile(src=func_brainmask, assert_exists=True, validate_nifti=True) as fnb:
@@ -60,7 +66,7 @@ def postprocess(func: str,
     
     # Define outputs
     outputs: Dict[str,str] = {
-                                "func_smooth": os.path.join(outdir,f'{basename}_smooth.nii.gz'),
+                                "func_smooth": os.path.join(outdir,f'{basename}_{spatial_fwhm}mm_smooth.nii.gz'),
                                 "func_intnorm": os.path.join(outdir,f'{basename}_intnorm.nii.gz')
                              }
     

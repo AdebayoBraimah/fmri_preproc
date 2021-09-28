@@ -66,8 +66,11 @@ with TmpDir(src=os.getcwd()) as tmpd:
 
 @timeops(log)
 def import_info(outdir: str,
-                func: str,
-                scan_pma: Union[int,float,str],
+                func: Optional[str] = None,
+                subid: Optional[str] = None,
+                sesid: Optional[str] = None,
+                runid: Optional[str] = None,
+                scan_pma: Optional[Union[int,float,str]] = None,
                 birth_ga: Optional[float] = None,
                 log: Optional[LogFile] = None,
                 verbose: bool = False,
@@ -77,23 +80,29 @@ def import_info(outdir: str,
                ) -> Tuple[str,str,str,Dict[Any,Any]]:
     """Import subject related information and data.
     """
-    with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
-        _, fname, _ = fn.file_parts()
-        
-        sesid: str = None
+    if subid:
+        if not sesid: sesid: str = None
+        if not runid: runid: str = '01'
+    elif func:
+        with NiiFile(src=func, assert_exists=True, validate_nifti=True) as fn:
+            _, fname, _ = fn.file_parts()
+            
+            sesid: str = None
 
-        for item in fname.split('_'):
-            if 'sub' in item: subid: str = item[4:]
-            if 'ses' in item: sesid: str = item[4:]
-            if 'run' in item: runid: str = item[4:]
-        
-        if not runid:
-            runid: str = '01'
-        
-        if not subid:
-            raise RuntimeError("No subject ID can be inferred from the data. \
-                The input data should be in BIDS format, and prefixed with \
-                'sub-' in the filename.")
+            for item in fname.split('_'):
+                if 'sub' in item: subid: str = item[4:]
+                if 'ses' in item: sesid: str = item[4:]
+                if 'run' in item: runid: str = item[4:]
+            
+            if not runid:
+                runid: str = '01'
+            
+            if not subid:
+                raise RuntimeError("No subject ID can be inferred from the data. \
+                    The input data should be in BIDS format, and prefixed with \
+                    'sub-' in the filename.")
+    else:
+        raise RuntimeError("No Subject (and session) IDs NOR BIDS named functional image file were specified.")
     
     with WorkDir(src=outdir) as od:
 
@@ -131,15 +140,27 @@ def import_info(outdir: str,
     # Define info dictionary
     info_name: str = outputs.get('subject_info')
     info: Dict[Any,Any] = json2dict(jsonfile=info_name) if os.path.exists(info_name) else {}
-    info: Dict[Any,Any] = { 
-                            **info,
-                            "subid": subid,
-                            "sesid": sesid,
-                            "scan_pma": scan_pma,
-                            "birth_ga": birth_ga,
-                            **kwargs,
-                          }
-    info_name: str = dict2json(dict=info, jsonfile=info_name)
+
+    # Check information dictionary for the necessary information
+    if info.get('scan_pma', None):
+        info: Dict[Any,Any] = { 
+                                **info,
+                                **kwargs,
+                            }
+    elif scan_pma:
+        info: Dict[Any,Any] = { 
+                                **info,
+                                "subid": subid,
+                                "sesid": sesid,
+                                "runid": runid,
+                                "scan_pma": scan_pma,
+                                "birth_ga": birth_ga,
+                                **kwargs,
+                            }
+    else:
+        raise RuntimeError("No age at scan was specified.")
+    
+    _: str = dict2json(dict=info, jsonfile=info_name)
 
     return info_dir, logdir, info_name, info
 

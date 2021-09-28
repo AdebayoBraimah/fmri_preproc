@@ -6,3 +6,7 @@ fmri_preproc/resources/atlases/*dHCP*/*
 __pycache__/
 unc_infant_atlas_2020/
 group_qc/
+
+# Delete __pycache__: 
+# 
+# find . -name "__pycache__" -exec rm -rf {} \;

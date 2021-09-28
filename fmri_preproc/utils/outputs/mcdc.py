@@ -39,6 +39,11 @@ class MCDCFiles(OutDict):
             mc_name: str = 'mc'
         
         mcdir: str = os.path.join(outdir,f"{mc_name}")
+
+        if os.path.exists(mcdir):
+            remove_dir: bool = False
+        else:
+            remove_dir: bool = True
         
         with WorkDir(src=mcdir) as mc:
             self.output: Dict[str,str] = {
@@ -54,5 +59,8 @@ class MCDCFiles(OutDict):
                 "func_mcdc_fovmask": mc.join(f"func_{mc_name}_fovmask.nii.gz"),
                 "func_mcdc_fovpercent": mc.join(f"func_{mc_name}_fovpercent.nii.gz")
             }
+            
+            if remove_dir:
+                mc.rmdir()
 
         return self.output

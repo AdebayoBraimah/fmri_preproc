@@ -1,7 +1,7 @@
 {
     "func_inplane_accel": 1.0,
     "func_slorder": null,
-    "mb_factor": null,
+    "mb_factor": 3,
     "sbref_echospacing": null,
     "dseg_type": "drawem",
     "probseg_type": "drawem",
@@ -9,7 +9,7 @@
     "spinecho_echospacing": null,
     "spinecho_epifactor": null,
     "spinecho_inplaneacc": null,
-    "use_mcflirt": false,
+    "use_mcflirt": true,
     "s2v": false,
     "dc": false,
     "mbs": false,
@@ -26,6 +26,5 @@
     "standard_res": 1.5,
     "verbose": false,
     "log_level": "info",
-    "smooth": 0,
-    "intnorm": false
+    "preproc_only": true
 }

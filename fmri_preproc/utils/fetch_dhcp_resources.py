@@ -8,7 +8,11 @@ NOTE: This does not include the dHCP FIX training data as it is assumed that the
 import os
 import argparse
 
-from typing import Optional, Tuple
+from typing import (
+    Literal,
+    Optional, 
+    Tuple
+)
 
 from fmri_preproc.utils.util import (
     fetch_dhcp_group_maps,
@@ -17,7 +21,7 @@ from fmri_preproc.utils.util import (
 )
 
 
-def main() -> int:
+def main() -> Literal[0]:
     """Main function.
     """
     args, parser = arg_parser()
