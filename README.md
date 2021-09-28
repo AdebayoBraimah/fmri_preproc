@@ -6,7 +6,7 @@ A resting-state fMRI preprocessing pipeline for neonatal neuroimaging data.
 # Quick start
 ----------------
 
-## External Dependencies        
+## External dependencies        
 
 | Dependency  | Environmental variable (if applicable)  |
 |---|---|
@@ -33,13 +33,13 @@ A resting-state fMRI preprocessing pipeline for neonatal neuroimaging data.
 >             
 > `FIX` uses [`GNU Octave`](https://www.gnu.org/software/octave/index). Make sure the executable can be called from the command line prior to running the pipeline.
 
-Set path and environment variables:
+## Setting environmental variables
 
 **NOTE**: Only append to the `LD_LIBRARY_PATH` **IF** python issues arise when calling FSL executables.        
 
 ```bash
 # Set path variables
-export ANTSPATH=$(dirname $(which antsRegistrationSyN.sh))/
+export ANTSPATH=$(dirname $(which antsRegistrationSyN.sh))/ # If not set already
 
 # Append to Linker and Python paths
 
