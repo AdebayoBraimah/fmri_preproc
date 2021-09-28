@@ -113,8 +113,7 @@ class Pipeline:
         """
         # Import information
         self.verbose: bool = verbose
-
-        # TODO: Reference class settings dictionary for relevant arguments/variables
+        
         if isinstance(settings_json_dict,str) :
             self.settings: Dict[str,Any] = settings(jsonfile=settings_json_dict)
         elif isinstance(settings_json_dict,dict):
