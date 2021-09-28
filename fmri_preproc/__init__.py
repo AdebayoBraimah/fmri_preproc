@@ -29,10 +29,10 @@ name: str = "fmri_preproc"
 RESOURCEDIR: str = os.path.join(os.path.dirname(__file__), 'resources')
 ATLASDIR: str = os.path.join(RESOURCEDIR,'atlases')
 HTMLDIR: str = os.path.join(RESOURCEDIR,'html')
-FIXDATADIR: str = os.path.join(RESOURCEDIR,'fix')
 GROUP_MAP_DIR: str = os.path.join(RESOURCEDIR,'group_maps')
 GROUP_QC_DIR: str = os.path.join(RESOURCEDIR,'group_qc')
 DEFAULT_SETTINGS_FILE: str = os.path.join(RESOURCEDIR,'settings.default.json')
+DEFAULT_CLASSIFIER: str = os.path.join(RESOURCEDIR,'classifiers','cchmc_neonate_MB3','cchmc_neonate_MB3.RData')
 
 
 _version_file: str = os.path.abspath(

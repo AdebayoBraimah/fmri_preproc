@@ -256,7 +256,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                             metavar="<str>",
                             default=None,
                             help="REQUIRED: Output parent directory.")
-    
+
     optoptions = parser.add_argument_group('Optional Arguments')
 
     optoptions.add_argument('-e','--ses',
@@ -567,14 +567,14 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                  type=str,
                                  metavar="<str>",
                                  dest="rdata",
-                                 default=None, # TODO: Set this later
-                                 help="Trained FIX classifier (Rdata file).")
+                                 default=None,
+                                 help="Trained FIX classifier.")
     postmcdcoptions.add_argument('--fix-threshold',
                                  type=int,
                                  metavar="<int>",
                                  dest="fix_threshold",
-                                 default=10,
-                                 help="FIX noise classification threshold. [default=10].")
+                                 default=None,
+                                 help="FIX noise classification threshold. [default=10].") # Default is in settings function.
 
     # POST-PROCESS
     postmcdcoptions.add_argument('--smooth',
@@ -582,11 +582,11 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                  metavar="<float>",
                                  dest="smooth",
                                  default=None,
-                                 help="Smoothing kernel (FWHM, in mm) [default=disabled].")
+                                 help="Smoothing kernel (FWHM, in mm) [default: disabled].")
     postmcdcoptions.add_argument('--int-nrom',
                                  dest="intnorm",
                                  action="store_true",
-                                 help="Performs intensity normalization OR grand-mean scaling IF '--smooth' is specified and greater than 0 [default=disabled].")
+                                 help="Performs intensity normalization OR grand-mean scaling IF '--smooth' is specified and greater than 0 [default: disabled].")
 
     postmcdcoptions.set_defaults(method='post_mcdc')
 
@@ -658,14 +658,14 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                  type=str,
                                  metavar="<str>",
                                  dest="rdata",
-                                 default=None, # TODO: Set this later
+                                 default=None,
                                  help="Trained FIX classifier (stored as a Rdata file).")
     runalloptions.add_argument('--fix-threshold',
                                  type=int,
                                  metavar="<int>",
                                  dest="fix_threshold",
-                                 default=10,
-                                 help="FIX noise classification threshold. [default=10].")
+                                 default=None,
+                                 help="FIX noise classification threshold. [default=10].") # Default is in settings function.
     
     # POST-PROCESS
     runalloptions.add_argument('--smooth',
@@ -673,11 +673,11 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                metavar="<float>",
                                dest="smooth",
                                default=None,
-                               help="Smoothing kernel (FWHM, in mm) [default=disabled].")
+                               help="Smoothing kernel (FWHM, in mm) [default: disabled].")
     runalloptions.add_argument('--int-nrom',
                                dest="intnorm",
                                action="store_true",
-                               help="Performs intensity normalization OR grand-mean scaling IF '--smooth' is specified and greater than 0 [default=disabled].")
+                               help="Performs intensity normalization OR grand-mean scaling IF '--smooth' is specified and greater than 0 [default: disabled].")
 
     runalloptions.set_defaults(method='run_all')
 
