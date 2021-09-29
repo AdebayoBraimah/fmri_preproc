@@ -17,7 +17,7 @@ from typing import (
 )
 
 from fmri_preproc import (
-    FIXDATADIR,
+    DEFAULT_CLASSIFIER,
     GROUP_MAP_DIR,
     GROUP_QC_DIR
 )
@@ -113,8 +113,7 @@ class Pipeline:
         """
         # Import information
         self.verbose: bool = verbose
-
-        # TODO: Reference class settings dictionary for relevant arguments/variables
+        
         if isinstance(settings_json_dict,str) :
             self.settings: Dict[str,Any] = settings(jsonfile=settings_json_dict)
         elif isinstance(settings_json_dict,dict):
@@ -1092,7 +1091,7 @@ class Pipeline:
         if not outfix2.check_exists(*outfiles2):
 
             if rdata is None:
-                rdata: str = os.path.join(FIXDATADIR,'fix.Rdata') # TODO: This is a temp variable for now.
+                rdata: str = DEFAULT_CLASSIFIER
             
             if fix_threshold is None:
                 fix_threshold: int = int(self.settings('fix_threshold'))
