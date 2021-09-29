@@ -33,6 +33,18 @@ A resting-state fMRI preprocessing pipeline for neonatal neuroimaging data.
 >             
 > `FIX` uses [`GNU Octave`](https://www.gnu.org/software/octave/index). Make sure the executable can be called from the command line prior to running the pipeline.
 
+## Install python dependencies
+
+If not done so already, install the required dependencies by typing:
+
+```bash
+pkg_path=<path/to/this/repo/locally>
+
+cd ${pkg_path}
+
+pip install -r requirements.txt
+```
+
 ## Setting environmental variables
 
 **NOTE**: Only append to the `LD_LIBRARY_PATH` **IF** python issues arise when calling FSL executables.        
