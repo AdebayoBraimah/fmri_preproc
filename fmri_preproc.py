@@ -358,7 +358,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                metavar="<float>",
                                dest="func_echospacing",
                                default=None,
-                               help="REQUIRED: Functional echospacing.")
+                               help="REQUIRED: Functional echospacing. NOTE: If unsure use 0.0005.")
     importoptions.add_argument('--func-pedir',
                                type=str,
                                metavar="<PE-dir>",
