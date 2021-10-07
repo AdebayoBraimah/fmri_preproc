@@ -23,6 +23,7 @@ from fmri_preproc.utils.tempdir import TmpDir
 
 from fmri_preproc import (
     ATLASDIR,
+    DEFAULT_CLASSIFIER,
     GROUP_MAP_DIR,
     GROUP_QC_DIR
 )
@@ -99,7 +100,7 @@ def settings(jsonfile: Optional[str] = None,
         "template_ages": [],
         "temporal_fwhm": float(150),
         "icadim": None,
-        "rdata": None, # TODO: set this default with FIX rdata trained from CCHMC
+        "rdata": DEFAULT_CLASSIFIER,
         "fix_threshold": 10,
         "group_qc": None,
         "group_map": None,

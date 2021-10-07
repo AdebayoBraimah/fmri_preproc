@@ -17,7 +17,7 @@ from typing import (
 )
 
 from fmri_preproc import (
-    FIXDATADIR,
+    DEFAULT_CLASSIFIER,
     GROUP_MAP_DIR,
     GROUP_QC_DIR
 )
@@ -1091,7 +1091,7 @@ class Pipeline:
         if not outfix2.check_exists(*outfiles2):
 
             if rdata is None:
-                rdata: str = os.path.join(FIXDATADIR,'fix.Rdata') # TODO: This is a temp variable for now.
+                rdata: str = DEFAULT_CLASSIFIER
             
             if fix_threshold is None:
                 fix_threshold: int = int(self.settings('fix_threshold'))

@@ -12,6 +12,15 @@ import nibabel as nib
 import numpy as np
 import base64
 import seaborn as sns
+
+# NOTE: Added here to catch nilearn's FutureWarning
+# 
+# nilearn/datasets/__init__.py:86: FutureWarning: 
+# Fetchers from the nilearn.datasets module will be updated in version 0.9 to return python 
+#   strings instead of bytes and Pandas dataframes instead of Numpy arrays.
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import nilearn.plotting as plotting
 import ptitprince as pt
 
