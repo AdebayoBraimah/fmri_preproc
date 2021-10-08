@@ -62,17 +62,17 @@ def preproc_data() -> Literal[0]:
 
         # Confirm phase-encoding directions
         if not args.get('sbref_pedir'):
-            args.get('sbref_pedir') = args.get('func_pedir')
+            args['sbref_pedir'] = args.get('func_pedir')
         
         # Confirm echo-spacing paramters
         if not args.get('sbref_echospacing'):
-            args.get('sbref_echospacing') = args.get('func_echospacing')
+            args['sbref_echospacing'] = args.get('func_echospacing')
         
         if not args.get('spinecho_echospacing'):
-            args.get('spinecho_echospacing') = args.get('func_echospacing')
+            args['spinecho_echospacing'] = args.get('func_echospacing')
         
         if not args.get('spinecho_inplaneacc'):
-            args.get('spinecho_inplaneacc') = args.get('func_inplane_accel')
+            args['spinecho_inplaneacc'] = args.get('func_inplane_accel')
         
         # Configure runtime settings
         settings_dict: Dict[str,Any] = settings(jsonfile=args.get('settings'),
