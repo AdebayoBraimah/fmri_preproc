@@ -1470,7 +1470,6 @@ class Pipeline:
             wd1: FIXApply = FIXApply(outdir=self.outputs.get('workdir'))
             _: Dict[str,str] = wd1.outputs()
             
-            # if wd0.check_exists('mcdc_brainmask') and wd1.check_exists('func_clean'):
             if wd1.check_exists('func_clean'):
                 qc_log.log('Add func_clean to QC')
             
@@ -1534,7 +1533,7 @@ class Pipeline:
             wd0: FIXClassify(outdir=self.outputs.get('workdir'))
             _: Dict[str,str] = wd0.outputs()
 
-            if wd0.check_exists('fix_labels'):
+            if os.path.exists(self.outputs.get('fix_labels',"")):
                 labels: str = self.outputs.get('fix_labels')
             else:
                 labels: str = None
@@ -1599,7 +1598,7 @@ class Pipeline:
                 _post_log: str = lgd.join('postprocess.log')
                 post_log: LogFile = LogFile(_post_log, format_log_str=True)
             
-            if os.path.exists(self.outputs.get('func_clean')):
+            if os.path.exists(self.outputs.get('func_clean',"")):
                 func: str = self.outputs.get('func_clean')
             else:
                 func: str = self.outputs.get('func_filt')
@@ -1635,48 +1634,26 @@ class Pipeline:
                 intnorm: bool = False
                ) -> None:
         """Perform all stages of the preprocessing pipeline."""
-        self.outputs: Dict[Any,str] = self.prepare_fieldmap()
+        self.outputs: Dict[Any,str] = self.pre_mcdc()
+
         self.outputs: Dict[Any,str] = self.mcdc(use_mcflirt=use_mcflirt,
                                                 s2v=s2v,
                                                 dc=dc,
                                                 mbs=mbs)
-        self.outputs: Dict[Any,str] = self.standard(standard_age=standard_age,
-                                                    quick=quick,
-                                                    template_ages=template_ages,
-                                                    atlasdir=atlasdir)
-        self.outputs: Dict[Any,str] = self.ica(temporal_fwhm=temporal_fwhm,
-                                               icadim=icadim)
-        
-        if not preproc_only:
-            self.outputs: Dict[Any,str] = self.denoise(rdata=rdata,
-                                                       fix_threshold=fix_threshold)
-        
-        self.outputs: Dict[Any,str] = self.qc(group_map=group_map,
-                                              standard_res=standard_res,
-                                              standard_age=standard_age,
-                                              preproc_only=preproc_only)
 
-        _: str = self.report(group_qc=group_qc)
-
-        if (spatial_fwhm is not None) and (spatial_fwhm != 0) or intnorm:
-
-            if spatial_fwhm is None: spatial_fwhm: int = 0
-
-            with WorkDir(src=self.logdir) as lgd:
-                _post_log: str = lgd.join('postprocess.log')
-                post_log: LogFile = LogFile(_post_log, format_log_str=True)
-            
-            if os.path.exists(self.outputs.get('func_clean')):
-                func: str = self.outputs.get('func_clean')
-            else:
-                func: str = self.outputs.get('func_filt')
-
-            _: Tuple[str] = postprocess(func=func,
-                                        func_mean=self.outputs.get('mcdc_mean'),
-                                        func_brainmask=self.outputs.get('mcdc_brainmask'),
-                                        outdir=self.outputs.get('workdir'),
-                                        spatial_fwhm=spatial_fwhm,
-                                        intnorm=intnorm,
-                                        log=post_log)
+        self.outputs: Dict[Any,str] = self.post_mcdc(standard_age=standard_age,
+                                                     template_ages=template_ages,
+                                                     temporal_fwhm=temporal_fwhm,
+                                                     quick=quick,
+                                                     icadim=icadim,
+                                                     rdata=rdata,
+                                                     fix_threshold=fix_threshold,
+                                                     group_map=group_map,
+                                                     standard_res=standard_res,
+                                                     group_qc=group_qc,
+                                                     atlasdir=atlasdir,
+                                                     preproc_only=preproc_only,
+                                                     spatial_fwhm=spatial_fwhm,
+                                                     intnorm=intnorm)
 
         return self.outputs

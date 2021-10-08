@@ -65,9 +65,10 @@ def postprocess(func: str,
             _, basename, _ = fn.file_parts()
     
     # Define outputs
+    prefix: str = f'{basename}_{spatial_fwhm}mm_smooth'
     outputs: Dict[str,str] = {
-                                "func_smooth": os.path.join(outdir,f'{basename}_{spatial_fwhm}mm_smooth.nii.gz'),
-                                "func_intnorm": os.path.join(outdir,f'{basename}_intnorm.nii.gz')
+                                "func_smooth": os.path.join(outdir,f'{prefix}.nii.gz'),
+                                "func_intnorm": os.path.join(outdir,f'{prefix}_intnorm.nii.gz')
                              }
     
     # FEAT-style spatial smoothing
@@ -90,19 +91,20 @@ def postprocess(func: str,
         sigma: float = spatial_fwhm / 2.355
         susan_thr: float = (median_intensity - func_q2) * 0.75
 
-        cmd: Command = Command("susan")
+        with NiiFile(src=func_smooth) as fs:
+            cmd: Command = Command("susan")
 
-        cmd.opt(f"{func_smooth}")
-        cmd.opt(f"{susan_thr}")
-        cmd.opt(f"{sigma}")
-        cmd.opt(f"3")
-        cmd.opt(f"1")
-        cmd.opt(f"1")
-        cmd.opt(f"{func_mean}")
-        cmd.opt(f"{func_smooth}")
-        cmd.opt(f"{func_smooth}")
+            cmd.opt(f"{fs.rm_ext()}")
+            cmd.opt(f"{susan_thr}")
+            cmd.opt(f"{sigma}")
+            cmd.opt(f"3")
+            cmd.opt(f"1")
+            cmd.opt(f"1")
+            cmd.opt(f"{func_mean}")
+            cmd.opt(f"{susan_thr}")
+            cmd.opt(f"{fs.rm_ext()}")
 
-        cmd.run(log=log)
+            cmd.run(log=log)
 
         func_smooth: str = fslmaths(img=func_smooth).mas(func_brainmask).run(out=func_smooth)
         func: str = func_smooth

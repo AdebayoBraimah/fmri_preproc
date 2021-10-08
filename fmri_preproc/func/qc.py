@@ -9,13 +9,13 @@ import jinja2
 import pandas as pd
 from collections import OrderedDict
 
-# NOTE: Added here to catch nilearn's FutureWarning
+# NOTE: Added here to catch nilearn's FutureWarning, and UserWarning.
 # 
 # nilearn/datasets/__init__.py:86: FutureWarning: 
 # Fetchers from the nilearn.datasets module will be updated in version 0.9 to return python 
 #   strings instead of bytes and Pandas dataframes instead of Numpy arrays.
 import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=Warning)
 
 import nilearn.plotting as nilearn_plot
 
