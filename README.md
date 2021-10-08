@@ -38,7 +38,9 @@ A resting-state fMRI preprocessing pipeline for neonatal neuroimaging data.
 If not done so already, install the required dependencies by typing:
 
 ```bash
-pkg_path=<path/to/this/repo/locally>
+git clone https://github.com/AdebayoBraimah/fmri_preproc.git
+
+pkg_path=$(realpath fmri_preproc)
 
 cd ${pkg_path}
 
@@ -50,13 +52,13 @@ pip install -r requirements.txt
 **NOTE**: Only append to the `LD_LIBRARY_PATH` **IF** python issues arise when calling FSL executables.        
 
 ```bash
+git clone https://github.com/AdebayoBraimah/fmri_preproc.git
+pkg_path=$(realpath fmri_preproc)
+
 # Set path variables
 export ANTSPATH=$(dirname $(which antsRegistrationSyN.sh))/ # If not set already
 
 # Append to Linker and Python paths
-
-pkg_path=<path/to/this/repo/locally>
-
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${FSLDIR}/fslpython/envs/fslpython/lib
 export PYTHONPATH=${PYTHONPATH}:$(which python3):${pkg_path}
 
