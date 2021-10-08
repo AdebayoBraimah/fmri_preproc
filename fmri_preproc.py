@@ -108,9 +108,9 @@ def preproc_data() -> Literal[0]:
         
         # Get subject info
         preproc: Pipeline = Pipeline(outdir=args.get('outdir'), 
-                                     subid=args.get('subid'),
-                                     sesid=args.get('sesid'),
-                                     runid=args.get('runid'),
+                                     subid=args.get('sub'),
+                                     sesid=args.get('ses'),
+                                     runid=args.get('run'),
                                      func=args.get('func'), 
                                      scan_pma=args.get('age'), 
                                      birth_ga=args.get('birth_age'), 
