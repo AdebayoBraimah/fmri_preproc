@@ -370,7 +370,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                metavar="<file>",
                                dest="func_slorder",
                                default=None,
-                               help="Functional slice order specification file. This file specifies the slice acquisition order of the input rs-fMRI. If not provided one can be created internally IF 'func-mbfactor' is specified.")
+                               help="Functional slice order specification file. This file specifies the slice acquisition order of the input rs-fMRI. If not provided one can be created internally IF '--func-mbfactor' is specified.")
     importoptions.add_argument('--func-brainmask',
                                type=str,
                                metavar="<file>",
@@ -388,7 +388,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                metavar="<int>",
                                dest="mb_factor",
                                default=None,
-                               help="Functional multi-band factor.")
+                               help="Functional multi-band acceleration factor.")
     
     # Single-band reference import data
     importoptions.add_argument('--sbref',
