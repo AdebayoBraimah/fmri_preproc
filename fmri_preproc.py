@@ -251,7 +251,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                             default=None,
                             help="REQUIRED: Run number.")
     reqoptions.add_argument('-o','--outdir',
-                            dest="ses",
+                            dest="outdir",
                             type=str,
                             metavar="<str>",
                             default=None,
