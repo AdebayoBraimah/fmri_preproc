@@ -52,14 +52,13 @@ pip install -r requirements.txt
 **NOTE**: Only append to the `LD_LIBRARY_PATH` **IF** python issues arise when calling FSL executables.        
 
 ```bash
+git clone https://github.com/AdebayoBraimah/fmri_preproc.git
+pkg_path=$(realpath fmri_preproc)
+
 # Set path variables
 export ANTSPATH=$(dirname $(which antsRegistrationSyN.sh))/ # If not set already
 
 # Append to Linker and Python paths
-
-git clone https://github.com/AdebayoBraimah/fmri_preproc.git
-pkg_path=$(realpath fmri_preproc)
-
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${FSLDIR}/fslpython/envs/fslpython/lib
 export PYTHONPATH=${PYTHONPATH}:$(which python3):${pkg_path}
 
