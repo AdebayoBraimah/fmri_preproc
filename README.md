@@ -38,7 +38,9 @@ A resting-state fMRI preprocessing pipeline for neonatal neuroimaging data.
 If not done so already, install the required dependencies by typing:
 
 ```bash
-pkg_path=<path/to/this/repo/locally>
+git clone https://github.com/AdebayoBraimah/fmri_preproc.git
+
+pkg_path=$(realpath fmri_preproc)
 
 cd ${pkg_path}
 
