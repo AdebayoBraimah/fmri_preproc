@@ -41,116 +41,118 @@ def preproc_data() -> Literal[0]:
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
+    else:
+        args: Dict[str,Any] = vars(args)
     
     # Version
-    if args.version:
+    if args.get('version'):
         print(f"\nfmri_preproc: v{version_id}\n")
         sys.exit(0)
 
     # Write settings file
-    if args.out_settings:
+    if args.get('out_settings'):
         settings_dict: Dict[str,Any] = settings(jsonfile=DEFAULT_SETTINGS_FILE)
-        _: str = dict2json(dict=settings_dict, jsonfile=args.out_settings, indent=4)
+        _: str = dict2json(dict=settings_dict, jsonfile=args.get('out_settings'), indent=4)
         sys.exit(0)
     
     # Preprocess data
     
     # Check arguments
-    if args.outdir and ((args.sub and args.run) or args.func):
+    if args.get('outdir') and ((args.get('sub') and args.get('run')) or args.get('func')):
 
         # Confirm phase-encoding directions
-        if not args.sbref_pedir:
-            args.sbref_pedir = args.func_pedir
+        if not args.get('sbref_pedir'):
+            args.get('sbref_pedir') = args.get('func_pedir')
         
         # Confirm echo-spacing paramters
-        if not args.sbref_echospacing:
-            args.sbref_echospacing = args.func_echospacing
+        if not args.get('sbref_echospacing'):
+            args.get('sbref_echospacing') = args.get('func_echospacing')
         
-        if not args.spinecho_echospacing:
-            args.spinecho_echospacing = args.func_echospacing
+        if not args.get('spinecho_echospacing'):
+            args.get('spinecho_echospacing') = args.get('func_echospacing')
         
-        if not args.spinecho_inplaneacc:
-            args.spinecho_inplaneacc = args.func_inplane_accel
+        if not args.get('spinecho_inplaneacc'):
+            args.get('spinecho_inplaneacc') = args.get('func_inplane_accel')
         
         # Configure runtime settings
-        settings_dict: Dict[str,Any] = settings(jsonfile=args.settings,
-                                                func_inplane_accel=args.func_inplane_accel,
-                                                func_slorder=args.func_slorder,
-                                                mb_factor=args.mb_factor,
-                                                sbref_echospacing=args.sbref_echospacing,
-                                                dseg_type=args.dseg_type,
+        settings_dict: Dict[str,Any] = settings(jsonfile=args.get('settings'),
+                                                func_inplane_accel=args.get('func_inplane_accel'),
+                                                func_slorder=args.get('func_slorder'),
+                                                mb_factor=args.get('mb_factor'),
+                                                sbref_echospacing=args.get('sbref_echospacing'),
+                                                dseg_type=args.get('dseg_type'),
                                                 probseg_type=None, # Set this to None for now
                                                 mask_func=None, # Set this to None for now
-                                                spinecho_echospacing=args.spinecho_echospacing,
+                                                spinecho_echospacing=args.get('spinecho_echospacing'),
                                                 spinecho_epifactor=None, # Set this to None for now
-                                                spinecho_inplaneacc=args.spinecho_inplaneacc,
-                                                use_mcflirt=args.use_mcflirt,
-                                                s2v=args.s2v,
-                                                dc=args.dc,
-                                                mbs=args.mbs,
-                                                standard_age=args.standard_age,
+                                                spinecho_inplaneacc=args.get('spinecho_inplaneacc'),
+                                                use_mcflirt=args.get('use_mcflirt'),
+                                                s2v=args.get('s2v'),
+                                                dc=args.get('dc'),
+                                                mbs=args.get('mbs'),
+                                                standard_age=args.get('standard_age'),
                                                 quick=None,
-                                                atlasdir=args.atlasdir,
-                                                template_ages=args.template_ages,
-                                                temporal_fwhm=args.temporal_fwhm,
-                                                icadim=args.icadim,
-                                                rdata=args.rdata,
-                                                fix_threshold=args.fix_threshold,
+                                                atlasdir=args.get('atlasdir'),
+                                                template_ages=args.get('template_ages'),
+                                                temporal_fwhm=args.get('temporal_fwhm'),
+                                                icadim=args.get('icadim'),
+                                                rdata=args.get('rdata'),
+                                                fix_threshold=args.get('fix_threshold'),
                                                 group_qc=None,
                                                 group_map=None,
                                                 standard_res=None,
-                                                verbose=args.verbose,
-                                                log_level=args.log_level,
-                                                smooth=args.smooth,
-                                                intnorm=args.intnorm)
+                                                verbose=args.get('verbose'),
+                                                log_level=args.get('log_level'),
+                                                smooth=args.get('smooth'),
+                                                intnorm=args.get('intnorm'))
         
         # Get subject info
-        preproc: Pipeline = Pipeline(outdir=args.outdir, 
-                                     subid=args.subid,
-                                     sesid=args.sesid,
-                                     runid=args.runid,
-                                     func=args.func, 
-                                     scan_pma=args.age, 
-                                     birth_ga=args.birth_age, 
+        preproc: Pipeline = Pipeline(outdir=args.get('outdir'), 
+                                     subid=args.get('subid'),
+                                     sesid=args.get('sesid'),
+                                     runid=args.get('runid'),
+                                     func=args.get('func'), 
+                                     scan_pma=args.get('age'), 
+                                     birth_ga=args.get('birth_age'), 
                                      verbose=settings_dict.get('verbose'), 
                                      log_level=settings_dict.get('log_level'), 
                                      settings_json_dict=settings_dict)
-        if args.method == 'import':
-            preproc.import_data(func=args.func,
-                                func_echospacing=args.func_echospacing,
-                                func_pedir=args.func_pedir,
-                                T2w=args.T2w,
-                                T2w_brainmask=args.T2w_brainmask,
-                                dseg=args.dseg,
-                                func_brainmask=args.func_brainmask,
+        if args.get('method') == 'import':
+            preproc.import_data(func=args.get('func'),
+                                func_echospacing=args.get('func_echospacing'),
+                                func_pedir=args.get('func_pedir'),
+                                T2w=args.get('T2w'),
+                                T2w_brainmask=args.get('T2w_brainmask'),
+                                dseg=args.get('dseg'),
+                                func_brainmask=args.get('func_brainmask'),
                                 func_slorder=settings_dict.get('func_slorder'),
                                 func_inplane_accel=settings_dict.get('func_inplane_accel'),
                                 mb_factor=settings_dict.get('mb_factor'),
-                                sbref=args.sbref,
-                                sbref_brainmask=args.sbref_brainmask,
+                                sbref=args.get('sbref'),
+                                sbref_brainmask=args.get('sbref_brainmask'),
                                 sbref_echospacing=settings_dict.get('sbref_echospacing'),
-                                sbref_pedir=args.sbref_pedir,
+                                sbref_pedir=args.get('sbref_pedir'),
                                 dseg_type=settings_dict.get('dseg_type'),
-                                T1w=args.T1w,
-                                spinecho=args.spinecho,
+                                T1w=args.get('T1w'),
+                                spinecho=args.get('spinecho'),
                                 spinecho_echospacing=settings_dict.get('spinecho_echospacing'),
-                                spinecho_pedir=args.spinecho_pedir,
-                                ap_dir=args.ap_dir,
-                                pa_dir=args.pa_dir,
-                                lr_dir=args.lr_dir,
-                                rl_dir=args.rl_dir,
-                                is_dir=args.is_dir,
-                                si_dir=args.si_dir,
+                                spinecho_pedir=args.get('spinecho_pedir'),
+                                ap_dir=args.get('ap_dir'),
+                                pa_dir=args.get('pa_dir'),
+                                lr_dir=args.get('lr_dir'),
+                                rl_dir=args.get('rl_dir'),
+                                is_dir=args.get('is_dir'),
+                                si_dir=args.get('si_dir'),
                                 spinecho_epifactor=settings_dict.get('spinecho_epifactor'),
                                 spinecho_inplaneacc=settings_dict.get('spinecho_inplaneacc'))
-        elif args.method == 'pre_mcdc':
+        elif args.get('method') == 'pre_mcdc':
             preproc.pre_mcdc()
-        elif args.method == 'mcdc':
+        elif args.get('method') == 'mcdc':
             preproc.mcdc(use_mcflirt=settings_dict.get('use_mcflirt'),
                          s2v=settings_dict.get('s2v'),
                          dc=settings_dict.get('dc'),
                          mbs=settings_dict.get('mbs'))
-        elif args.method == 'post_mcdc':
+        elif args.get('method') == 'post_mcdc':
             preproc.post_mcdc(standard_age=settings_dict.get('standard_age'),
                               template_ages=settings_dict.get('template_ages'),
                               temporal_fwhm=settings_dict.get('temporal_fwhm'),
@@ -165,33 +167,33 @@ def preproc_data() -> Literal[0]:
                               preproc_only=settings_dict.get('preproc_only'),
                               smooth=settings_dict.get('smooth'),
                               intnorm=settings_dict.get('intnorm'))
-        elif args.method == 'run_all':
+        elif args.get('method') == 'run_all':
             # Import data
-            preproc.import_data(func=args.func,
-                                func_echospacing=args.func_echospacing,
-                                func_pedir=args.func_pedir,
-                                T2w=args.T2w,
-                                T2w_brainmask=args.T2w_brainmask,
-                                dseg=args.dseg,
-                                func_brainmask=args.func_brainmask,
+            preproc.import_data(func=args.get('func'),
+                                func_echospacing=args.get('func_echospacing'),
+                                func_pedir=args.get('func_pedir'),
+                                T2w=args.get('T2w'),
+                                T2w_brainmask=args.get('T2w_brainmask'),
+                                dseg=args.get('dseg'),
+                                func_brainmask=args.get('func_brainmask'),
                                 func_slorder=settings_dict.get('func_slorder'),
                                 func_inplane_accel=settings_dict.get('func_inplane_accel'),
                                 mb_factor=settings_dict.get('mb_factor'),
-                                sbref=args.sbref,
-                                sbref_brainmask=args.sbref_brainmask,
+                                sbref=args.get('sbref'),
+                                sbref_brainmask=args.get('sbref_brainmask'),
                                 sbref_echospacing=settings_dict.get('sbref_echospacing'),
-                                sbref_pedir=args.sbref_pedir,
+                                sbref_pedir=args.get('sbref_pedir'),
                                 dseg_type=settings_dict.get('dseg_type'),
-                                T1w=args.T1w,
-                                spinecho=args.spinecho,
+                                T1w=args.get('T1w'),
+                                spinecho=args.get('spinecho'),
                                 spinecho_echospacing=settings_dict.get('spinecho_echospacing'),
-                                spinecho_pedir=args.spinecho_pedir,
-                                ap_dir=args.ap_dir,
-                                pa_dir=args.pa_dir,
-                                lr_dir=args.lr_dir,
-                                rl_dir=args.rl_dir,
-                                is_dir=args.is_dir,
-                                si_dir=args.si_dir,
+                                spinecho_pedir=args.get('spinecho_pedir'),
+                                ap_dir=args.get('ap_dir'),
+                                pa_dir=args.get('pa_dir'),
+                                lr_dir=args.get('lr_dir'),
+                                rl_dir=args.get('rl_dir'),
+                                is_dir=args.get('is_dir'),
+                                si_dir=args.get('si_dir'),
                                 spinecho_epifactor=settings_dict.get('spinecho_epifactor'),
                                 spinecho_inplaneacc=settings_dict.get('spinecho_inplaneacc'))
 
