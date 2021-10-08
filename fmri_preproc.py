@@ -54,7 +54,7 @@ def preproc_data() -> Literal[0]:
         sys.exit(0)
     
     # Preprocess data
-
+    
     # Check arguments
     if args.outdir and ((args.sub and args.run) or args.func):
 
@@ -324,7 +324,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
     importoptions.add_argument('--T2w-brainmask',
                                type=str,
                                metavar="<file>",
-                               dest="REQUIRED: T2w_brainmask",
+                               dest="T2w_brainmask",
                                default=None,
                                help="Input T2w brainmask image data (_brainmask_bet).")
     importoptions.add_argument('--T2w-tissue-seg',
