@@ -57,7 +57,9 @@ export ANTSPATH=$(dirname $(which antsRegistrationSyN.sh))/ # If not set already
 
 # Append to Linker and Python paths
 
-pkg_path=<path/to/this/repo/locally>
+git clone https://github.com/AdebayoBraimah/fmri_preproc.git
+
+pkg_path=$(realpath fmri_preproc)
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${FSLDIR}/fslpython/envs/fslpython/lib
 export PYTHONPATH=${PYTHONPATH}:$(which python3):${pkg_path}
