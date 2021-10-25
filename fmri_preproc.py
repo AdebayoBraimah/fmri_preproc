@@ -165,7 +165,7 @@ def preproc_data() -> Literal[0]:
                               group_qc=settings_dict.get('group_qc'),
                               atlasdir=settings_dict.get('atlasdir'),
                               preproc_only=settings_dict.get('preproc_only'),
-                              smooth=settings_dict.get('smooth'),
+                              spatial_fwhm=settings_dict.get('smooth'),
                               intnorm=settings_dict.get('intnorm'))
         elif args.get('method') == 'run_all':
             # Import data
@@ -214,7 +214,7 @@ def preproc_data() -> Literal[0]:
                             group_qc=settings_dict.get('group_qc'),
                             atlasdir=settings_dict.get('atlasdir'),
                             preproc_only=settings_dict.get('preproc_only'),
-                            smooth=settings_dict.get('smooth'),
+                            spatial_fwhm=settings_dict.get('smooth'),
                             intnorm=settings_dict.get('intnorm'))
     else:
         print("\nREQUIRED: '--outdir', '--sub', AND '--run'.\n")
