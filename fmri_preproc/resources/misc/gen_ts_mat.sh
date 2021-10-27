@@ -344,22 +344,23 @@ main(){
   # Extract mean timeseries
   #============================
 
-  run fslmeants -i ${func} -o ${out_prefix}_mean_rois_mat.txt --label=${out_prefix}.nii.gz
+  run fslmeants -i ${func} -o ${out_prefix}_mean_ts_rois_mat.txt --label=${out_prefix}.nii.gz
 
   #
   # Compute correlation matrix
   #============================
 
   prog_dir=$(dirname $(realpath ${0}))
-  run ${prog_dir}/corr_mat.py --matrix-file=${out_prefix}_mean_rois_mat.txt --output=${out_prefix}_adj_mat.txt
+  run ${prog_dir}/corr_mat.py --matrix-file=${out_prefix}_mean_ts_rois_mat.txt --output=${out_prefix}_corr_mat.txt
+  run ${prog_dir}/corr_mat.py --matrix-file=${out_prefix}_mean_ts_rois_mat.txt --output=${out_prefix}_corr_mat_Z_xfm.txt -z
 
-  #
-  # Clean-up
-  #============================
-
-  if [[ "${cleanup}" == "true" ]]; then
-    run rm ${out_prefix}.nii.gz ${out_prefix}_mean_rois_mat.txt
-  fi
+  # #
+  # # Clean-up
+  # #============================
+  # 
+  # if [[ "${cleanup}" == "true" ]]; then
+  #   run rm ${out_prefix}.nii.gz ${out_prefix}_mean_rois_mat.txt
+  # fi
   
   # Successful exit status
   exit 0

@@ -28,14 +28,16 @@ def main() -> None:
 
     if args.mat_file and args.out_file:
         compute_corr_mat(mat_file=args.mat_file,
-                         out_file=args.out_file)
+                         out_file=args.out_file,
+                         z_xfm=args.z_xfm)
     else:
         print("\nREQUIRED: '--matrix-file' and '--output'.\n")
     return None
 
 
 def compute_corr_mat(mat_file: file,
-                     out_file: file
+                     out_file: file,
+                     z_xfm: bool = False
                     ) -> file:
     """Computes correlation matrix for some input mean timeseries of ROIs 
     (represented as a r x c matrix, stored in a text file).
@@ -49,6 +51,9 @@ def compute_corr_mat(mat_file: file,
     #   is expected to convey ROI-to-ROI correlations.
     corr: np.array = np.corrcoef(mat.transpose())
     corr: np.array = np.nan_to_num(corr,nan=0.0)
+
+    if z_xfm:
+        corr: np.array = np.arctanh(corr)
 
     np.savetxt(out_file,corr, fmt='%.9f')
     out_file: str = os.path.abspath(out_file)
@@ -78,6 +83,11 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                             metavar="<file>",
                             default=None,
                             help="Output file name of correlation matrix.")
+    reqoptions.add_argument('-z',
+                            dest="z_xfm",
+                            default=False,
+                            action="store_true",
+                            help="Fisher's Z-transform output correlation matrix.")
     args: argparse.ArgumentParser.parse_args = parser.parse_args()
     return args, parser
 
