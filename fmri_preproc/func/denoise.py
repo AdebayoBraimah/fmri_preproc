@@ -11,6 +11,7 @@ import numpy as np
 
 from typing import (
     Dict,
+    List,
     Optional,
     Tuple,
     Union
@@ -315,6 +316,7 @@ def fix_classify(rdata: str,
     noise_idx: str = loadLabelFile(filename=fix_labels, returnIndices=True)[2]
     noise_idx: np.array = np.array(noise_idx) - 1
     mix: np.array = np.loadtxt(mel_mix_dir)[:, noise_idx]
+    
     df: pd.DataFrame = pd.DataFrame(data=mix, columns=[f'noise_{i}' for i in noise_idx])
     df.to_csv(fix_reg, sep='\t', index=None)
     
