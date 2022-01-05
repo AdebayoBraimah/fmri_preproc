@@ -188,8 +188,25 @@ def fix_extract(func_filt: str,
             s: str = f.read()
             if log: log.error(s)
         raise RuntimeError(s)
+    
+    # Check FIX feature file
+    csv_file: str = os.path.join(fixdir,'fix','features.csv')
+    csv_file: str = _check_fix_features(csv=csv_file)
 
     return fixdir
+
+
+def _check_fix_features(csv: str) -> str:
+    """Helper function that searches and replaces ``NaN``s in
+    FSL's FIX feature file.
+    """
+    with File(src=csv, assert_exists=True) as c:
+        csv: str = c.abspath()
+
+    features_df: pd.DataFrame = pd.read_csv(csv, header=None, delimiter=",")
+    features_df: pd.DataFrame = features_df.fillna(0)
+    features_df.to_csv(csv, header=False, index=False)
+    return csv
 
 
 def _write_fsf(fsf: Union[File,str],
