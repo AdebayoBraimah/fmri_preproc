@@ -189,27 +189,35 @@ def fix_extract(func_filt: str,
     
     # Check FIX feature file
     csv_file: str = os.path.join(fixdir,'fix','features.csv')
-
-    if not os.path.exists(csv_file):
-        import sys
-        print("File does not exist: csv_file")
-        sys.exit(1)
-        
-    csv_file: str = _check_fix_features(csv=csv_file)
+    csv_file: str = _check_fix_features(csv=csv_file, log=log)
 
     return fixdir
 
 
-def _check_fix_features(csv: str) -> str:
+def _check_fix_features(csv: str,
+                        log: Optional[LogFile] = None
+                       ) -> str:
     """Helper function that searches and replaces ``NaN``s in
     FSL's FIX feature file.
     """
     with File(src=csv, assert_exists=True,) as c:
         csv: str = c.abspath()
+        fdir, _, _ = c.file_parts()
 
     features_df: pd.DataFrame = pd.read_csv(csv, header=None, delimiter=",")
-    features_df: pd.DataFrame = features_df.fillna(0)
-    features_df.to_csv(csv, header=False, index=False)
+
+    # Check for NaNs
+    if features_df.isnull().values.any():
+        log.warning(msg="WARNING: NaN values detected in features.csv file. \
+            NaN values will be replaced with 0.")
+
+        with TmpDir(src=fdir) as tmp:
+            tmp_csv: str = tmp.join('features.tmp.csv')
+            features_df: pd.DataFrame = features_df.fillna(0)
+            features_df.to_csv(tmp_csv, header=False, index=False)
+            
+            with File(src=tmp_csv) as tmpf:
+                tmpf.copy(csv)
     return csv
 
 
@@ -313,6 +321,10 @@ def fix_classify(rdata: str,
                 raise RuntimeError(f"FIX feature extraction must be performed before feature classification.")
             fixdir: fd.abspath()
     
+    # Check FIX feature file
+    csv_file: str = os.path.join(fixdir,'fix','features.csv')
+    csv_file: str = _check_fix_features(csv=csv_file, log=log)
+
     # Define outputs
     outfix: FIXClassify = FIXClassify(outdir=outdir)
     outputs: Dict[str,str] = outfix.outputs()
