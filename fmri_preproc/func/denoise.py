@@ -5,13 +5,11 @@ NOTE:
     External dependency: FIX - https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIX/UserGuide.
 """
 import os
-import shutil
 import pandas as pd
 import numpy as np
 
 from typing import (
     Dict,
-    List,
     Optional,
     Tuple,
     Union
@@ -191,6 +189,12 @@ def fix_extract(func_filt: str,
     
     # Check FIX feature file
     csv_file: str = os.path.join(fixdir,'fix','features.csv')
+
+    if not os.path.exists(csv_file):
+        import sys
+        print("File does not exist: csv_file")
+        sys.exit(1)
+        
     csv_file: str = _check_fix_features(csv=csv_file)
 
     return fixdir
@@ -200,7 +204,7 @@ def _check_fix_features(csv: str) -> str:
     """Helper function that searches and replaces ``NaN``s in
     FSL's FIX feature file.
     """
-    with File(src=csv, assert_exists=True) as c:
+    with File(src=csv, assert_exists=True,) as c:
         csv: str = c.abspath()
 
     features_df: pd.DataFrame = pd.read_csv(csv, header=None, delimiter=",")
