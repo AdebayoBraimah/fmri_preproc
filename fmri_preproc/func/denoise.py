@@ -207,13 +207,16 @@ def _check_fix_features(csv: str,
     features_df: pd.DataFrame = pd.read_csv(csv, header=None, delimiter=",")
 
     # File checks
-    log.log(f"file path: {csv}")
-    log.log(f"Does this file contain NaNs: {features_df.isnull().values.any()}")
+    # log.log(f"file path: {csv}")
+    # log.log(f"Does this file contain NaNs: {features_df.isnull().values.any()}")
+    print(f"file path: {csv}")
+    print(f"Does this file contain NaNs: {features_df.isnull().values.any()}")
 
     # Check for NaNs
     if features_df.isnull().values.any():
-        log.warning(msg="WARNING: NaN values detected in features.csv file. \
-            NaN values will be replaced with 0.")
+        if log:
+            log.warning(msg="WARNING: NaN values detected in features.csv file. \
+                NaN values will be replaced with 0.")
 
         with TmpDir(src=fdir) as tmp:
             tmp_csv: str = tmp.join('features.tmp.csv')
