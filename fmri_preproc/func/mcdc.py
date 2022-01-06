@@ -361,6 +361,8 @@ def eddy_mcdc(func: str,
     mbs_lambda: Union[int, None] = None
     mbs_ksp:    Union[int, None] = None
 
+    # TODO: mb_factor needs to be required in elif statement
+    #   to ensure reliable performance.
     if s2v_corr:
         if func_sliceorder:
             with File(src=func_sliceorder, assert_exists=True) as f:
@@ -378,6 +380,8 @@ def eddy_mcdc(func: str,
         s2v_lambda: int = 1
         s2v_interp: str = "trilinear"
 
+        # TODO: Add option to arbitrarily set the mporder.
+        # 
         # Set mporder to 16 or smallest (advised by Jesper Anderson and Sean Fitzgibbon)
         mporder:int = np.loadtxt(func_sliceorder).shape[0] - 1
         if mporder > 16:
