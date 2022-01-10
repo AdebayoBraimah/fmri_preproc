@@ -172,8 +172,6 @@ def fix_extract(func_filt: str,
     # Extract FIX features
     if log: log.log("Performing FIX feature extraction")
 
-    # _source_fix_directory(log=log)
-
     cmd: Command = Command("fix")
     cmd.opt("-f")
     cmd.opt(f"{fixdir}")
@@ -205,12 +203,6 @@ def _check_fix_features(csv: str,
         fdir, _, _ = c.file_parts()
 
     features_df: pd.DataFrame = pd.read_csv(csv, header=None, delimiter=",")
-
-    # File checks
-    # log.log(f"file path: {csv}")
-    # log.log(f"Does this file contain NaNs: {features_df.isnull().values.any()}")
-    print(f"file path: {csv}")
-    print(f"Does this file contain NaNs: {features_df.isnull().values.any()}")
 
     # Check for NaNs
     if features_df.isnull().values.any():
@@ -248,22 +240,6 @@ set fmri(paradigm_hp) {temporal_fwhm}""")
     return fsf_file
 
 
-# def _source_fix_directory(log: Optional[LogFile] = None):
-#     """Helper function that sources and appends FSL's FIX settings to the current
-#     shell's ``PATH`` variable.
-# 
-#     NOTE: FIX MUST be in the shell's ``PATH`` variable for this function to
-#         work properly.
-#     """
-#     FIXDIR: str = os.path.dirname(shutil.which("fix"))
-#     FIXSETTINGS: str = os.path.join(FIXDIR,'settings.sh')
-# 
-#     cmd: Command = Command("source")
-#     cmd.opt(FIXSETTINGS)
-#     cmd.run(log=log)
-#     return None
-
-
 def _classify(fixdir: str,
               rdata: str,
               thr: int,
@@ -283,8 +259,6 @@ def _classify(fixdir: str,
         
         fixdir: str = fd.abspath()
         fix_log: str = fd.join('.fix_2b_predict.log')
-    
-    # _source_fix_directory(log=log)
     
     if fix_src:
         cmd: Command = Command(f"{fix_src}")
@@ -398,8 +372,6 @@ def fix_apply(outdir: str,
     # FIX apply
     if log: log.log("Performing FIX noise/nuissance regression")
     
-    # _source_fix_directory(log=log)
-
     cmd: Command = Command("fix")
     cmd.opt("-a")
     cmd.opt(f"{labels}")
