@@ -19,7 +19,6 @@ from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
-from fmri_preproc.utils.enums import PhaseEncodeDirection
 from fmri_preproc.utils.acqparam import write_func_params
 from fmri_preproc.utils.outputs.mcdc import MCDCFiles
 
@@ -40,6 +39,7 @@ from fmri_preproc.utils.fileio import (
 
 from fmri_preproc.utils.enums import (
     MotionMetric,
+    PhaseEncodeDirection,
     SliceAcqOrder
 )
 
@@ -275,12 +275,15 @@ def eddy_mcdc(func: str,
               mb_factor: Optional[int] = 1,
               mot_params: Optional[str] = None,
               mbs: bool = False,
+              mporder: Optional[int] = None,
               s2v_corr: bool = False,
               log: Optional[LogFile] = None
              ) -> Tuple[str,str,str]:
     """Perform EDDY-based motion and distortion correction.
 
-    NOTE: Input ``fmri`` is **ASSUMED** to be in the PA phase encoding direction.
+    NOTE: Input ``fmri`` acquisition is **ASSUMED** to be acquired in the same phase-encoding direction 
+        throughout each volume (e.g. the phase-encoding direction cannot change from PA -> AP to AP -> PA
+        for several volumes).
     """
     if log: log.log("Performing EDDY-based motion and distortion correction.")
 
@@ -744,37 +747,3 @@ def motion_outlier(func: str,
         plt.savefig(plot_name)
 
     return outlier, metric_data, thr, metric_name, plot_name
-
-
-# This function should be used elsewhere, perhaps outside of this
-#   package.
-# 
-# def _find_optimal_mb_factor_for_eddy_s2v(slices: int,
-#                                          mb_factor: int,
-#                                          attempts: Optional[int] = None,
-#                                          reported_mb: Optional[int] = None,
-#                                         ) -> int:
-#     """Helper function that finds the optimal multi-band factor to best
-#     create/reconstruct the slice order file.
-#     """
-#     if attempts:
-#         pass
-#     else:
-#         attempts: int = 1
-#         reported_mb: int = mb_factor
-#     
-#     if attempts == 10:
-#         possible_mbs: List[int] = list(range(reported_mb-2,13))
-# 
-#         for mb in possible_mbs:
-#             if (slices % mb) == 0:
-#                 return mb
-#             else:
-#                 return reported_mb
-#     
-#     if (slices % mb_factor) == 0:
-#         return mb_factor
-#     elif (slices % mb_factor) >= 5:
-#         return _find_optimal_mb_factor_for_eddy_s2v(slices, mb_factor-1, attempts+1, reported_mb)
-#     elif (slices % mb_factor) <= 5:
-#         return _find_optimal_mb_factor_for_eddy_s2v(slices, mb_factor+1, attempts+1, reported_mb)
