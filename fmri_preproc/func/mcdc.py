@@ -281,7 +281,7 @@ def eddy_mcdc(func: str,
              ) -> Tuple[str,str,str]:
     """Perform EDDY-based motion and distortion correction.
 
-    NOTE: Input ``fmri`` acquisition is **ASSUMED** to be acquired in the same phase-encoding direction 
+    NOTE: Input ``fmri`` acquisition is **ASSUMED** to be acquired in the same phase-encoding direction
         throughout each volume (e.g. the phase-encoding direction cannot change from PA -> AP to AP -> PA
         for several volumes).
     """
