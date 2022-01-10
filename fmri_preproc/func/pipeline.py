@@ -593,7 +593,8 @@ class Pipeline:
              use_mcflirt: bool = False,
              s2v: bool = False,
              dc: bool = False,
-             mbs: bool = False
+             mbs: bool = False,
+             mporder: Optional[int] = None
             ) -> Dict[Any,str]:
         """doc-string
         """
@@ -623,6 +624,7 @@ class Pipeline:
             "s2v": s2v,
             "dc": dc,
             "mbs": mbs,
+            "mporder": mporder,
             "use_mcflirt": use_mcflirt,
         }
 
@@ -1621,6 +1623,7 @@ class Pipeline:
                 s2v: bool = False,
                 dc: bool = False,
                 mbs: bool = False,
+                mporder: Optional[int] = None,
                 quick: bool = False,
                 icadim: Optional[int] = None,
                 rdata: Optional[str] = None,
@@ -1639,7 +1642,8 @@ class Pipeline:
         self.outputs: Dict[Any,str] = self.mcdc(use_mcflirt=use_mcflirt,
                                                 s2v=s2v,
                                                 dc=dc,
-                                                mbs=mbs)
+                                                mbs=mbs,
+                                                mporder=mporder)
 
         self.outputs: Dict[Any,str] = self.post_mcdc(standard_age=standard_age,
                                                      template_ages=template_ages,

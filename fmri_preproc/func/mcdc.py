@@ -63,6 +63,7 @@ def mcdc(func: str,
          fmap2func_affine: Optional[str] = None,
          mb_factor: Optional[int] = None,
          dc: bool = False,
+         mporder: Optional[int] = None,
          s2v: bool = False,
          mbs: bool = False,
          use_mcflirt: bool = False,
@@ -151,6 +152,7 @@ def mcdc(func: str,
                                        mb_factor=mb_factor,
                                        mot_params=outputs.get('motparams'),
                                        mbs=mbs,
+                                       mporder=mporder,
                                        s2v_corr=s2v,
                                        log=log)
 
@@ -380,12 +382,19 @@ def eddy_mcdc(func: str,
         s2v_lambda: int = 1
         s2v_interp: str = "trilinear"
 
-        # TODO: Add option to arbitrarily set the mporder.
+        # Set mporder to N - 1, or the smallest value (integer) | N = number
+        # of excitations (e.g. the number of rows in the func_sliceorder
+        # file/matrix).
         # 
-        # Set mporder to 16 or smallest (advised by Jesper Anderson and Sean Fitzgibbon)
-        mporder:int = np.loadtxt(func_sliceorder).shape[0] - 1
-        if mporder > 16:
-            mporder: int = 16
+        # In the case of AICAD neonatal data at CCHMC, the mporder should not
+        # exceed 15.
+        if mporder is None:
+            mporder:int = np.loadtxt(func_sliceorder).shape[0] - 1
+
+        max_mporder: int = np.loadtxt(func_sliceorder).shape[0]
+
+        if mporder > max_mporder:
+            mporder: int = max_mporder
         
         if mbs:
             mbs_niter:  int = 20
