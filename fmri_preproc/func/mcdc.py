@@ -272,7 +272,7 @@ def eddy_mcdc(func: str,
               inplane_acc: float = 1,
               fmap: Optional[str] = None,
               fmap2func_xfm: Optional[str] = None,
-              mb_factor: Optional[int] = 1,
+              mb_factor: Optional[int] = None,
               mot_params: Optional[str] = None,
               mbs: bool = False,
               mporder: Optional[int] = None,
@@ -359,14 +359,11 @@ def eddy_mcdc(func: str,
     s2v_fwhm:   Union[int, None] = None
     s2v_lambda: Union[int, None] = None
     s2v_interp: Union[str, None] = None
-    mporder:    Union[int, None] = None
     mbs_niter:  Union[int, None] = None
     mbs_lambda: Union[int, None] = None
     mbs_ksp:    Union[int, None] = None
-
-    # TODO: mb_factor needs to be required in elif statement
-    #   to ensure reliable performance.
-    if s2v_corr:
+    
+    if s2v_corr and (mb_factor or func_sliceorder):
         if func_sliceorder:
             with File(src=func_sliceorder, assert_exists=True) as f:
                 # func_sliceorder: str = f.abspath()
