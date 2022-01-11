@@ -592,7 +592,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                  dest="smooth",
                                  default=None,
                                  help="Smoothing kernel (FWHM, in mm) [default: disabled].")
-    postmcdcoptions.add_argument('--int-nrom',
+    postmcdcoptions.add_argument('--int-norm',
                                  dest="intnorm",
                                  action="store_true",
                                  help="Performs intensity normalization OR grand-mean scaling IF '--smooth' is specified and greater than 0 [default: disabled].")
@@ -683,7 +683,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                dest="smooth",
                                default=None,
                                help="Smoothing kernel (FWHM, in mm) [default: disabled].")
-    runalloptions.add_argument('--int-nrom',
+    runalloptions.add_argument('--int-norm',
                                dest="intnorm",
                                action="store_true",
                                help="Performs intensity normalization OR grand-mean scaling IF '--smooth' is specified and greater than 0 [default: disabled].")
