@@ -151,7 +151,8 @@ def preproc_data() -> Literal[0]:
             preproc.mcdc(use_mcflirt=settings_dict.get('use_mcflirt'),
                          s2v=settings_dict.get('s2v'),
                          dc=settings_dict.get('dc'),
-                         mbs=settings_dict.get('mbs'))
+                         mbs=settings_dict.get('mbs'),
+                         mporder=args.get('mporder'))
         elif args.get('method') == 'post_mcdc':
             preproc.post_mcdc(standard_age=settings_dict.get('standard_age'),
                               template_ages=settings_dict.get('template_ages'),
@@ -520,6 +521,12 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                              action="store_true",
                              default=None,
                              help="Enables FSL's MCFLIRT-based motion correction. NOTE: Enabling this option DISABLES: '--s2v', '--dc', and '--mbs' options.")
+    mcdcoptions.add_argument('--mporder',
+                             type=int,
+                             metavar="<int>",
+                             dest="mporder",
+                             default=None,
+                             help="The number of discrete cosine (DCT) basis sets used to model the intra-slice movement within a volume (used by FSL's eddy). This value should be maximally defined as the number of rows in the '--func-slorder' option. For reference, this value should not exceed the number of excitations per volume (e.g. given a MB factor of 3, with 45 acquired slices, the mporder should not exceed 15) [NOTE: this value is automatically computed when the '--s2v' option is enabled].")
 
     mcdcoptions.set_defaults(method='mcdc')
 
@@ -585,7 +592,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                  dest="smooth",
                                  default=None,
                                  help="Smoothing kernel (FWHM, in mm) [default: disabled].")
-    postmcdcoptions.add_argument('--int-nrom',
+    postmcdcoptions.add_argument('--int-norm',
                                  dest="intnorm",
                                  action="store_true",
                                  help="Performs intensity normalization OR grand-mean scaling IF '--smooth' is specified and greater than 0 [default: disabled].")
@@ -676,7 +683,7 @@ def arg_parser() -> Tuple[argparse.ArgumentParser.parse_args, argparse.ArgumentP
                                dest="smooth",
                                default=None,
                                help="Smoothing kernel (FWHM, in mm) [default: disabled].")
-    runalloptions.add_argument('--int-nrom',
+    runalloptions.add_argument('--int-norm',
                                dest="intnorm",
                                action="store_true",
                                help="Performs intensity normalization OR grand-mean scaling IF '--smooth' is specified and greater than 0 [default: disabled].")

@@ -6,6 +6,7 @@ fmri_preproc/resources/atlases/*dHCP*/*
 __pycache__/
 unc_infant_atlas_2020/
 group_qc/
+test_data/
 
 # Delete __pycache__: 
 # 

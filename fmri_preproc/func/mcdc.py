@@ -19,7 +19,6 @@ from fmri_preproc.utils.util import timeops
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
-from fmri_preproc.utils.enums import PhaseEncodeDirection
 from fmri_preproc.utils.acqparam import write_func_params
 from fmri_preproc.utils.outputs.mcdc import MCDCFiles
 
@@ -40,6 +39,7 @@ from fmri_preproc.utils.fileio import (
 
 from fmri_preproc.utils.enums import (
     MotionMetric,
+    PhaseEncodeDirection,
     SliceAcqOrder
 )
 
@@ -63,6 +63,7 @@ def mcdc(func: str,
          fmap2func_affine: Optional[str] = None,
          mb_factor: Optional[int] = None,
          dc: bool = False,
+         mporder: Optional[int] = None,
          s2v: bool = False,
          mbs: bool = False,
          use_mcflirt: bool = False,
@@ -151,6 +152,7 @@ def mcdc(func: str,
                                        mb_factor=mb_factor,
                                        mot_params=outputs.get('motparams'),
                                        mbs=mbs,
+                                       mporder=mporder,
                                        s2v_corr=s2v,
                                        log=log)
 
@@ -272,15 +274,18 @@ def eddy_mcdc(func: str,
               inplane_acc: float = 1,
               fmap: Optional[str] = None,
               fmap2func_xfm: Optional[str] = None,
-              mb_factor: Optional[int] = 1,
+              mb_factor: Optional[int] = None,
               mot_params: Optional[str] = None,
               mbs: bool = False,
+              mporder: Optional[int] = None,
               s2v_corr: bool = False,
               log: Optional[LogFile] = None
              ) -> Tuple[str,str,str]:
     """Perform EDDY-based motion and distortion correction.
 
-    NOTE: Input ``fmri`` is **ASSUMED** to be in the PA phase encoding direction.
+    NOTE: Input ``fmri`` acquisition is **ASSUMED** to be acquired in the same phase-encoding direction
+        throughout each volume (e.g. the phase-encoding direction cannot change from PA -> AP to AP -> PA
+        for several volumes).
     """
     if log: log.log("Performing EDDY-based motion and distortion correction.")
 
@@ -356,12 +361,11 @@ def eddy_mcdc(func: str,
     s2v_fwhm:   Union[int, None] = None
     s2v_lambda: Union[int, None] = None
     s2v_interp: Union[str, None] = None
-    mporder:    Union[int, None] = None
     mbs_niter:  Union[int, None] = None
     mbs_lambda: Union[int, None] = None
     mbs_ksp:    Union[int, None] = None
-
-    if s2v_corr:
+    
+    if s2v_corr and (mb_factor or func_sliceorder):
         if func_sliceorder:
             with File(src=func_sliceorder, assert_exists=True) as f:
                 # func_sliceorder: str = f.abspath()
@@ -378,10 +382,19 @@ def eddy_mcdc(func: str,
         s2v_lambda: int = 1
         s2v_interp: str = "trilinear"
 
-        # Set mporder to 16 or smallest (advised by Jesper Anderson and Sean Fitzgibbon)
-        mporder:int = np.loadtxt(func_sliceorder).shape[0] - 1
-        if mporder > 16:
-            mporder: int = 16
+        # Set mporder to N - 1, or the smallest value (integer) | N = number
+        # of excitations (e.g. the number of rows in the func_sliceorder
+        # file/matrix).
+        # 
+        # In the case of AICAD neonatal data at CCHMC, the mporder should not
+        # exceed 15.
+        if mporder is None:
+            mporder:int = np.loadtxt(func_sliceorder).shape[0] - 1
+
+        max_mporder: int = np.loadtxt(func_sliceorder).shape[0]
+
+        if mporder > max_mporder:
+            mporder: int = max_mporder
         
         if mbs:
             mbs_niter:  int = 20
@@ -740,37 +753,3 @@ def motion_outlier(func: str,
         plt.savefig(plot_name)
 
     return outlier, metric_data, thr, metric_name, plot_name
-
-
-# This function should be used elsewhere, perhaps outside of this
-#   package.
-# 
-# def _find_optimal_mb_factor_for_eddy_s2v(slices: int,
-#                                          mb_factor: int,
-#                                          attempts: Optional[int] = None,
-#                                          reported_mb: Optional[int] = None,
-#                                         ) -> int:
-#     """Helper function that finds the optimal multi-band factor to best
-#     create/reconstruct the slice order file.
-#     """
-#     if attempts:
-#         pass
-#     else:
-#         attempts: int = 1
-#         reported_mb: int = mb_factor
-#     
-#     if attempts == 10:
-#         possible_mbs: List[int] = list(range(reported_mb-2,13))
-# 
-#         for mb in possible_mbs:
-#             if (slices % mb) == 0:
-#                 return mb
-#             else:
-#                 return reported_mb
-#     
-#     if (slices % mb_factor) == 0:
-#         return mb_factor
-#     elif (slices % mb_factor) >= 5:
-#         return _find_optimal_mb_factor_for_eddy_s2v(slices, mb_factor-1, attempts+1, reported_mb)
-#     elif (slices % mb_factor) <= 5:
-#         return _find_optimal_mb_factor_for_eddy_s2v(slices, mb_factor+1, attempts+1, reported_mb)

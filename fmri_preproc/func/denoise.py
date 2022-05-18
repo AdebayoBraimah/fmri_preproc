@@ -5,13 +5,11 @@ NOTE:
     External dependency: FIX - https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIX/UserGuide.
 """
 import os
-import shutil
 import pandas as pd
 import numpy as np
 
 from typing import (
     Dict,
-    List,
     Optional,
     Tuple,
     Union
@@ -174,8 +172,6 @@ def fix_extract(func_filt: str,
     # Extract FIX features
     if log: log.log("Performing FIX feature extraction")
 
-    # _source_fix_directory(log=log)
-
     cmd: Command = Command("fix")
     cmd.opt("-f")
     cmd.opt(f"{fixdir}")
@@ -188,8 +184,40 @@ def fix_extract(func_filt: str,
             s: str = f.read()
             if log: log.error(s)
         raise RuntimeError(s)
+    
+    # Check FIX feature file
+    csv_file: str = os.path.join(fixdir,'fix','features.csv')
+    csv_file: str = _check_fix_features(csv=csv_file, log=log)
 
     return fixdir
+
+
+def _check_fix_features(csv: str,
+                        log: Optional[LogFile] = None
+                       ) -> str:
+    """Helper function that searches and replaces ``NaN``s in
+    FSL's FIX feature file.
+    """
+    with File(src=csv, assert_exists=True,) as c:
+        csv: str = c.abspath()
+        fdir, _, _ = c.file_parts()
+
+    features_df: pd.DataFrame = pd.read_csv(csv, header=None, delimiter=",")
+
+    # Check for NaNs
+    if features_df.isnull().values.any():
+        if log:
+            log.warning(msg="WARNING: NaN values detected in features.csv file. \
+                NaN values will be replaced with 0.")
+
+        with TmpDir(src=fdir) as tmp:
+            tmp_csv: str = tmp.join('features.tmp.csv')
+            features_df: pd.DataFrame = features_df.fillna(0)
+            features_df.to_csv(tmp_csv, header=False, index=False)
+            
+            with File(src=tmp_csv) as tmpf:
+                tmpf.copy(csv)
+    return csv
 
 
 def _write_fsf(fsf: Union[File,str],
@@ -212,22 +240,6 @@ set fmri(paradigm_hp) {temporal_fwhm}""")
     return fsf_file
 
 
-# def _source_fix_directory(log: Optional[LogFile] = None):
-#     """Helper function that sources and appends FSL's FIX settings to the current
-#     shell's ``PATH`` variable.
-# 
-#     NOTE: FIX MUST be in the shell's ``PATH`` variable for this function to
-#         work properly.
-#     """
-#     FIXDIR: str = os.path.dirname(shutil.which("fix"))
-#     FIXSETTINGS: str = os.path.join(FIXDIR,'settings.sh')
-# 
-#     cmd: Command = Command("source")
-#     cmd.opt(FIXSETTINGS)
-#     cmd.run(log=log)
-#     return None
-
-
 def _classify(fixdir: str,
               rdata: str,
               thr: int,
@@ -247,8 +259,6 @@ def _classify(fixdir: str,
         
         fixdir: str = fd.abspath()
         fix_log: str = fd.join('.fix_2b_predict.log')
-    
-    # _source_fix_directory(log=log)
     
     if fix_src:
         cmd: Command = Command(f"{fix_src}")
@@ -292,6 +302,10 @@ def fix_classify(rdata: str,
                 raise RuntimeError(f"FIX feature extraction must be performed before feature classification.")
             fixdir: fd.abspath()
     
+    # Check FIX feature file
+    csv_file: str = os.path.join(fixdir,'fix','features.csv')
+    csv_file: str = _check_fix_features(csv=csv_file, log=log)
+
     # Define outputs
     outfix: FIXClassify = FIXClassify(outdir=outdir)
     outputs: Dict[str,str] = outfix.outputs()
@@ -358,8 +372,6 @@ def fix_apply(outdir: str,
     # FIX apply
     if log: log.log("Performing FIX noise/nuissance regression")
     
-    # _source_fix_directory(log=log)
-
     cmd: Command = Command("fix")
     cmd.opt("-a")
     cmd.opt(f"{labels}")
