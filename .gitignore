@@ -7,6 +7,8 @@ __pycache__/
 unc_infant_atlas_2020/
 group_qc/
 test_data/
+fmri_preproc/resources/atlases/UNC_infant_atlas_2020/*
+fmri_preproc/resources/atlases/dhcp_volumetric_atlas_extended/*
 
 # Delete __pycache__: 
 # 
