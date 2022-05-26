@@ -329,7 +329,14 @@ def fix_classify(
         labels: str = os.path.join(fixdir, labels)
 
     with File(src=labels, assert_exists=True) as f:
-        fix_labels: str = f.copy(dst=outputs.get("fix_labels"))
+
+        fix_labels: str = outputs.get("fix_labels")
+
+        # NOTE: This change was made for instances in which
+        #   manually labeled ICs could still be processed
+        #   without modifying the source code significantly.
+        if not os.path.exists(fix_labels):
+            fix_labels: str = f.copy(dst=outputs.get("fix_labels"))
 
     # Create FIX regressors
     mel_mix_dir: str = os.path.join(fixdir, "filtered_func_data.ica/melodic_mix")
