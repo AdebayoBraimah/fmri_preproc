@@ -5,12 +5,12 @@
 """This module contains functions for loading/saving FIX/ICA-AROMA label files.
 
 .. autosummary::
-   :nosignatures:
+    :nosignatures:
 
-   loadLabelFile
-   saveLabelFile
-   isNoisyComponent
-   InvalidLabelFileError
+    loadLabelFile
+    saveLabelFile
+    isNoisyComponent
+    InvalidLabelFileError
 """
 
 
