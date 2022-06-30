@@ -1,0 +1,6 @@
+Dependency,Environmental variable (if applicable)
+`FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/>`_, ``FSLDIR``
+`ANTs <http://stnava.github.io/ANTs/>`_, ``ANTSPATH``
+`C3D <http://www.itksnap.org/pmwiki/pmwiki.php?n=Convert3D.Documentation>`_, **Must be in system path**
+`FIX <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIX>`_, **Must be in system path**
+`The dHCP structural pipeline <https://github.com/BioMedIA/dhcp-structural-pipeline>`_, N/A
