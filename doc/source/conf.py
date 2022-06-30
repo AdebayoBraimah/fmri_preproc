@@ -5,7 +5,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # NOTE: Configuration options used are from:
-#   https://github.com/pypa/setuptools/blob/main/docs/conf.py
+#   https://github.com/pypa/setuptools/blob/main/docs/
 
 # -- Path setup --------------------------------------------------------------
 
@@ -16,6 +16,8 @@
 import os
 import sys
 import pathlib
+
+sys.setrecursionlimit(800_000)
 
 from typing import Dict, List
 
