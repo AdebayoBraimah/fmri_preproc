@@ -1,6 +1,9 @@
 # fmri_preproc
 ----------------
 
+[![Documentation Status](https://readthedocs.org/projects/fmri-preproc/badge/?version=latest)](https://fmri-preproc.readthedocs.io/en/latest/?badge=latest)         
+
+
 A resting-state fMRI preprocessing pipeline for neonatal neuroimaging data.
 
 # Quick start
