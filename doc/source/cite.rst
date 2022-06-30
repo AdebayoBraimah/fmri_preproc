@@ -12,8 +12,19 @@ Fitzgibbon, SP, Harrison, SJ, Jenkinson, M, Baxter, L, Robinson, EC, Bastiani, M
 .. code-block:: bibtex
 
     @article {Fitzgibbon766030,
-	    author = {Fitzgibbon, Sean P. and Harrison, Samuel J. and Jenkinson, Mark and Baxter, Luke and Robinson, Emma C. and Bastiani, Matteo and Bozek, Jelena and Karolis, Vyacheslav and Grande, Lucilio Cordero and Price, Anthony N. and Hughes, Emer and Makropoulos, Antonios and Passerat-Palmbach, Jonathan and Schuh, Andreas and Gao, Jianliang and Farahibozorg, Seyedeh-Rezvan and O{\textquoteright}Muircheartaigh, Jonathan and Ciarrusta, Judit and O{\textquoteright}Keeffe, Camilla and Brandon, Jakki and Arichi, Tomoki and Rueckert, Daniel and Hajnal, Joseph V. and Edwards, A. David and Smith, Stephen M. and Duff, Eugene and Andersson, Jesper},
-	    title = {The developing Human Connectome Project (dHCP) automated resting-state functional processing framework for newborn infants},
+	    author = {Fitzgibbon, Sean P. and Harrison, Samuel J. and 
+			Jenkinson, Mark and Baxter, Luke and Robinson, Emma C. 
+			and Bastiani, Matteo and Bozek, Jelena and Karolis, Vyacheslav 
+			and Grande, Lucilio Cordero and Price, Anthony N. and Hughes, Emer 
+			and Makropoulos, Antonios and Passerat-Palmbach, Jonathan 
+			and Schuh, Andreas and Gao, Jianliang and Farahibozorg, Seyedeh-Rezvan 
+			and O{\textquoteright}Muircheartaigh, Jonathan and Ciarrusta, Judit 
+			and O{\textquoteright}Keeffe, Camilla and Brandon, Jakki 
+			and Arichi, Tomoki and Rueckert, Daniel and Hajnal, Joseph V. 
+			and Edwards, A. David and Smith, Stephen M. and Duff, Eugene 
+			and Andersson, Jesper},
+	    title = {The developing Human Connectome Project (dHCP) automated resting-state 
+			functional processing framework for newborn infants},
 	    elocation-id = {117303},
 	    year = {2020},
 	    doi = {10.1016/j.neuroimage.2020.117303},
