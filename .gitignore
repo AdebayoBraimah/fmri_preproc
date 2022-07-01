@@ -1,6 +1,7 @@
 *.nii*
 data/*
 # *.tar.gz
+.vscode/*.log
 fmri_preproc/resources/atlases/*/*.nii*
 fmri_preproc/resources/atlases/*dHCP*/*
 __pycache__/
