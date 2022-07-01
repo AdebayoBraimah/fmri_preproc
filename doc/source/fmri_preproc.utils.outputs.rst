@@ -52,14 +52,6 @@ fmri\_preproc.utils.outputs.outdict module
    :undoc-members:
    :show-inheritance:
 
-fmri\_preproc.utils.outputs.postprocess module
-----------------------------------------------
-
-.. automodule:: fmri_preproc.utils.outputs.postprocess
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 fmri\_preproc.utils.outputs.registration module
 -----------------------------------------------
 
