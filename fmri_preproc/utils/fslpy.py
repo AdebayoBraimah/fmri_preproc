@@ -1,5 +1,38 @@
 # -*- coding: utf-8 -*-
 """Wrappers functions for FSL executable binaries.
+
+.. autosummary::
+    :nosignatures:
+
+    fnirt
+    eddy
+    bet
+    topup
+    fslreorient2std
+    fslroi
+    sigloss
+    fslmerge
+    catmats
+    applywarp
+    invxfm
+    applyxfm
+    apply_isoxfm
+    concatxfm
+    invwarp
+    convertwarp
+    fugue
+    flirt
+    melodic
+    fsl_regfilt
+    mcflirt
+    slicer
+    cluster
+
+.. autoclass:: fslmaths
+    :members:
+
+.. autoclass:: FSLError
+    :members:
 """
 # TODO:
 #

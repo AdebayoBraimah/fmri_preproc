@@ -14,4 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This ``func`` python module contains the main parts of the ``fmri_preproc`` fMRI pipeline.
+
+.. autosummary::
+
+    denoise
+    fieldmap
+    ica
+    importdata
+    mcdc
+    pipeline
+    postprocess
+    qc
+    registration
 """

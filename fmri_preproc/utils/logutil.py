@@ -1,11 +1,20 @@
 # -*- coding: utf-8 -*-
 """Logging utility module.
+
+.. autosummary::
+    :nosignatures:
+
+    LogFile
+
+.. autoclass:: LogFile
+    :members:
 """
 import logging
 from datetime import datetime
 
 from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.enums import LogLevel
+
 
 class LogFile(File):
     """Convenience class that creates a log file object for logging purposes.
@@ -30,14 +39,15 @@ class LogFile(File):
             * ``error``
             * ``warning``
     """
-    
-    def __init__(self,
-                 log_file: str = "",
-                 print_to_screen: bool = False,
-                 format_log_str: bool = False,
-                 use_root_logger: bool = False,
-                 level: str = "info"
-                ) -> None:
+
+    def __init__(
+        self,
+        log_file: str = "",
+        print_to_screen: bool = False,
+        format_log_str: bool = False,
+        use_root_logger: bool = False,
+        level: str = "info",
+    ) -> None:
         """Initialization method for the LogFile class. Initiates logging and its associated methods (from the ``logging`` module).
         
         Usage examples:
@@ -76,7 +86,7 @@ class LogFile(File):
         else:
             FORMAT: str = None
             DATEFMT: str = None
-        
+
         if level == "info":
             level: logging.INFO = logging.INFO
         elif level == "debug":
@@ -87,14 +97,16 @@ class LogFile(File):
             level: logging.ERROR = logging.ERROR
         elif level == "warning":
             level: logging.WARNING = logging.WARNING
-        
+
         if use_root_logger:
             # Use Basic Config for root level logging
-            logging.basicConfig(level=level,
-                                format=FORMAT,
-                                datefmt=DATEFMT,
-                                filename=self.log_file,
-                                filemode='a')
+            logging.basicConfig(
+                level=level,
+                format=FORMAT,
+                datefmt=DATEFMT,
+                filename=self.log_file,
+                filemode="a",
+            )
         else:
             # Define logging components
             self.logger.setLevel(level=level)
@@ -108,10 +120,8 @@ class LogFile(File):
             self.console: logging.StreamHandler = logging.StreamHandler()
             self.console.setLevel(level)
             logging.getLogger().addHandler(self.console)
-        
-    def info(self,
-             msg: str = "",
-             use_header: bool = False) -> None:
+
+    def info(self, msg: str = "", use_header: bool = False) -> None:
         """Writes information to log file.
         
         Usage examples:
@@ -126,10 +136,8 @@ class LogFile(File):
             self.logger.info(self._section_header(msg))
         else:
             self.logger.info(msg)
-        
-    def debug(self,
-              msg: str = "",
-              use_header: bool = False) -> None:
+
+    def debug(self, msg: str = "", use_header: bool = False) -> None:
         """Writes debug information to file.
         
         Usage examples:
@@ -144,10 +152,8 @@ class LogFile(File):
             self.logger.debug(self._section_header(msg))
         else:
             self.logger.debug(msg)
-    
-    def critical(self,
-                 msg: str,
-                 use_header: bool = False) -> None:
+
+    def critical(self, msg: str, use_header: bool = False) -> None:
         """Write critical messages/information to file.
 
         Usage example:
@@ -162,10 +168,8 @@ class LogFile(File):
             self.logger.critical(self._section_header(msg))
         else:
             self.logger.critical(msg)
-        
-    def error(self,
-              msg: str = "",
-              use_header: bool = False) -> None:
+
+    def error(self, msg: str = "", use_header: bool = False) -> None:
         """Writes error information to file.
         
         Usage examples:
@@ -180,10 +184,8 @@ class LogFile(File):
             self.logger.error(self._section_header(msg))
         else:
             self.logger.error(msg)
-        
-    def warning(self,
-                msg: str = "",
-                use_header: bool = False) -> None:
+
+    def warning(self, msg: str = "", use_header: bool = False) -> None:
         """Writes warnings to file.
         
         Usage examples:
@@ -198,10 +200,8 @@ class LogFile(File):
             self.logger.warning(self._section_header(msg))
         else:
             self.logger.warning(msg)
-    
-    def log(self,
-            log_cmd: str = "",
-            use_header: bool = False) -> None:
+
+    def log(self, log_cmd: str = "", use_header: bool = False) -> None:
         """Log function for logging commands and messages to some log file.
         
         Usage examples:
@@ -216,9 +216,8 @@ class LogFile(File):
             self.info(self._section_header(log_cmd))
         else:
             self.info(log_cmd)
-    
-    def _section_header(self,
-                        msg: str) -> str:
+
+    def _section_header(self, msg: str) -> str:
         """Helper function that adds a section header that consists of
         a line break, with the date, time, and message string.
 

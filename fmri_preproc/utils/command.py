@@ -4,8 +4,14 @@
 .. autosummary::
     :nosignatures:
 
-    DependencyError
     Command
+    DependencyError
+
+.. autoclass:: Command
+    :members:
+
+.. autoclass:: DependencyError
+    :members:
 """
 import os
 import subprocess

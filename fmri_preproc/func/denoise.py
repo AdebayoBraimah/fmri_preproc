@@ -3,6 +3,14 @@
 
 NOTE: 
     External dependency: FIX - https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FIX/UserGuide.
+
+.. autosummary::
+    :nosignatures:
+
+    fix_extract
+    fix_classify
+    fix_apply
+    brain_extract
 """
 import os
 import pandas as pd

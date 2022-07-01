@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 """Perform post-processing spatial smoothing and intensity norm for the ``fmri_preproc`` fMRI pre-processing pipeline.
+
+.. autosummary::
+    :nosignatures:
+
+    postprocess
 """
 import os
 import numpy as np

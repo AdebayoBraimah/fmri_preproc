@@ -3,17 +3,16 @@
 
 NOTE:
     * Check this resource pertaining to the odd number of slices: https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=fsl;28f6c983.1806
+
+.. autosummary::
+    :nosignatures:
+
+    fieldmap
 """
 import os
 import nibabel as nib
 
-from typing import (
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union
-)
+from typing import Dict, List, Optional, Tuple, Union
 
 from fmri_preproc.utils.outputs.fieldmap import FmapFiles
 from fmri_preproc.utils.util import timeops
@@ -22,145 +21,145 @@ from fmri_preproc.utils.workdir import WorkDir
 from fmri_preproc.utils.tempdir import TmpDir
 from fmri_preproc.utils.acqparam import write_func_params
 
-from fmri_preproc.utils.fslpy import (
-    bet,
-    FSLDIR,
-    fslmerge,
-    topup,
-    fslmaths
-)
+from fmri_preproc.utils.fslpy import bet, FSLDIR, fslmerge, topup, fslmaths
 
-from fmri_preproc.utils.fileio import (
-    File,
-    NiiFile
-)
+from fmri_preproc.utils.fileio import File, NiiFile
 
 
 # Globlally define (temporary) log file object
 with TmpDir(src=os.getcwd()) as tmpd:
-    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext=".log") as tmpf:
         log: LogFile = LogFile(log_file=tmpf.src)
 
 
 @timeops(log)
-def fieldmap(outdir: str,
-             spinecho: str,
-             echo_spacing: float,
-             pedir: Union[str,List[str]],
-             epifactor: Optional[int] = None,
-             inplane_acc: Optional[float] = 1,
-             config: Optional[str] = None,
-             verbose: bool = False,
-             log: Optional[LogFile] = None
-            ) -> Tuple[str, str, str]:
+def fieldmap(
+    outdir: str,
+    spinecho: str,
+    echo_spacing: float,
+    pedir: Union[str, List[str]],
+    epifactor: Optional[int] = None,
+    inplane_acc: Optional[float] = 1,
+    config: Optional[str] = None,
+    verbose: bool = False,
+    log: Optional[LogFile] = None,
+) -> Tuple[str, str, str]:
     """Prepare fieldmaps.
 
     NOTE: 
         Input directory should be parent FEAT/processing directory path.
     """
-    if log: log.log("Preparing fieldmaps")
+    if log:
+        log.log("Preparing fieldmaps")
 
     # outdir: str = os.path.join(outdir,"fmap")
     with WorkDir(src=outdir) as od:
-        topup_dir: str = od.join("fmap","topup")
+        topup_dir: str = od.join("fmap", "topup")
         with WorkDir(src=topup_dir) as td:
-            if log: log.log(f"Making fieldmap directory: {od.src}.")
+            if log:
+                log.log(f"Making fieldmap directory: {od.src}.")
             outdir: str = od.abspath()
             topup_dir: str = td.abspath()
-    
+
     # Define output files
     out: FmapFiles = FmapFiles(outdir=outdir)
-    outputs: Dict[str,str] = out.outputs()
+    outputs: Dict[str, str] = out.outputs()
 
-    outputs: Dict[str,str] = {
-                                **outputs,
-                                "topup_out": os.path.join(topup_dir, "topup_dist_corr"),
-                             }
-    
-    slices: int = nib.load(filename=spinecho).header.get('dim','')[3]
+    outputs: Dict[str, str] = {
+        **outputs,
+        "topup_out": os.path.join(topup_dir, "topup_dist_corr"),
+    }
+
+    slices: int = nib.load(filename=spinecho).header.get("dim", "")[3]
 
     if config:
         pass
     else:
         config: str = _get_b0_conf(slices=slices, default=True)
-    
-    dist_acqp: str = os.path.join(topup_dir,'spinecho.acqp')
 
-    dist_acqp, _ = write_func_params(epi=spinecho,
-                                       echospacing=echo_spacing,
-                                       pedir=pedir,
-                                       out=dist_acqp,
-                                       epifactor=epifactor,
-                                       inplane_acc=inplane_acc)
+    dist_acqp: str = os.path.join(topup_dir, "spinecho.acqp")
+
+    dist_acqp, _ = write_func_params(
+        epi=spinecho,
+        echospacing=echo_spacing,
+        pedir=pedir,
+        out=dist_acqp,
+        epifactor=epifactor,
+        inplane_acc=inplane_acc,
+    )
 
     # Run topup
-    if log: log.log("Performing topup distortion field estimation")
+    if log:
+        log.log("Performing topup distortion field estimation")
 
-    _,field_img, mag_img = topup(img=spinecho, 
-                                 param=dist_acqp, 
-                                 out=outputs.get('topup_out'),
-                                 config=config,
-                                 fout=True,
-                                 iout=True,
-                                 subsamp="1,1,1,1,1,1,1,1,1",
-                                 verbose=verbose,
-                                 log=log)
+    _, field_img, mag_img = topup(
+        img=spinecho,
+        param=dist_acqp,
+        out=outputs.get("topup_out"),
+        config=config,
+        fout=True,
+        iout=True,
+        subsamp="1,1,1,1,1,1,1,1,1",
+        verbose=verbose,
+        log=log,
+    )
 
     # Compute field map
-    if log: log.log("Computing fieldmaps.")
+    if log:
+        log.log("Computing fieldmaps.")
 
-    fmap: str = fslmaths(img=field_img).mul(6.2832).run(out=outputs.get('fmap'), log=log)
-    mag: str = fslmaths(img=mag_img).Tmean().run(out=outputs.get('fmap_mag'), log=log)
+    fmap: str = fslmaths(img=field_img).mul(6.2832).run(
+        out=outputs.get("fmap"), log=log
+    )
+    mag: str = fslmaths(img=mag_img).Tmean().run(out=outputs.get("fmap_mag"), log=log)
 
     # Create brain mask
-    if log: log.log("Creating fieldmap brain mask.")
+    if log:
+        log.log("Creating fieldmap brain mask.")
 
     with TmpDir(src=os.path.join(topup_dir)) as tmp:
-        brain: str = os.path.join(tmp.src,"brain")
-        fmap_brain, _ = bet(img=mag,
-                            out=brain,
-                            mask=False,
-                            robust=True,
-                            log=log)
-        fmap_mask: str = fslmaths(img=fmap_brain).bin().run(out=outputs.get('fmap_mask'),log=log)
+        brain: str = os.path.join(tmp.src, "brain")
+        fmap_brain, _ = bet(img=mag, out=brain, mask=False, robust=True, log=log)
+        fmap_mask: str = fslmaths(img=fmap_brain).bin().run(
+            out=outputs.get("fmap_mask"), log=log
+        )
     return fmap, mag, fmap_mask
 
 
-def _get_b0_conf(slices: int,
-                 default: bool = True,
-                ) -> str:
+def _get_b0_conf(slices: int, default: bool = True,) -> str:
     """Returns the optimal b0 configuration file for use with FSL's ``topup`` and ``eddy``.
     """
-    config_parent_dir: str = os.path.join(FSLDIR,'etc','flirtsch')
+    config_parent_dir: str = os.path.join(FSLDIR, "etc", "flirtsch")
 
     if ((slices % 2) == 0) and default:
-        config: str = os.path.join(config_parent_dir,'b02b0.cnf')
+        config: str = os.path.join(config_parent_dir, "b02b0.cnf")
         config: File = File(src=config, assert_exists=True)
         return config.abspath()
 
     if (slices % 4) == 0:
-        config: str = os.path.join(config_parent_dir,'b02b0_4.cnf')
+        config: str = os.path.join(config_parent_dir, "b02b0_4.cnf")
         config: File = File(src=config, assert_exists=True)
         return config.abspath()
     elif (slices % 2) == 0:
-        config: str = os.path.join(config_parent_dir,'b02b0_2.cnf')
+        config: str = os.path.join(config_parent_dir, "b02b0_2.cnf")
         config: File = File(src=config, assert_exists=True)
         return config.abspath()
     else:
-        config: str = os.path.join(config_parent_dir,'b02b0_1.cnf')
+        config: str = os.path.join(config_parent_dir, "b02b0_1.cnf")
         config: File = File(src=config, assert_exists=True)
         return config.abspath()
 
 
-def _merge_rpe(out: str,
-               ap_dir: Optional[str] = None,
-               pa_dir: Optional[str] = None,
-               lr_dir: Optional[str] = None,
-               rl_dir: Optional[str] = None,
-               is_dir: Optional[str] = None,
-               si_dir: Optional[str] = None,
-               log: Optional[LogFile] = None
-              ) -> str:
+def _merge_rpe(
+    out: str,
+    ap_dir: Optional[str] = None,
+    pa_dir: Optional[str] = None,
+    lr_dir: Optional[str] = None,
+    rl_dir: Optional[str] = None,
+    is_dir: Optional[str] = None,
+    si_dir: Optional[str] = None,
+    log: Optional[LogFile] = None,
+) -> str:
     """Helper function that merges reverse phase-encoded (rPE) fieldmaps (EPI fieldmaps).
     """
     # NOTE: Input order for `fslmerge`:
@@ -185,13 +184,13 @@ def _merge_rpe(out: str,
                 rpedir1: str = isd.abspath()
                 rpedir2: str = sid.abspath()
     else:
-        if log: log.error(f"AttributeError: Input images are not reversed phase encoded: AP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}")
-        raise AttributeError(f"Input images are not reversed phase encoded: AP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}")
+        if log:
+            log.error(
+                f"AttributeError: Input images are not reversed phase encoded: AP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}"
+            )
+        raise AttributeError(
+            f"Input images are not reversed phase encoded: AP: {ap_dir} \nPA: {pa_dir} \nLR: {lr_dir} \nRL: {rl_dir} \nIS: {is_dir} \nSI: {si_dir}"
+        )
 
-    out: str = fslmerge(out,
-                        "t",
-                        None,
-                        log,
-                        rpedir1,
-                        rpedir2)
+    out: str = fslmerge(out, "t", None, log, rpedir1, rpedir2)
     return out

@@ -1,10 +1,29 @@
 # -*- coding: utf-8 -*-
 """Utility module for ``fmri_preproc`` resting-state fMRI pre-processing pipeline.
+
+.. autosummary::
+    :nosignatures:
+
+    timeops
+    settings
+    json2dict
+    dict2json
+    update_sidecar
+    load_sidecar
+    get_fsl_version
+    fetch_dhcp_volumetric_atlas
+    fetch_dhcp_group_qc
+    fetch_dhcp_group_maps
+    DownloadBar
+
+.. autoclass:: DownloadBar
+    :members:
 """
 import os
 import json
 import tarfile
 import urllib.request as urllib
+from functools import wraps
 
 from time import time
 from tqdm import tqdm
@@ -21,17 +40,12 @@ from fmri_preproc.utils.fileio import File
 from fmri_preproc.utils.logutil import LogFile
 from fmri_preproc.utils.tempdir import TmpDir
 
-from fmri_preproc import (
-    ATLASDIR,
-    DEFAULT_CLASSIFIER,
-    GROUP_MAP_DIR,
-    GROUP_QC_DIR
-)
+from fmri_preproc import ATLASDIR, DEFAULT_CLASSIFIER, GROUP_MAP_DIR, GROUP_QC_DIR
 
 
 # Globlally define (temporary) log file object
 with TmpDir(src=os.getcwd()) as tmpd:
-    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext='.log') as tmpf:
+    with TmpDir.TmpFile(tmp_dir=tmpd.src, ext=".log") as tmpf:
         log: LogFile = LogFile(log_file=tmpf.src)
 
 
@@ -56,30 +70,89 @@ def timeops(log: Optional[LogFile] = None) -> callable:
     Arguments:
         log: Log file object to be written to.
     """
+
+    @wraps(log)
     def decor(func: callable) -> callable:
         """Inner decorated function that accepts functions."""
-        def timed(*args,**kwargs) -> callable:
+
+        @wraps(func)
+        def timed(*args, **kwargs) -> callable:
             """Nested decorator function the performs timing of an operation.
             """
             start: float = time()
-            if log: log.log(f"BEGIN: {func.__name__}", use_header=True)
-            result: callable = func(*args,**kwargs)
+            if log:
+                log.log(f"BEGIN: {func.__name__}", use_header=True)
+            result: callable = func(*args, **kwargs)
             end: float = time()
-            if log: log.log(f"END: {func.__name__}  |  Time elapsed: {(end - start):2f} sec.", use_header=True)
+            if log:
+                log.log(
+                    f"END: {func.__name__}  |  Time elapsed: {(end - start):2f} sec.",
+                    use_header=True,
+                )
             return result
+
         return timed
+
     return decor
 
 
-def settings(jsonfile: Optional[str] = None,
-             **kwargs
-            ) -> Dict[str,Any]:
+def settings(jsonfile: Optional[str] = None, **kwargs) -> Dict[str, Any]:
     """Read configuration/settings JSON file.
 
-    NOTE: Special keyword ``preproc_only`` is used ONLY in the case of generating minimally preprocessed data for training the FIX classifier.
+    The input arguments are the same as those shown in the file snippet below.
+
+    The settings file should resemble something similar to this:
+
+    .. code-block:: JSON
+
+        {
+            "func_inplane_accel": 1.0,
+            "func_slorder": null,
+            "mb_factor": null,
+            "sbref_echospacing": null,
+            "dseg_type": "drawem",
+            "probseg_type": "drawem",
+            "mask_func": false,
+            "spinecho_echospacing": null,
+            "spinecho_epifactor": null,
+            "spinecho_inplaneacc": null,
+            "use_mcflirt": false,
+            "s2v": false,
+            "dc": false,
+            "mbs": false,
+            "standard_age": 40,
+            "quick": false,
+            "atlasdir": null,
+            "template_ages": [],
+            "temporal_fwhm": 150.0,
+            "icadim": null,
+            "rdata": null,
+            "fix_threshold": 10,
+            "group_qc": null,
+            "group_map": null,
+            "standard_res": 1.5,
+            "verbose": false,
+            "log_level": "info",
+            "smooth": 0,
+            "intnorm": false,
+            "preproc_only": false
+        }
+    
+    NOTE: 
+        Special keyword ``preproc_only`` is used **ONLY** in the case of generating minimally preprocessed data for training the FIX classifier.
+    
+    Args:
+        jsonfile: Input JSON file.
+        kwargs: Keyword arguments (shown above).
+
+    Raises:
+        KeyError: Exception that is raised if an option that does not exist is specified in the configuration file.
+
+    Returns:
+        Dictionary of key-valued mapped (``str -> Any``) pairs.
     """
     # Define defaults
-    defaults: Dict[str,Any] = {
+    defaults: Dict[str, Any] = {
         "func_inplane_accel": 1.0,
         "func_slorder": None,
         "mb_factor": None,
@@ -108,62 +181,65 @@ def settings(jsonfile: Optional[str] = None,
         "verbose": False,
         "log_level": "info",
         "smooth": 0,
-        "intnorm": False
+        "intnorm": False,
     }
 
     if jsonfile is not None:
-        user_settings: Dict[str,Any] = json2dict(jsonfile=jsonfile)
+        user_settings: Dict[str, Any] = json2dict(jsonfile=jsonfile)
 
         # Check that input settings are valid, then overwrite defaults
         if user_settings:
-            for key,val in user_settings.items():
-                if key == 'preproc_only':
-                    if (user_settings.get(key) == True) or (user_settings.get(key) == False):
+            for key, val in user_settings.items():
+                if key == "preproc_only":
+                    if (user_settings.get(key) == True) or (
+                        user_settings.get(key) == False
+                    ):
                         defaults[key] = user_settings.get(key)
                     else:
                         defaults[key] = False
                     continue
-                if defaults.get(key,'key not found') == 'key not found':
-                    raise KeyError(f"INPUT_JSON_FILE: Input setting option is invalid: {key} | mapped to desired argument: {val}")
+                if defaults.get(key, "key not found") == "key not found":
+                    raise KeyError(
+                        f"INPUT_JSON_FILE: Input setting option is invalid: {key} | mapped to desired argument: {val}"
+                    )
                 if val is not None:
                     defaults[key] = user_settings.get(key)
 
     # Overwrite input keys from keyword arguments
     if kwargs:
-        for key,val in kwargs.items():
-            if key == 'preproc_only':
+        for key, val in kwargs.items():
+            if key == "preproc_only":
                 if (kwargs.get(key) == True) or (kwargs.get(key) == False):
                     defaults[key] = kwargs.get(key)
                 else:
                     defaults[key] = False
                 continue
-            if defaults.get(key,'key not found') == 'key not found':
-                raise KeyError(f"INPUT_KEYWORD: Input setting option is invalid: {key} | mapped to desired argument: {val}")
+            if defaults.get(key, "key not found") == "key not found":
+                raise KeyError(
+                    f"INPUT_KEYWORD: Input setting option is invalid: {key} | mapped to desired argument: {val}"
+                )
             if val is not None:
                 defaults[key] = kwargs.get(key)
-    
+
     return defaults
 
 
-def json2dict(jsonfile: str) -> Dict[Any,Any]:
+def json2dict(jsonfile: str) -> Dict[Any, Any]:
     """Read JSON file to dictionary.
     """
     d: Dict = {}
-    with open(jsonfile, 'r') as file:
+    with open(jsonfile, "r") as file:
         try:
-            d: Dict[Any,Any] = json.load(file)
+            d: Dict[Any, Any] = json.load(file)
         except JSONDecodeError:
             pass
     return d
 
 
-def dict2json(dict: Dict[Any,Any],
-              jsonfile: str,
-              indent: int = 4
-             ) -> str:
+def dict2json(dict: Dict[Any, Any], jsonfile: str, indent: int = 4) -> str:
     """Write dictionary to JSON file.
     """
-    with open(jsonfile, 'w') as out:
+    with open(jsonfile, "w") as out:
         json.dump(dict, out, indent=indent)
     return jsonfile
 
@@ -173,27 +249,27 @@ def update_sidecar(file: str, **kwargs) -> str:
     """
     with File(src=file, assert_exists=False) as f:
         dirname, basename, _ = f.file_parts()
-        jsonfile: str = os.path.join(dirname,basename + '.json')
+        jsonfile: str = os.path.join(dirname, basename + ".json")
         with File(src=jsonfile) as jf:
             jsonfile: str = jf.abspath()
-    
-    d: Dict[Any,Any] = load_sidecar(file=jsonfile)
+
+    d: Dict[Any, Any] = load_sidecar(file=jsonfile)
     d.update(**kwargs)
     jsonfile: str = dict2json(dict=d, jsonfile=jsonfile, indent=4)
 
     return jsonfile
 
 
-def load_sidecar(file: str) -> Dict[Any,Any]:
+def load_sidecar(file: str) -> Dict[Any, Any]:
     """Reads in a JSON sidecar/file.
     """
-    d: Dict[Any,Any] = {}
+    d: Dict[Any, Any] = {}
     with File(src=file, assert_exists=False) as f:
         dirname, basename, _ = f.file_parts()
-        jsonfile: str = os.path.join(dirname,basename + '.json')
+        jsonfile: str = os.path.join(dirname, basename + ".json")
         with File(src=jsonfile) as jf:
             if os.path.exists(jf.abspath()):
-                with open(jf.abspath(),'r') as j:
+                with open(jf.abspath(), "r") as j:
                     d.update(json.load(j))
     return d
 
@@ -201,46 +277,51 @@ def load_sidecar(file: str) -> Dict[Any,Any]:
 def get_fsl_version() -> str:
     """Returns a string that represents the version of ``FSL`` in the system path.
     """
-    fsl_version_file: str = os.path.join(os.environ['FSLDIR'], 'etc/fslversion')
-    with open(fsl_version_file, 'r') as file:
-        ver: str = file.read().split(':')[0]
+    fsl_version_file: str = os.path.join(os.environ["FSLDIR"], "etc/fslversion")
+    with open(fsl_version_file, "r") as file:
+        ver: str = file.read().split(":")[0]
     return ver
 
 
-def fetch_dhcp_volumetric_atlas(path: Optional[str] = None, 
-                                extended: bool = True
-                               ) -> None:
+def fetch_dhcp_volumetric_atlas(
+    path: Optional[str] = None, extended: bool = True
+) -> None:
     """doc-string
     """
     path: str = ATLASDIR if path is None else os.path.realpath(os.path.expanduser(path))
 
     if extended:
-        atlas_url: str = 'https://users.fmrib.ox.ac.uk/~seanf/dhcp-augmented-volumetric-atlas-extended.tar.gz'
-        path: str = os.path.join(path,'dhcp_volumetric_atlas_extended')
+        atlas_url: str = "https://users.fmrib.ox.ac.uk/~seanf/dhcp-augmented-volumetric-atlas-extended.tar.gz"
+        path: str = os.path.join(path, "dhcp_volumetric_atlas_extended")
     else:
-        atlas_url: str = 'https://users.fmrib.ox.ac.uk/~seanf/dhcp-augmented-volumetric-atlas.tar.gz'
-        path: str = os.path.join(path,'dhcp_volumetric_atlas')
+        atlas_url: str = "https://users.fmrib.ox.ac.uk/~seanf/dhcp-augmented-volumetric-atlas.tar.gz"
+        path: str = os.path.join(path, "dhcp_volumetric_atlas")
 
     if not os.path.exists(path):
         os.makedirs(path)
-    
-    print('Download atlas:')
+
+    print("Download atlas:")
 
     with TemporaryDirectory(dir=path) as tmp:
 
-        with DownloadBar(unit='B', unit_scale=True, miniters=1,
-                         desc=atlas_url.split('/')[-1]) as t:  # all optional kwargs
-            file_tmp = urllib.urlretrieve(atlas_url, filename=os.path.join(tmp, 'atlas.tar.gz'), reporthook=t.update_to)[0]
-        
-        print('Unpack atlas:')
+        with DownloadBar(
+            unit="B", unit_scale=True, miniters=1, desc=atlas_url.split("/")[-1]
+        ) as t:  # all optional kwargs
+            file_tmp = urllib.urlretrieve(
+                atlas_url,
+                filename=os.path.join(tmp, "atlas.tar.gz"),
+                reporthook=t.update_to,
+            )[0]
+
+        print("Unpack atlas:")
         with tarfile.open(name=file_tmp) as tar:
             for m in tqdm(iterable=tar.getmembers(), total=len(tar.getmembers())):
                 tar.extract(member=m, path=path)
-        
-        unc_data: str = os.path.join(ATLASDIR,'UNC.tar.gz')
+
+        unc_data: str = os.path.join(ATLASDIR, "UNC.tar.gz")
         path: str = ATLASDIR
         if os.path.exists(unc_data):
-            print('Unpack UNC atlas:')
+            print("Unpack UNC atlas:")
             with tarfile.open(name=unc_data) as tar:
                 for m in tqdm(iterable=tar.getmembers(), total=len(tar.getmembers())):
                     tar.extract(member=m, path=path)
@@ -248,7 +329,7 @@ def fetch_dhcp_volumetric_atlas(path: Optional[str] = None,
 
 
 def fetch_dhcp_group_qc(path: Optional[str] = None) -> None:
-    rdata_url: str = 'https://users.fmrib.ox.ac.uk/~seanf/grp_qc_512_anon.json'
+    rdata_url: str = "https://users.fmrib.ox.ac.uk/~seanf/grp_qc_512_anon.json"
 
     path = GROUP_QC_DIR if path is None else os.path.realpath(os.path.expanduser(path))
 
@@ -257,16 +338,17 @@ def fetch_dhcp_group_qc(path: Optional[str] = None) -> None:
 
     path: str = os.path.join(path, os.path.basename(rdata_url))
 
-    print('Download group QC:')
+    print("Download group QC:")
 
-    with DownloadBar(unit='B', unit_scale=True, miniters=1,
-                     desc=rdata_url.split('/')[-1]) as t:  # all optional kwargs
+    with DownloadBar(
+        unit="B", unit_scale=True, miniters=1, desc=rdata_url.split("/")[-1]
+    ) as t:  # all optional kwargs
         urllib.urlretrieve(rdata_url, filename=path, reporthook=t.update_to)
     return None
 
 
 def fetch_dhcp_group_maps(path: Optional[str] = None) -> None:
-    rdata_url = 'https://users.fmrib.ox.ac.uk/~seanf/group_maps.nii.gz'
+    rdata_url = "https://users.fmrib.ox.ac.uk/~seanf/group_maps.nii.gz"
 
     path = GROUP_MAP_DIR if path is None else os.path.realpath(os.path.expanduser(path))
 
@@ -275,10 +357,11 @@ def fetch_dhcp_group_maps(path: Optional[str] = None) -> None:
 
     path: str = os.path.join(path, os.path.basename(rdata_url))
 
-    print('Download group maps:')
+    print("Download group maps:")
 
-    with DownloadBar(unit='B', unit_scale=True, miniters=1,
-                     desc=rdata_url.split('/')[-1]) as t:  # all optional kwargs
+    with DownloadBar(
+        unit="B", unit_scale=True, miniters=1, desc=rdata_url.split("/")[-1]
+    ) as t:  # all optional kwargs
         urllib.urlretrieve(rdata_url, filename=path, reporthook=t.update_to)
     return None
 

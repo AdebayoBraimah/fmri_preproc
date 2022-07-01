@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
 """Output data filepaths dictionaries for the ``fieldmap`` module.
+
+.. autosummary::
+    :nosignatures:
+
+    FmapFiles
+
+.. autoclass:: FmapFiles
+    :members:
 """
 import os
 

@@ -1,21 +1,37 @@
 # -*- coding: utf-8 -*-
 """File IO methods, functions and operations.
+
+.. autosummary::
+    :nosignatures:
+
+    File
+    NiiFile
+    InvalidNiftiFileError
+
+.. autoclass:: File
+    :members:
+
+.. autoclass:: NiiFile
+    :members:
+
+.. autoclass:: InvalidNiftiFileError
+    :members:
 """
 import os
 import nibabel as nib
 from warnings import warn
 
-from typing import (
-    Optional,
-    Tuple
-)
+from typing import Optional, Tuple
 
 from fmri_preproc.utils.io import IOBaseObj
 from fmri_preproc.utils.enums import NiiHeaderField
 
+
 class InvalidNiftiFileError(Exception):
     """Exception intended for invalid NIFTI files."""
+
     pass
+
 
 class File(IOBaseObj):
     """File object base class that inherits from the ``IOBaseObj`` abstract base class. 
@@ -42,16 +58,12 @@ class File(IOBaseObj):
         ext: File extension of input file. If no extension is provided, it is inferred.
         assert_exists: Asserts that the specified input file must exist. 
     """
-    __slots__ = ( 
-                    "src", 
-                    "ext"
-                )
-    
-    def __init__(self,
-                 src: str,
-                 ext: Optional[str] = "",
-                 assert_exists: bool = False
-                ) -> None:
+
+    __slots__ = ("src", "ext")
+
+    def __init__(
+        self, src: str, ext: Optional[str] = "", assert_exists: bool = False
+    ) -> None:
         """Initialization method for the File base class.
         
         Usage example:
@@ -80,20 +92,18 @@ class File(IOBaseObj):
         else:
             self.ext: str = None
         super(File, self).__init__(src)
-        
+
         if ext:
             self.ext: str = ext
-        elif self.src.endswith('.gz'):
+        elif self.src.endswith(".gz"):
             self.ext: str = self.src[-7:]
         else:
             _, self.ext = os.path.splitext(self.src)
-        
+
         if assert_exists:
             assert os.path.exists(self.src), f"Input file {self.src} does not exist."
-    
-    def copy(self,
-             dst: str
-            ) -> str:
+
+    def copy(self, dst: str) -> str:
         """Copies file to some source destination.
 
         Usage example:
@@ -137,12 +147,11 @@ class File(IOBaseObj):
         if os.path.exists(self.src):
             print(f"The file: {self.src} already exists.")
         else:
-            with open(self.src,'w') as _:
+            with open(self.src, "w") as _:
                 pass
         return None
-    
-    def rm_ext(self,
-               ext: str = "") -> str:
+
+    def rm_ext(self, ext: str = "") -> str:
         """Removes file extension from the file.
         
         Usage example:
@@ -173,10 +182,8 @@ class File(IOBaseObj):
             return self.src[:-(ext_len)]
         else:
             return self.src[:-(4)]
-        
-    def write(self,
-              txt: str = ""
-             ) -> None:
+
+    def write(self, txt: str = "") -> None:
         """Writes/appends text to file.
 
         NOTE:
@@ -195,14 +202,12 @@ class File(IOBaseObj):
         Arguments:
             txt: Text/string to be written to file.
         """
-        with open(self.src, mode="a", encoding='utf-8') as tmp_file:
+        with open(self.src, mode="a", encoding="utf-8") as tmp_file:
             tmp_file.write(txt)
             tmp_file.close()
         return None
 
-    def file_parts(self,
-                   ext: str = ""
-                  ) -> Tuple[str,str,str]:
+    def file_parts(self, ext: str = "") -> Tuple[str, str, str]:
         """Similar to MATLAB's ``fileparts``, this function splits a file and its path into its constituent parts:
 
             * file path
@@ -233,9 +238,9 @@ class File(IOBaseObj):
         """
         file: str = self.src
         file: str = os.path.abspath(file)
-        
+
         path, _filename = os.path.split(file)
-        
+
         if ext:
             ext_num: int = len(ext)
             _filename: str = _filename[:-(ext_num)]
@@ -247,10 +252,8 @@ class File(IOBaseObj):
             [filename, _] = os.path.splitext(_filename)
         else:
             [filename, ext] = os.path.splitext(_filename)
-        
-        return (path, 
-                filename, 
-                ext)
+
+        return (path, filename, ext)
 
     def remove(self) -> None:
         """Removes file.
@@ -267,6 +270,7 @@ class File(IOBaseObj):
             >>> file.remove()
         """
         return os.remove(self.abspath())
+
 
 class NiiFile(File):
     """NIFTI file class specific for NIFTI files which inherits class methods from the ``File`` base class.
@@ -303,11 +307,9 @@ class NiiFile(File):
         InvalidNiftiFileError: Exception that is raised in the case **IF** the specified NIFTI file exists, but is an invalid NIFTI file.
     """
 
-    def __init__(self,
-                 src: str,
-                 assert_exists: bool = False,
-                 validate_nifti: bool = False
-                ) -> None:
+    def __init__(
+        self, src: str, assert_exists: bool = False, validate_nifti: bool = False
+    ) -> None:
         """Initialization method for the NiiFile class.
         
         Usage example:
@@ -355,24 +357,25 @@ class NiiFile(File):
             self.src: str = self.src + self.ext
 
         if assert_exists:
-            assert os.path.exists(self.src), f"Input NIFTI file {self.src} does not exist."
-        
+            assert os.path.exists(
+                self.src
+            ), f"Input NIFTI file {self.src} does not exist."
+
         if validate_nifti and os.path.exists(self.src):
             try:
                 _: nib.Nifti1Image = nib.load(filename=self.src)
             except Exception as error:
-                raise InvalidNiftiFileError(f"The NIFTI file {self.src} is not a valid NIFTI file and raised the following error {error}.")
-        
+                raise InvalidNiftiFileError(
+                    f"The NIFTI file {self.src} is not a valid NIFTI file and raised the following error {error}."
+                )
+
     # Overwrite several File base class methods
     def touch(self) -> None:
         """This class method is not implemented and will simply return None, and is not relevant/needed for NIFTI files.
         """
         return None
 
-    def write(self,
-              txt: str = "",
-              header_field: str = "intent_name"
-             ) -> None:
+    def write(self, txt: str = "", header_field: str = "intent_name") -> None:
         """This class method writes relevant information to the NIFTI file header.
         This is done by writing text to either the ``descrip`` or ``intent_name``
         field of the NIFTI header.
@@ -400,12 +403,16 @@ class NiiFile(File):
         img: nib.Nifti1Image = nib.load(self.src)
         header_field: str = NiiHeaderField(header_field).name
 
-        if header_field == 'descrip':
+        if header_field == "descrip":
             if len(txt) >= 24:
-                warn(f"WARNING: The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field}' header field.")
-            img.header['descrip'] = txt
-        elif header_field == 'intent_name':
+                warn(
+                    f"WARNING: The input string is longer than the allowed limit of 24 bytes/characters for the '{header_field}' header field."
+                )
+            img.header["descrip"] = txt
+        elif header_field == "intent_name":
             if len(txt) >= 16:
-                warn(f"WARNING: The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field}' header field.")
-            img.header['intent_name'] = txt
+                warn(
+                    f"WARNING: The input string is longer than the allowed limit of 16 bytes/characters for the '{header_field}' header field."
+                )
+            img.header["intent_name"] = txt
         return None

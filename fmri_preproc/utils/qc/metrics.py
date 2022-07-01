@@ -1,17 +1,29 @@
 # -*- coding: utf-8 -*-
 """Quality control metrics for the ``fmri_preproc`` neonatal rs-fMRI preprocessing pipeline.
+
+.. autosummary::
+    :nosignatures:
+
+    convert_to_z
+    dr
+    tSNR
+    img_descriptives
+    ts_descriptives
+    tscc
+    measurecost
+    netmat
+    motparams
+    dvars
+    fd
+    img_cumstats
+    z_smoothness
 """
 import io
 import os
 import warnings
 from tempfile import TemporaryDirectory as tempdir
 
-from typing import (
-    Dict,
-    Optional, 
-    Tuple, 
-    Union
-)
+from typing import Dict, Optional, Tuple, Union
 
 import nibabel as nib
 import numpy as np
@@ -20,15 +32,12 @@ from nibabel.nifti1 import Nifti1Image as Image
 from numpy import random
 from statsmodels.tsa.ar_model import AR
 
-from fmri_preproc.utils.qc.util import (
-    run,
-    split
-)
+from fmri_preproc.utils.qc.util import run, split
 
-def convert_to_z(d: np.ndarray, 
-                 robust: bool = True, 
-                 axis: Optional[Union[int,Tuple[int]]] = None
-                ) -> np.ndarray:
+
+def convert_to_z(
+    d: np.ndarray, robust: bool = True, axis: Optional[Union[int, Tuple[int]]] = None
+) -> np.ndarray:
     """doc-string
     """
     if robust:
@@ -40,8 +49,8 @@ def convert_to_z(d: np.ndarray,
         # https://en.wikipedia.org/wiki/Median_absolute_deviation)
         mad = np.nanmedian(np.abs(diff), axis=axis, keepdims=True)
 
-        oldsettings = np.seterr(all='warn')
-        np.seterr(divide='ignore', invalid='ignore')
+        oldsettings = np.seterr(all="warn")
+        np.seterr(divide="ignore", invalid="ignore")
 
         z = 0.6745 * diff / mad
         z[np.isnan(z)] = 0
@@ -56,33 +65,35 @@ def convert_to_z(d: np.ndarray,
     return z
 
 
-def dr(func: Image,
-       func_brainmask: Image,
-       spatial_template: Image,
-       template2func_warp: Image,
-       basename: str,
-       standard: Image = None,
-       tmpdir: Optional[str] = None,
-       func2standard_warp: Image = None,
-       **kwargs):
+def dr(
+    func: Image,
+    func_brainmask: Image,
+    spatial_template: Image,
+    template2func_warp: Image,
+    basename: str,
+    standard: Image = None,
+    tmpdir: Optional[str] = None,
+    func2standard_warp: Image = None,
+    **kwargs,
+):
     """Performs dual regression.
     """
     # create output template dictionary
-    ft: Dict[str,str] = dict(
-        dr1=f'{basename}_dr1.txt',
-        dr2=f'{basename}_dr2.nii.gz',
-        dr2_standard=f'{basename}_standard_dr2.nii.gz',
-        cnr=f'{basename}_cnr.nii.gz',
-        cnr_standard=f'{basename}_standard_cnr.nii.gz',
+    ft: Dict[str, str] = dict(
+        dr1=f"{basename}_dr1.txt",
+        dr2=f"{basename}_dr2.nii.gz",
+        dr2_standard=f"{basename}_standard_dr2.nii.gz",
+        cnr=f"{basename}_cnr.nii.gz",
+        cnr_standard=f"{basename}_standard_cnr.nii.gz",
     )
 
     # update template with kwargs
     for k, v in kwargs.items():
         if k not in ft:
-            raise ValueError(f'unknown output template {k}')
+            raise ValueError(f"unknown output template {k}")
         ft[k] = v
-    
-    dname, _, _ = split(fname=ft.get('dr1'))
+
+    dname, _, _ = split(fname=ft.get("dr1"))
 
     if not os.path.exists(dname):
         os.makedirs(name=dname, exist_ok=True)
@@ -90,108 +101,158 @@ def dr(func: Image,
     with tempdir(dir=tmpdir) as td:
 
         # warp spatial_maps to native space
-        tmp_template_native = os.path.join(td, 'template_native.nii.gz')
-        run([
-            'applywarp', '-i', spatial_template, '-o',
-            tmp_template_native, '-r', func_brainmask, '-w',
-            template2func_warp, '--interp=spline'
-        ])
+        tmp_template_native = os.path.join(td, "template_native.nii.gz")
+        run(
+            [
+                "applywarp",
+                "-i",
+                spatial_template,
+                "-o",
+                tmp_template_native,
+                "-r",
+                func_brainmask,
+                "-w",
+                template2func_warp,
+                "--interp=spline",
+            ]
+        )
 
         # DR stage 1: regress spatial maps onto functional timeseries
         # residual == noise
         # dr1 = os.path.join(basename + '_space-orig_dr1.txt')
-        tmp_noise = os.path.join(td, 'dr_stage1_noise.nii.gz')
-        run([
-            'fsl_glm', '-i', func, '-d',
-            tmp_template_native, '-o', ft.get('dr1'),
-            '--demean', '-m', func_brainmask,
-            '--out_res=' + tmp_noise
-        ])
+        tmp_noise = os.path.join(td, "dr_stage1_noise.nii.gz")
+        run(
+            [
+                "fsl_glm",
+                "-i",
+                func,
+                "-d",
+                tmp_template_native,
+                "-o",
+                ft.get("dr1"),
+                "--demean",
+                "-m",
+                func_brainmask,
+                "--out_res=" + tmp_noise,
+            ]
+        )
 
         # DR stage 2: regress stage 1 timeseries onto functional timeseries
         # dr2 = os.path.join(basename + '_space-orig_dr2.nii.gz')
-        run([
-            'fsl_glm', '-i', func, '-d', ft.get('dr1'), '-o', ft.get('dr2'),
-            '--demean', '-m', func_brainmask, '--des_norm'
-        ])
-        dr2 = nib.load(ft.get('dr2'))
+        run(
+            [
+                "fsl_glm",
+                "-i",
+                func,
+                "-d",
+                ft.get("dr1"),
+                "-o",
+                ft.get("dr2"),
+                "--demean",
+                "-m",
+                func_brainmask,
+                "--des_norm",
+            ]
+        )
+        dr2 = nib.load(ft.get("dr2"))
 
-        dr_stats = img_descriptives(dr2, func_brainmask, prefix='dr2')
+        dr_stats = img_descriptives(dr2, func_brainmask, prefix="dr2")
 
         # correlate func timeseries with dr2 timeseries
-        dr_stats['spatial_corr'] = tscc(dr2, nib.load(tmp_template_native),
-                                        func_brainmask)
+        dr_stats["spatial_corr"] = tscc(
+            dr2, nib.load(tmp_template_native), func_brainmask
+        )
 
         # calculate netmat
-        nm, nmz = netmat(np.loadtxt(ft.get('dr1')).T)
+        nm, nmz = netmat(np.loadtxt(ft.get("dr1")).T)
 
-        dr_stats['netmat'] = nm
-        dr_stats['netmat_z'] = nmz
+        dr_stats["netmat"] = nm
+        dr_stats["netmat_z"] = nmz
 
         # calculate the temporal stdev of the noise: Tstd(noise)
-        tmp_noise_std = os.path.join(td, 'dr_stage1_noise_std.nii.gz')
-        run(['fslmaths', tmp_noise, '-Tstd',
-             '-mas', func_brainmask, tmp_noise_std])
+        tmp_noise_std = os.path.join(td, "dr_stage1_noise_std.nii.gz")
+        run(["fslmaths", tmp_noise, "-Tstd", "-mas", func_brainmask, tmp_noise_std])
 
         # calculate the temporal standard deviation of the contrast:
         # Tstd(func - noise)
-        tmp_contrast_std = os.path.join(td, 'contrast_std.nii.gz')
-        run([
-            'fslmaths', func, '-sub', tmp_noise,
-            '-Tstd', '-mas', func_brainmask, tmp_contrast_std
-        ])
+        tmp_contrast_std = os.path.join(td, "contrast_std.nii.gz")
+        run(
+            [
+                "fslmaths",
+                func,
+                "-sub",
+                tmp_noise,
+                "-Tstd",
+                "-mas",
+                func_brainmask,
+                tmp_contrast_std,
+            ]
+        )
 
         # calculate the cnr: contrast_std / noise_std
         # cnr = basename + '_space-orig_cnr.nii.gz'
-        run(['fslmaths', tmp_contrast_std, '-div', tmp_noise_std, '-nan', ft.get('cnr')])
-        cnr = nib.load(ft.get('cnr'))
-        cnr_stats = img_descriptives(cnr, func_brainmask, prefix='cnr')
+        run(
+            ["fslmaths", tmp_contrast_std, "-div", tmp_noise_std, "-nan", ft.get("cnr")]
+        )
+        cnr = nib.load(ft.get("cnr"))
+        cnr_stats = img_descriptives(cnr, func_brainmask, prefix="cnr")
 
         # setup output images and stats
-        images = {'dr1': ft.get('dr1'), 'dr2': dr2, 'cnr': cnr}
+        images = {"dr1": ft.get("dr1"), "dr2": dr2, "cnr": cnr}
         stats = {**dr_stats, **cnr_stats}
 
         # warp to standard space
         if standard is not None and func2standard_warp is not None:
-            for f in ['dr2', 'cnr']:
+            for f in ["dr2", "cnr"]:
                 # fname = images[f].get_filename().replace('_space-orig_',
                 #                                          '_space-standard_')
-                run([
-                    'applywarp', '-i', images[f], '-o', ft.get(f + '_standard'),
-                    '-r', standard,
-                    '-w', func2standard_warp, '--interp=spline'
-                ])
-                images[f + '_standard'] = nib.load(ft.get(f + '_standard'))
+                run(
+                    [
+                        "applywarp",
+                        "-i",
+                        images[f],
+                        "-o",
+                        ft.get(f + "_standard"),
+                        "-r",
+                        standard,
+                        "-w",
+                        func2standard_warp,
+                        "--interp=spline",
+                    ]
+                )
+                images[f + "_standard"] = nib.load(ft.get(f + "_standard"))
 
     return images, stats
 
 
-def tSNR(func: Image,
-         func_brainmask: Image,
-         basename: str,
-         standard: Image = None,
-         func2standard_warp: Image = None,
-         **kwargs) -> Image:
+def tSNR(
+    func: Image,
+    func_brainmask: Image,
+    basename: str,
+    standard: Image = None,
+    func2standard_warp: Image = None,
+    **kwargs,
+) -> Image:
     """Calculate temporal SNR."""
 
     # create output template dictionary
-    ft: Dict[str,str] = dict(
-        mean=f'{basename}_tmean.nii.gz',
-        mean_standard=f'{basename}_standard_tmean.nii.gz',
-        std=f'{basename}_tstd.nii.gz',
-        std_standard=f'{basename}_standard_tstd.nii.gz',
-        snr=f'{basename}_tsnr.nii.gz',
-        snr_standard=f'{basename}_standard_tsnr.nii.gz',
+    ft: Dict[str, str] = dict(
+        mean=f"{basename}_tmean.nii.gz",
+        mean_standard=f"{basename}_standard_tmean.nii.gz",
+        std=f"{basename}_tstd.nii.gz",
+        std_standard=f"{basename}_standard_tstd.nii.gz",
+        snr=f"{basename}_tsnr.nii.gz",
+        snr_standard=f"{basename}_standard_tsnr.nii.gz",
         tmpdir=None,
     )
 
     # update template with kwargs
     for k, v in kwargs.items():
         if k not in ft:
-            raise ValueError(f'unknown output template {k}')
+            raise ValueError(f"unknown output template {k}")
         ft[k] = v
 
-    dname, _, _ = split(fname=ft.get('mean'))
+    dname, _, _ = split(fname=ft.get("mean"))
 
     if not os.path.exists(dname):
         os.makedirs(name=dname, exist_ok=True)
@@ -200,25 +261,34 @@ def tSNR(func: Image,
 
     fn = func.get_filename()
 
-    mean = ft.get('mean')
-    std = ft.get('std')
+    mean = ft.get("mean")
+    std = ft.get("std")
 
-    run(['fslmaths', fn, '-Tmean', mean])
-    run(['fslmaths', fn, '-Tstd', std])
-    run(['fslmaths', mean, '-div', std, '-nan', ft.get('snr')])
-    snr = nib.load(ft.get('snr'))
+    run(["fslmaths", fn, "-Tmean", mean])
+    run(["fslmaths", fn, "-Tstd", std])
+    run(["fslmaths", mean, "-div", std, "-nan", ft.get("snr")])
+    snr = nib.load(ft.get("snr"))
 
-    stats = img_descriptives(snr, func_brainmask, prefix='snr')
+    stats = img_descriptives(snr, func_brainmask, prefix="snr")
 
-    images = {'snr': snr}
+    images = {"snr": snr}
 
     if standard is not None and func2standard_warp is not None:
-        run([
-            'applywarp', '-i', snr, '-o', ft.get('snr_standard'),
-            '-r', standard,
-            '-w', func2standard_warp, '--interp=spline'
-        ])
-        images['snr_standard'] = nib.load(ft.get('snr_standard'))
+        run(
+            [
+                "applywarp",
+                "-i",
+                snr,
+                "-o",
+                ft.get("snr_standard"),
+                "-r",
+                standard,
+                "-w",
+                func2standard_warp,
+                "--interp=spline",
+            ]
+        )
+        images["snr_standard"] = nib.load(ft.get("snr_standard"))
 
     return images, stats
 
@@ -226,15 +296,31 @@ def tSNR(func: Image,
 # TODO: Add Q25, Q75, IQR,
 def img_descriptives(img: Image, mask: Image, prefix: str = None):
     """Calculate descriptive statistics of image."""
-    out = run([
-        'fslstats', img, '-k', mask, '-M', '-S',
-        '-P', '1', '-P', '5', '-P', '50', '-P', '95', '-P', '99'
-    ]).split()
+    out = run(
+        [
+            "fslstats",
+            img,
+            "-k",
+            mask,
+            "-M",
+            "-S",
+            "-P",
+            "1",
+            "-P",
+            "5",
+            "-P",
+            "50",
+            "-P",
+            "95",
+            "-P",
+            "99",
+        ]
+    ).split()
 
-    keys = ['mean', 'std', 'p01', 'p05', 'p50', 'p95', 'p99']
+    keys = ["mean", "std", "p01", "p05", "p50", "p95", "p99"]
     stats = {}
     for idx, k in enumerate(keys):
-        stats[k if prefix is None else prefix + '_' + k] = out[idx]
+        stats[k if prefix is None else prefix + "_" + k] = out[idx]
 
     return stats
 
@@ -244,58 +330,64 @@ def ts_descriptives(ts: np.ndarray):
 
     stats = {}
 
-    stats['rms'] = np.sqrt(np.nanmean(np.square(ts)))
-    stats['max'] = np.amax(ts)
-    stats['mean'] = np.mean(ts)
-    stats['std'] = np.std(ts)
+    stats["rms"] = np.sqrt(np.nanmean(np.square(ts)))
+    stats["max"] = np.amax(ts)
+    stats["mean"] = np.mean(ts)
+    stats["std"] = np.std(ts)
 
-    stats['rms_abs'] = np.sqrt(np.nanmean(np.square(ts_abs)))
-    stats['max_abs'] = np.amax(ts_abs)
-    stats['mean_abs'] = np.mean(ts_abs)
-    stats['std_abs'] = np.std(ts_abs)
+    stats["rms_abs"] = np.sqrt(np.nanmean(np.square(ts_abs)))
+    stats["max_abs"] = np.amax(ts_abs)
+    stats["mean_abs"] = np.mean(ts_abs)
+    stats["std_abs"] = np.std(ts_abs)
 
     for p in [1, 5, 50, 95, 99]:
-        stats['p{:02n}'.format(p)] = np.percentile(ts, p)
-        stats['p{:02n}_abs'.format(p)] = np.percentile(ts_abs, p)
+        stats["p{:02n}".format(p)] = np.percentile(ts, p)
+        stats["p{:02n}_abs".format(p)] = np.percentile(ts_abs, p)
 
     return stats
 
 
-def tscc(img1: nib.Nifti1Image,
-         img2: nib.Nifti1Image,
-         brainmask: nib.Nifti1Image):
+def tscc(img1: nib.Nifti1Image, img2: nib.Nifti1Image, brainmask: nib.Nifti1Image):
     """Calculate timeseries cross-correlation from two images."""
-    cc = run([
-        'fslcc', '-t', '-10', '--noabs', '-m', brainmask, img2, img1
-    ])
+    cc = run(["fslcc", "-t", "-10", "--noabs", "-m", brainmask, img2, img1])
     cc = np.loadtxt(io.StringIO(cc))
     return cc[cc[:, 0] == cc[:, 1], 2]
 
 
-def measurecost(src: nib.Nifti1Image,
-                ref: nib.Nifti1Image,
-                cost: str = 'normmi',
-                boundarymask: nib.Nifti1Image = None,
-                ref_brainmask: nib.Nifti1Image = None):
-    valid_costfcn = ['mutualinfo', 'corratio', 'normcorr', 'normmi', 'leastsq', 'labeldiff', 'bbr']
-    assert cost in valid_costfcn, (
-        'Invalid costfcn {}.  Must be one of: {}'.format(cost, valid_costfcn)
+def measurecost(
+    src: nib.Nifti1Image,
+    ref: nib.Nifti1Image,
+    cost: str = "normmi",
+    boundarymask: nib.Nifti1Image = None,
+    ref_brainmask: nib.Nifti1Image = None,
+):
+    valid_costfcn = [
+        "mutualinfo",
+        "corratio",
+        "normcorr",
+        "normmi",
+        "leastsq",
+        "labeldiff",
+        "bbr",
+    ]
+    assert cost in valid_costfcn, "Invalid costfcn {}.  Must be one of: {}".format(
+        cost, valid_costfcn
     )
 
-    fsldir = os.environ.get('FSLDIR')
+    fsldir = os.environ.get("FSLDIR")
 
-    assert cost != 'bbr' or boundarymask is not None, (
-        'boundary mask required if cost is bbr'
-    )
+    assert (
+        cost != "bbr" or boundarymask is not None
+    ), "boundary mask required if cost is bbr"
 
-    cmd = 'flirt -in {0} -ref {1} -schedule {2}/etc/flirtsch/measurecost1.sch -cost {3}'
+    cmd = "flirt -in {0} -ref {1} -schedule {2}/etc/flirtsch/measurecost1.sch -cost {3}"
     cmd = cmd.format(src.get_filename(), ref.get_filename(), fsldir, cost)
 
     if ref_brainmask is not None:
-        cmd += ' -refweight {}'.format(ref_brainmask.get_filename())
+        cmd += " -refweight {}".format(ref_brainmask.get_filename())
 
-    if cost == 'bbr' and boundarymask is not None:
-        cmd += ' -wmseg {}'.format(boundarymask.get_filename())
+    if cost == "bbr" and boundarymask is not None:
+        cmd += " -wmseg {}".format(boundarymask.get_filename())
 
     cst = float(run(cmd.split()).split()[0])
 
@@ -384,34 +476,38 @@ def netmat(ts, varnorm: bool = True) -> Tuple:
     return netmat, netmat_z
 
 
-def motparams(func: nib.Nifti1Image,
-              motparams: pd.DataFrame = None,
-              tmpdir: str = None):
-    """doc-string.
+def motparams(
+    func: nib.Nifti1Image, motparams: pd.DataFrame = None, tmpdir: str = None
+):
+    """Compute motion parameters.
     """
     if motparams is None:
         with tempdir(dir=tmpdir) as td:
-            outname = os.path.join(td, 'mc')
-            run(['mcflirt', '-in', func, '-meanvol', '-plots', '-o', outname])
-            motparams = np.loadtxt(outname + '.par')
-            motparams = pd.DataFrame(motparams, columns=['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z'])
+            outname = os.path.join(td, "mc")
+            run(["mcflirt", "-in", func, "-meanvol", "-plots", "-o", outname])
+            motparams = np.loadtxt(outname + ".par")
+            motparams = pd.DataFrame(
+                motparams, columns=["RotX", "RotY", "RotZ", "X", "Y", "Z"]
+            )
 
     stats = {}
     for key in motparams.columns:
         stats[key] = motparams[key].values
 
-    tr_stats = ts_descriptives(motparams[['X', 'Y', 'Z']].values)
+    tr_stats = ts_descriptives(motparams[["X", "Y", "Z"]].values)
     for k, v in tr_stats.items():
-        stats['tr_' + k] = v
+        stats["tr_" + k] = v
 
-    rot_stats = ts_descriptives(motparams[['RotX', 'RotY', 'RotZ']].values)
+    rot_stats = ts_descriptives(motparams[["RotX", "RotY", "RotZ"]].values)
     for k, v in rot_stats.items():
-        stats['rot_' + k] = v
+        stats["rot_" + k] = v
 
-    if 'framewise_displacement' in motparams.columns:
-        fd_stats = ts_descriptives(motparams['framewise_displacement'].values)
+    if "framewise_displacement" in motparams.columns:
+        fd_stats = ts_descriptives(motparams["framewise_displacement"].values)
     else:
-        fd_stats = fd(motparams[['RotX', 'RotY', 'RotZ', 'X', 'Y', 'Z']].values, order='mcflirt')
+        fd_stats = fd(
+            motparams[["RotX", "RotY", "RotZ", "X", "Y", "Z"]].values, order="mcflirt"
+        )
 
     for k, v in fd_stats.items():
         stats[k] = v
@@ -419,19 +515,17 @@ def motparams(func: nib.Nifti1Image,
     return stats
 
 
-def dvars(func: nib.Nifti1Image,
-          mask: nib.Nifti1Image = None,
-          thr: float = None):
+def dvars(func: nib.Nifti1Image, mask: nib.Nifti1Image = None, thr: float = None):
     """Calculate DVARS."""
 
     func = func.get_data().astype(np.float32)
 
     Nt = func.shape[-1]
-    func = func.reshape((-1, Nt), order='F')
+    func = func.reshape((-1, Nt), order="F")
 
     if mask is not None:
         mask = mask.get_data()
-        mask = mask.ravel(order='F')
+        mask = mask.ravel(order="F")
     else:
         th2, th98 = np.percentile(func, [2, 98])
         robthr = th2 + 0.1 * (th98 - th2)
@@ -452,20 +546,20 @@ def dvars(func: nib.Nifti1Image,
         thr = q75 + (1.5 * iqr)
     outlier = dvars > thr
 
-    stats = {'dvars': dvars, 'outlier': outlier}
+    stats = {"dvars": dvars, "outlier": outlier}
     for k, v in ts_descriptives(dvars).items():
-        stats['dvars_' + k] = v
+        stats["dvars_" + k] = v
 
     return stats
 
 
-def fd(motparams: np.ndarray, order: str = 'mcflirt'):
+def fd(motparams: np.ndarray, order: str = "mcflirt"):
     """Calculate framewise displacement (Power et al, 2012)."""
 
-    if order not in ['mcflirt', 'eddy']:
-        raise (RuntimeError(f'Invalid order: {order}'))
+    if order not in ["mcflirt", "eddy"]:
+        raise (RuntimeError(f"Invalid order: {order}"))
 
-    if order == 'eddy':
+    if order == "eddy":
         motparams = np.hstack([motparams[:, 3:], motparams[:, :3]])
 
     rot = motparams[:, :3]
@@ -478,9 +572,9 @@ def fd(motparams: np.ndarray, order: str = 'mcflirt'):
 
     fd = np.sum(np.concatenate((rot, tr), axis=1), axis=1)
 
-    stats = {'fd': fd}
+    stats = {"fd": fd}
     for k, v in ts_descriptives(fd).items():
-        stats['fd_' + k] = v
+        stats["fd_" + k] = v
 
     return stats
 
@@ -507,8 +601,8 @@ def img_cumstats(img, ddof=0):
     std = np.sqrt((diffsq / (N - ddof)))
 
     stats = {
-        'mean': nib.Nifti1Image(mn, img[0].affine, img[0].header),
-        'std': nib.Nifti1Image(std, img[0].affine, img[0].header)
+        "mean": nib.Nifti1Image(mn, img[0].affine, img[0].header),
+        "std": nib.Nifti1Image(std, img[0].affine, img[0].header),
     }
 
     return stats

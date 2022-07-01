@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 """Output data filepaths dictionaries for the ``mcdc`` module.
+
+.. autosummary::
+    :nosignatures:
+
+    MCDCFiles
+
+.. autoclass:: MCDCFiles
+    :members:
 """
 import os
 
-from typing import (
-    Dict,
-    Union
-)
+from typing import Dict, Union
 
 from fmri_preproc.utils.outputs.outdict import OutDict
 from fmri_preproc.utils.workdir import WorkDir
@@ -15,38 +20,36 @@ from fmri_preproc.utils.workdir import WorkDir
 class MCDCFiles(OutDict):
     """class doc-string
     """
-    def __init__(self,
-                 outdir: Union[WorkDir,str]
-                ) -> None:
+
+    def __init__(self, outdir: Union[WorkDir, str]) -> None:
         """Class constructor method.
         NOTE: ``outdir`` should be subject working directory.
         """
-        self.outdir: Union[WorkDir,str] = outdir
+        self.outdir: Union[WorkDir, str] = outdir
         super(MCDCFiles, self).__init__()
-    
-    def outputs(self,
-                dc: bool = False) -> Dict[str,str]:
+
+    def outputs(self, dc: bool = False) -> Dict[str, str]:
         """doc-string.
         """
-        if isinstance(self.outdir,WorkDir):
+        if isinstance(self.outdir, WorkDir):
             outdir: str = self.outdir.src
         else:
             outdir: str = self.outdir
-        
+
         if dc:
-            mc_name: str = 'mcdc'
+            mc_name: str = "mcdc"
         else:
-            mc_name: str = 'mc'
-        
-        mcdir: str = os.path.join(outdir,f"{mc_name}")
+            mc_name: str = "mc"
+
+        mcdir: str = os.path.join(outdir, f"{mc_name}")
 
         if os.path.exists(mcdir):
             remove_dir: bool = False
         else:
             remove_dir: bool = True
-        
+
         with WorkDir(src=mcdir) as mc:
-            self.output: Dict[str,str] = {
+            self.output: Dict[str, str] = {
                 "mcdir": mc.abspath(),
                 "func_mcdc": mc.join(f"func_{mc_name}.nii.gz"),
                 "motparams": mc.join(f"func_{mc_name}_motion.tsv"),
@@ -57,9 +60,9 @@ class MCDCFiles(OutDict):
                 "mcdc_tsnr": mc.join(f"func_{mc_name}_tsnr.nii.gz"),
                 "mcdc_brainmask": mc.join(f"func_{mc_name}_brainmask.nii.gz"),
                 "func_mcdc_fovmask": mc.join(f"func_{mc_name}_fovmask.nii.gz"),
-                "func_mcdc_fovpercent": mc.join(f"func_{mc_name}_fovpercent.nii.gz")
+                "func_mcdc_fovpercent": mc.join(f"func_{mc_name}_fovpercent.nii.gz"),
             }
-            
+
             if remove_dir:
                 mc.rmdir()
 

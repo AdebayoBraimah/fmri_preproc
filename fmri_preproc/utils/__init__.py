@@ -14,4 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This ``utils`` python module contains utilities for the ``fmri_preproc`` fMRI pipeline.
+
+.. autosummary::
+
+    outputs
+    qc
+    acqparam
+    command
+    enums
+    fetch_dchp_resources
+    fileio
+    fixlabels
+    fslpy
+    io
+    logutil
+    mask
+    tempdir
+    util
+    workdir
 """

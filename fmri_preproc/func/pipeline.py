@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
 """fMRI preprocessing pipeline - main pipeline.
+
+.. autosummary::
+    :nosignatures:
+
+    Pipeline
+
+.. autoclass:: Pipeline
+    :members:
 """
 import os
 import numpy as np
