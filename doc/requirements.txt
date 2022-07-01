@@ -5,3 +5,15 @@ sphinx-autodoc-napoleon-typehints
 sphinx-argparse
 rst.linker
 sphinx-autopackagesummary
+
+# Package requirements
+tqdm>=4.59.0
+matplotlib>=3.3.4
+nibabel>=3.2.1
+ptitprince>=0.2.5
+statsmodels>=0.12.2
+pandas>=1.2.4
+Jinja2>=2.11.3
+numpy>=1.20.2
+seaborn>=0.11.1
+nilearn>=0.8.0
