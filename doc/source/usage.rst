@@ -11,8 +11,6 @@ Usage menus for each subcommand of ``fmri_preproc``.
 
     This option is not accessible from the command line and can only specified in this manner.
 
-    TODO: Come back to this later...
-
     See `settings <https://fmri-preproc.readthedocs.io/en/latest/fmri_preproc.utils.html#fmri_preproc.utils.util.settings>`_ for details.
 
 .. include:: opts/main.rst
