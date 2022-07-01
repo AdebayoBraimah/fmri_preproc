@@ -17,8 +17,6 @@ import os
 import sys
 import pathlib
 
-sys.setrecursionlimit(800_000)
-
 from typing import Dict, List
 
 _pkg_path: str = str(pathlib.Path(os.path.abspath(__file__)).parents[2])
@@ -113,3 +111,4 @@ html_theme = "sphinx_rtd_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+

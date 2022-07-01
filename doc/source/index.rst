@@ -14,6 +14,7 @@ The ``fmri_preproc`` python package is intended to preprocess neonatal neuroimag
    
    installation
    usage
+   troubleshooting
    fmri_preproc
    modules
    cite
