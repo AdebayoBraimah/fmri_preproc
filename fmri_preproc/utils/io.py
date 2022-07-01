@@ -146,7 +146,8 @@ class IOBaseObj(ABC):
     def sym_link(self, dst: str, relative: bool = False) -> str:
         """Creates a symbolic link with an absolute or relative file path.
 
-        NOTE: If a directory is the used as the input object, then the linked destination is returned.
+        NOTE: 
+            If a directory is the used as the input object, then the linked destination is returned.
 
         Usage example:
             >>> # Initialize child class and inherit 

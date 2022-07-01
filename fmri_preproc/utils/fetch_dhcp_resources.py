@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """Fetch dHCP volumetric atlas, group maps, and/or group QC files from the dHCP study.
 
-NOTE: This does not include the dHCP FIX training data as it is assumed that the data being preprocessed will not 
+NOTE: 
+    This does not include the dHCP FIX training data as it is assumed that the data being preprocessed will not 
     likely match the acquisition parameters used for the dHCP study.
 
 .. autosummary::

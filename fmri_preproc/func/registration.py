@@ -1009,7 +1009,8 @@ def func_to_template_composite(
 ) -> Tuple[str]:
     """Create composite transform func -> struct ->  standard template.
     
-    NOTE: func is 3D.
+    NOTE: 
+        func is 3D.
     """
     atlas: Dict[str, str] = _select_atlas(
         age=age, atlasdir=atlasdir, standard_age=standard_age

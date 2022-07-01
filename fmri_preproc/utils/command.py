@@ -79,8 +79,7 @@ class Command:
             Hi! I have arrived!
         
         Arguments:
-            command: Command to be used. 
-                NOTE: command used must be in system path
+            command: Command to be used. NOTE: command used must be in system path
         
         Returns:
             Mutable list that can be appended to.
