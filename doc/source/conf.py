@@ -20,6 +20,7 @@ import pathlib
 from typing import Dict, List
 
 _pkg_path: str = str(pathlib.Path(os.path.abspath(__file__)).parents[2])
+
 sys.path.insert(0, _pkg_path)
 sys.path.append(_pkg_path)
 
@@ -50,6 +51,7 @@ extensions: List[str] = [
     "sphinx.ext.extlinks",
     "sphinx.ext.autosummary",
     "sphinx_autopackagesummary",
+    "sphinx.ext.viewcode",
 ]
 
 autosummary_generate: bool = True
@@ -81,7 +83,7 @@ intersphinx_mapping.update(
 # Add support for linking usernames
 github_url = "https://github.com"
 github_repo_org = "pypa"
-github_repo_name = "commandio"
+github_repo_name = "fmri_preproc"
 github_repo_slug = f"{github_repo_org}/{github_repo_name}"
 github_repo_url = f"{github_url}/{github_repo_slug}"
 github_sponsors_url = f"{github_url}/sponsors"
