@@ -137,7 +137,7 @@ def postprocess(
             log.log(
                 f"Performing intensity normalization with a multiplicative mean intensity of: {normmean}"
             )
-        func_intnorm: str = fslmaths(img=func).ing(normmean).run(
+        func_intnorm: str = fslmaths(img=func).inm(normmean).run(
             out=func_intnorm, log=log
         )
     else:
